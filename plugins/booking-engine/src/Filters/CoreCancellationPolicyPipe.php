@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Plugins\BookingEngine\Filters;
 
+use App\Core\Support\CancellationPolicyRequest;
 use Closure;
-use Plugins\BookingEngine\Support\CancellationPolicyRequest;
 
 /**
  * Cliff/threshold refund-percentage-by-proximity-to-pickup, same model as

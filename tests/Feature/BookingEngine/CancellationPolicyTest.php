@@ -2,11 +2,11 @@
 
 namespace Tests\Feature\BookingEngine;
 
+use App\Core\Support\CancellationPolicyRequest;
 use App\Core\Support\FilterRegistry;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Plugins\BookingEngine\BookingEngineServiceProvider;
-use Plugins\BookingEngine\Support\CancellationPolicyRequest;
 use Tests\TestCase;
 
 /**

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Plugins\BookingEngine\Support;
+namespace App\Core\Support;
 
 use Carbon\CarbonInterface;
 
@@ -14,6 +14,13 @@ use Carbon\CarbonInterface;
  * pipe may lower it; if no pipe is registered, cancelling forfeits
  * nothing, which is a reasonable default in the absence of any configured
  * policy.
+ *
+ * Deliberately core-owned (moved here 2026-08-05, fixing a real Hard Rule
+ * 1 violation — it was originally placed in booking-engine's own
+ * namespace, and ViewBooking.php, a core Filament resource, imported it
+ * directly). Same precedent as DriverEligibilityCheckRequest: consumed by
+ * both a core class and a plugin's filter pipe, so it lives in core
+ * specifically so neither needs to depend on the other.
  */
 class CancellationPolicyRequest
 {

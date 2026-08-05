@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Bookings\Pages;
 use App\Core\Events\BookingCancelled;
 use App\Core\Events\VehicleCheckedOut;
 use App\Core\Events\VehicleReturned;
+use App\Core\Support\CancellationPolicyRequest;
 use App\Core\Support\FilterRegistry;
 use App\Core\Support\PaymentGatewayRegistry;
 use App\Filament\Resources\Bookings\BookingResource;
@@ -14,7 +15,6 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
-use Plugins\BookingEngine\Support\CancellationPolicyRequest;
 use RuntimeException;
 
 /**
