@@ -224,6 +224,20 @@ record for deposit dispute resolution (done — see `BookingInfolist`'s
 
 ---
 
+### `App\Core\Events\ReviewSubmitted`
+
+| Property | Type | Description |
+|---|---|---|
+| `$review` | `Review` | The just-created review row |
+
+**Fires when:** an authenticated user submits a review via `Plugins\Reviews\Http\Controllers\ReviewController::store()` — the reviews plugin's only real dispatch site for this event. Carries the `Review` model itself, not raw scalar ids, matching this project's convention for every other domain event (`BookingConfirmed`, `BookingCancelled`, etc.) — a deliberate adaptation from the source e-commerce project's equivalent event, which carries `reviewId`/`productId`/`userId`/`rating` as separate scalars.
+**Assumes:** The review row is already persisted, with `is_approved = false` and `is_verified_rental` already resolved (via `VerifiedRentalChecker`) before dispatch.
+**Use cases:** notify staff a review is awaiting moderation (not built — no listener registered as of this writing), analytics.
+
+**Documentation note (corrected 2026-08-05):** this event previously had no entry in this section at all — it was only described in prose inside the "Vehicle Reviews" filters section further down this file, the only Core Event not given the same templated treatment (property table, "Fires when," "Assumes," "Use cases") every other one gets. Added here for consistency; no behavior changed.
+
+---
+
 ## Named Filters (Pipeline)
 
 Registered via `App\Core\Support\FilterRegistry::register()`, run via `FilterRegistry::apply()`.
@@ -251,13 +265,16 @@ returns either the original `$request` object (available — truthy) or
 a boolean.
 
 **`CoreAvailabilityCheckPipe`** (the base/first pipe, always registered)
-checks two things: (1) no `confirmed`, `checked_out`, or still-live-`pending`
+checks three things: (1) no `confirmed`, `checked_out`, or still-live-`pending`
 booking on the same vehicle overlaps the requested range — exclusive-end
 boundary, no turnaround buffer (see `docs/03-DOMAIN-REQUIREMENTS.md`'s
 explicit warning that a buffer must be added as a second pipe before real
 production use); (2) the vehicle's current `location_id` matches the
-requested pickup location. `cancelled`/`expired` bookings never block. A
-`pending` booking blocks ONLY while its hold is still live
+requested pickup location; (3) the requested pickup `Location.is_active`
+is true — a soft-disable for NEW bookings only, added in the "Locations
+admin CRUD" phase (see CLAUDE.md); a deactivated location does not affect
+any booking that already references it. `cancelled`/`expired` bookings
+never block. A `pending` booking blocks ONLY while its hold is still live
 (`hold_expires_at` in the future) — this is a 2026-08-04 revision of the
 original "pending never blocks" rule; see the pipe's own docblock and
 CLAUDE.md's "deposit-gate" section for why the revision was necessary.
@@ -386,6 +403,46 @@ admin-review step to happen *before* a booking can be confirmed, which
 conflicts with `BookingCreator`'s current immediate-confirm design (no
 pending→reviewed→confirmed workflow exists). Per-User composes cleanly
 with what's already built, at the cost of guest exemption above.
+
+### `vehicle.listQuery` — result convention
+
+A normal transform-and-pass filter (like `booking.priceCalculation`, not
+short-circuiting). The value passed through is a plain
+`Illuminate\Database\Eloquent\Builder` for `Vehicle`, pre-scoped to
+`status = 'available'` with `location` eager-loaded — a pipe adds
+`->where()`/`->orderBy()` calls and returns the same builder via
+`$next($query)`, never executes it (the controller alone calls
+`->paginate()`). Registered by `fleet-management`'s public
+`VehicleController::index()` specifically so other plugins (e.g. a future
+pricing-rules or insurance-addons plugin) can augment the fleet listing
+query without `fleet-management` ever referencing them (Hard Rule 2).
+
+**No pipe is currently registered against this filter** — confirmed via
+`grep -rn "register('vehicle.listQuery'"`, zero results. This is a pure,
+currently-unused extension point, not a gap: `FilterRegistry::apply()`
+returns the input unchanged when no pipes are registered, so the fleet
+listing works correctly today with nothing attached. Stated explicitly so
+a future session doesn't mistake "no pipe yet" for "broken."
+
+### `vehicle.reviews` — result convention
+
+A normal transform-and-pass filter, called via
+`FilterRegistry::applyWithContext()` (not the plain `apply()` every other
+filter in this project uses) — the only filter that needs a real,
+already-loaded model bound into the container for its pipe's constructor
+injection (`GetVehicleReviewsPipe(Vehicle $vehicle)`), rather than a value
+carried on the request DTO itself. The value passed through (and
+returned) is a plain array: `vehicleId`, `averageRating`, `reviewCount`,
+`reviews` (list of approved review data). The caller
+(`VehicleController::show()`) seeds the array with safe zeroed defaults
+(`averageRating: 0.0`, `reviewCount: 0`, `reviews: []`) before applying the
+filter, so a vehicle with the `reviews` plugin disabled (or zero reviews)
+renders correctly with no special-casing in the controller.
+
+**`GetVehicleReviewsPipe`** (reviews plugin) returns only `is_approved`
+reviews, latest first, with the average rating rounded to 1 decimal place
+— an unapproved review is invisible to everyone except staff (via
+`ReviewResource`).
 
 ## Vehicle Reviews (added 2026-08-05)
 

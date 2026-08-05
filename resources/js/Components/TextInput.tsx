@@ -32,7 +32,7 @@ export default forwardRef<TextInputRef, InputHTMLAttributes<HTMLInputElement> & 
                 {...props}
                 type={type}
                 className={
-                    'rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 ' +
+                    'rounded-interactive border-border bg-surface text-text shadow-sm focus:border-primary focus:ring-focusRing ' +
                     className
                 }
                 ref={localRef}
