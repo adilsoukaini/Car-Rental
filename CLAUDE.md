@@ -1605,3 +1605,69 @@ a separate real booking for a user with both 10 prior rentals and a
 30-day duration priced at exactly 2250.00 — the real 25% duration tier,
 not the loyalty tier's 15% and not a stacked 40%. 220 tests, Pint, and
 Larastan all pass.
+
+## Frontend Foundation Phase, Task 3 — admin-driven theme system (verified 2026-08-05)
+
+Ported the e-commerce project's centralized, admin-driven theme layer on
+top of Phase 3's file-based one — full mechanism documented in
+`docs/event-registry.md`'s new "Theme System" section, read that first.
+A one-time, fully domain-agnostic copy (colors/fonts/radius/shadow tokens
+don't know or care whether they're theming cars or products), with one
+real port decision: the source project's `ThemeResource` was written
+against Filament v3 (`Filament\Forms\Form`, `Filament\Tables\Actions\Action`);
+this project is on v4, so it was rebuilt using the same
+`Schema`/`Schemas\ThemeForm`/`Tables\ThemesTable` split already
+established by `LocationResource`/`BookingResource`, not copied verbatim
+— same "do not copy Filament resource code verbatim" lesson from Phase 4.
+
+**Font choice (Task 4b): Space Grotesk (display) / Inter (body) /
+JetBrains Mono (mono).** Only the seeded "Default" theme's font tokens
+changed — the disposable "Demo Rentals" swap-proof theme was left exactly
+as it already existed (still Poppins), since it's explicitly not a real
+client and this phase's font decision only applies to the real default.
+One deviation from the phase doc, flagged rather than silently
+reconciled: the doc's example used a `jetbrainsMono` primitive key, but
+both this project's and the source project's actual `primitives.ts`
+already use `mono` for the identical value — added `spaceGrotesk`
+alongside the existing `poppins`/`inter`/`mono` keys rather than
+introducing a second, divergently-named key for the same font.
+
+**A real regression found and fixed, not glossed over:**
+`HandleInertiaRequests::share()` now unconditionally queries the `themes`
+table on every request (to resolve `themeData`) — `tests/Feature/ExampleTest.php`,
+the original untouched Breeze stub test, never used `RefreshDatabase`
+because it never previously needed a database at all, and broke with
+`SQLSTATE[HY000]: ... no such table: themes`. Fixed the test (added
+`RefreshDatabase`), not the middleware — `ThemeManager::resolveActive()`
+already degrades correctly to `defaultData()` against an empty table, so
+the fix is "give this specific test a migrated DB," not "make the
+middleware more defensive."
+
+**The "zero rebuild" claim wasn't taken on faith — verified with real
+Playwright screenshots**, per this project's own evidence standard
+applied to something visual for the first time: (1) a real HTTP
+`GET /vehicles`, background pale-blue, Space Grotesk heading; (2) logged
+in as a real (temporary) Admin user, confirmed both seeded rows
+("Default" active, "Demo Rentals" inactive) render with genuinely
+different live swatch/font previews, not static images; (3) uploaded a
+real JSON file (bold red/yellow palette) through the actual `FileUpload`
+field — Filament's async upload was still mid-progress (53%) when
+"Create" was clicked, and it still completed correctly, no lost data;
+(4) activated it — the real `ContrastChecker` ran and the confirmation
+modal genuinely said "All contrast checks pass" (computed from the
+uploaded data, not a canned string); (5) the exact same `GET /vehicles`
+request, **with zero `npm run build` run in between**, now rendered with
+the new red/yellow palette. All temporary data (the "Verification Red"
+theme row, the temporary Admin user) cleaned up afterward, "Default"
+re-activated.
+
+**Migration approved before running** (rule 7): the `themes` table
+(`name`, `slug` unique, `data` json, `is_active` bool) — purely additive,
+same shape as the e-commerce project's own `themes` table.
+`database/seeders/ThemeSeeder.php` ran immediately after the migration,
+before `HandleInertiaRequests` was wired to depend on the table having
+rows — sequencing flagged explicitly by the reviewer before it happened,
+avoiding a window where the app expected a DB-backed active theme that
+didn't exist yet.
+
+220 tests, Pint, Larastan, and `tsc --noEmit --strict` all pass.

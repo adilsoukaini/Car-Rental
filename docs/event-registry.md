@@ -733,3 +733,77 @@ Livewire-component request that neither a plain `curl` GET nor
 (confirmed by testing both). The authoritative test target is each
 widget's own Livewire component directly, which is what this phase's
 automated tests do.
+
+## Theme System (added 2026-08-05)
+
+Not an Event/Filter/Slot, but documented here for the same reason as
+those mechanisms (Hard Rule 5) — it's a real internal API contract other
+code depends on. Ported from the e-commerce project as a domain-agnostic,
+one-time copy (colors/fonts/radius/shadow tokens don't know or care
+whether they're theming cars or products). Phase 3 only built the
+file-based layer (`resources/theme/*.ts`, selected via `ACTIVE_THEME` in
+`.env`) — this is the centralized, admin-driven layer on top of it.
+
+**`App\Models\Theme`** — `themes` table (`name`, `slug` unique, `data`
+json, `is_active` bool). **`App\Core\Support\ThemeManager::resolveActive()`**
+returns the active row's `data`, or `ThemeManager::defaultData()` (a PHP
+constant mirroring `resources/theme/clients/default.ts`) if no row is
+active yet — this fallback is what keeps `HandleInertiaRequests::share()`
+safe even before the table is seeded. `ThemeManager::activate($id)` wraps
+the single-active-row swap in a transaction, so there's never a moment
+with zero or two active rows.
+
+**`App\Core\Support\ThemeSchemaRegistry`** — `registerField($path, $type,
+$required)` (registered in `AppServiceProvider::boot()` for every field on
+the `Semantic` TS interface), `validate($data)` returns a
+`ThemeValidationResult`. Keyed by dot-path in an associative array, not
+appended to a list — re-registering the same path on every boot is
+naturally idempotent, unlike `FilterRegistry`/`SlotRegistry`'s static-array
+accumulation bug (see the kernel-fix section above); no `flush()` needed
+here.
+
+**`App\Core\Support\ContrastChecker`** — WCAG 2.1 contrast ratio (4.5:1
+AA minimum) on the three onX/X color pairs. Warns (not blocks) on upload
+via a persistent Filament notification if a pair fails; on activation, the
+confirmation modal shows the failures inline and still requires an
+explicit confirm — never silently allows an illegible theme live, and
+never silently blocks one either (a client's real brand colors might
+technically fail AA and that's still their call to make).
+
+**`App\Filament\Resources\Themes\ThemeResource`** (Admin-only,
+`HasMinimumRole`/`Role::Admin`) — upload a JSON file, see a live
+swatch/font preview rendered from the actual uploaded `data` (not a
+static image), activate. `ThemeResource::parseAndValidateUpload()` reads
+the uploaded file, JSON-decodes it, and runs it through
+`ThemeSchemaRegistry::validate()` before it's ever persisted.
+
+**`HandleInertiaRequests::share()`** now shares `themeData` =>
+`ThemeManager::resolveActive()` on every request. **`resources/js/app.tsx`**
+no longer statically imports the file-based `semantic` as `ThemeProvider`'s
+data — it reads `themeData` from the initial page's Inertia props, holds
+it in `useState` (outside the Inertia component tree, where `usePage()`
+is unavailable — same reasoning `ThemeProvider`'s own docblock already
+stated), and re-syncs on every `router.on('navigate')` event. This is
+what makes an admin activating a theme take effect on a visitor's very
+next navigation, with zero rebuild — verified with real Playwright
+screenshots (upload → activate → the public fleet listing's background
+and card styling visibly changed between two screenshots with no
+`npm run build` run in between).
+
+**Real regression found and fixed during this phase:** `HandleInertiaRequests`
+now unconditionally queries the `themes` table on every single request —
+`tests/Feature/ExampleTest.php` (the original, untouched Breeze stub test)
+had no `RefreshDatabase` trait, since it never previously needed a
+database at all, and broke with `SQLSTATE[HY000]: ... no such table:
+themes`. Fixed by adding `RefreshDatabase` to that test (not by weakening
+the middleware) — `ThemeManager::resolveActive()` already degrades
+correctly to `defaultData()` against an empty (but existing) table.
+
+**Seeded 2026-08-05** (`database/seeders/ThemeSeeder.php`): the two
+themes that already existed as files — "Default" (byte-identical to
+`ThemeManager::defaultData()`, marked active) and "Demo Rentals
+(swap-proof, not a real client)" (byte-identical to
+`client-swap-proof-DISPOSABLE.ts`'s existing values, including its own
+unchanged Poppins display font — only the *Default* theme's font tokens
+were updated to Space Grotesk/Inter/JetBrains Mono, per this phase's font
+decision; the disposable proof theme was deliberately left as-is).

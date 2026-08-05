@@ -10,10 +10,11 @@ export const primitives = {
     },
     font: {
         family: {
-            poppins:  '"Poppins", sans-serif',
-            inter:    '"Inter", sans-serif',
-            playfair: '"Playfair Display", serif',
-            mono:     '"JetBrains Mono", monospace',
+            poppins:      '"Poppins", sans-serif',
+            spaceGrotesk: '"Space Grotesk", sans-serif',
+            inter:        '"Inter", sans-serif',
+            playfair:     '"Playfair Display", serif',
+            mono:         '"JetBrains Mono", monospace',
         },
         size: {
             xs:   '0.75rem',

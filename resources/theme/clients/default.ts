@@ -33,7 +33,7 @@ export const semantic: Semantic = {
         photoScrim:   '#000000',
     },
     font: {
-        display: p.font.family.poppins,
+        display: p.font.family.spaceGrotesk,
         body:    p.font.family.inter,
         mono:    p.font.family.mono,
     },

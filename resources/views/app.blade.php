@@ -8,7 +8,7 @@
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=poppins:400,500,600,700|inter:400,500,600&display=swap" rel="stylesheet" />
+        <link href="https://fonts.bunny.net/css?family=space-grotesk:400,500,600,700|inter:400,500,600|jetbrains-mono:400,500|poppins:400,500,600,700&display=swap" rel="stylesheet" />
 
         <!-- Active theme id — read by resources/theme/active.ts -->
         <script>window.__THEME__ = @json(config('site.active_theme', 'default'));</script>
