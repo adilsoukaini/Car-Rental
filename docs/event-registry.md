@@ -614,3 +614,51 @@ would mean constructing kernel infrastructure with only a hypothetical
 future consumer, the exact thing `PROCESS-GUIDE.md` rule 6 exists to
 prevent. Build it for real the first time a second real client theme
 genuinely needs a different layout for the same feature — not before.
+
+## Analytics Dashboard (added 2026-08-05)
+
+**No custom registry — uses Filament's own native widget system
+instead.** The source project's "extensible widget-builder pattern"
+(`DashboardWidgetRegistry`, a `DashboardWidgetTemplate` contract, a
+persisted `DashboardWidgetInstance` model, a real builder UI) is genuine
+infrastructure *there*, serving multiple independent plugins that compete
+for dashboard space. This project has no such need — a handful of fixed
+widgets is the actual requirement. `App\Providers\Filament\AdminPanelProvider`
+already had `->discoverWidgets(in: app_path('Filament/Widgets'), ...)`
+wired since Phase 4's scaffolding, configured but never given a real
+widget — the same shape as `SlotRegistry` before booking-history, just
+Filament's own default. Three widgets now live in `app/Filament/Widgets/`,
+each extending a Filament-native base class
+(`StatsOverviewWidget`/`ChartWidget`/plain `Widget`), auto-discovered with
+zero additional registration.
+
+**`BookingStatsOverview`** — "Total Booking Value", not "Revenue". The
+source project's equivalent metric sums real captured payments
+(`Order.payment_status === 'paid'`); this project's `PaymentGateway::chargeFinal()`
+has zero real callers anywhere, so no booking's `total_price` has ever
+actually been charged to a customer — the only real money movement is
+the deposit hold. Counts only `confirmed`/`checked_out`/`returned`
+bookings — what's currently, validly on the books.
+
+**`BookingVolumeChart`** — a 30-day daily count, deliberately counting
+`cancelled` bookings too (unlike the stats widget) — this answers "how
+many bookings did we actually get, regardless of later cancellation," a
+different question from "what's currently committed." Both this and the
+stats widget exclude `pending`/`expired` — an abandoned mid-checkout
+attempt never became a real booking.
+
+**`VehicleUtilizationTable`** — booked days ÷ a fixed 30-day window, per
+vehicle, computed in exactly 2 queries regardless of vehicle count (all
+vehicles, then all overlapping bookings across every vehicle at once,
+aggregated in PHP — rule 8). A named, real simplification: the
+denominator is the full window for every vehicle, not reduced for time
+spent in `maintenance` — this project has no historical vehicle-status
+log to reconstruct "days actually available" after the fact.
+
+**Verification boundary, stated explicitly:** Filament widgets default to
+`$isLazy = true` — real content only renders via a follow-up child-
+Livewire-component request that neither a plain `curl` GET nor
+`Livewire::test()` against the *parent* Dashboard page ever triggers
+(confirmed by testing both). The authoritative test target is each
+widget's own Livewire component directly, which is what this phase's
+automated tests do.

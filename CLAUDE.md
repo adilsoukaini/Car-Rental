@@ -1389,3 +1389,92 @@ data cleaned up afterward; dev server stopped.
 hidden before checkout, visible once `checked_out`/`returned`, a real
 report created with the correct `reported_by` and dispatched event, and
 the real photo-upload-and-storage path.
+
+## Analytics dashboard (verified 2026-08-05)
+
+**The explicit check you asked for found nothing dormant in this
+project's own code, but did find Filament's own native infrastructure
+sitting configured-but-empty since Phase 4.** `AdminPanelProvider` has had
+`->discoverWidgets(in: app_path('Filament/Widgets'), ...)` wired since the
+very first Filament setup, with only the two Breeze/Filament default stub
+widgets ever registered — the exact same "mechanism exists, first real
+consumer never arrived" shape as `SlotRegistry` before booking-history,
+just Filament's own scaffolding default rather than something a prior
+phase of this project built.
+
+**The real finding: "Revenue" would have been mechanically ported but
+substantively false.** The source project's `StatsOverviewTemplate` sums
+`Order.total_cents` where `payment_status === 'paid'` — real money
+collected. In this project, `PaymentGateway::chargeFinal()` (the only
+place a booking's `total_price` would ever actually be charged) has zero
+real callers anywhere — the only real money movement is the deposit hold.
+Labeled the metric "Total Booking Value" instead of "Revenue" — the same
+correction already made once for reviews' verified-rental check, applied
+to money instead of eligibility.
+
+**Skipped porting the source project's full custom widget-builder system**
+(`DashboardWidgetRegistry`, a `DashboardWidgetTemplate` contract, a
+persisted `DashboardWidgetInstance` model, a real add/configure/rearrange
+builder UI) — real, load-bearing infrastructure *there*, because multiple
+independent plugins compete for dashboard space in that project. This
+project has no such need yet; a handful of fixed widgets is the actual
+requirement, and Filament already ships `StatsOverviewWidget`/`ChartWidget`/
+plain `Widget` base classes, auto-discovered via the mechanism found
+sitting ready above. Same reasoning as skipping `LayoutVariantRegistry` —
+don't build a second extensibility layer for a need that doesn't exist.
+
+**Two deliberately different status filters across the three widgets,
+named explicitly rather than left as a silent inconsistency:**
+`BookingStatsOverview` ("Total Booking Value") counts only
+`confirmed`/`checked_out`/`returned` — what's currently, validly on the
+books. `BookingVolumeChart` also counts `cancelled` — it answers "how
+many bookings did we actually get, regardless of later cancellation," a
+genuinely different question. Both exclude `pending`/`expired` — those
+never completed the checkout flow at all, an abandoned mid-payment
+attempt isn't a booking that happened.
+
+**A real bug caught by an exact-number test, not eyeballed:**
+`VehicleUtilizationTable`'s window was silently 30.5 days instead of 30 —
+`windowStart` was snapped to `startOfDay()` but `windowEnd` (`now()`)
+wasn't, so the window's actual length depended on what time of day the
+widget happened to run. Caught because the test asserted an exact
+percentage (20.0%) rather than "roughly 20%" — the same standard this
+project has held every numeric claim to since `PriceCalculationTest`.
+Fixed by computing both ends from the same instant with no day-snapping
+on either side.
+
+**Rule 8 (never one query per item) verified with a real query count, not
+just code review:** a dedicated test creates 10 vehicles with bookings and
+asserts exactly 2 queries execute regardless of vehicle count — one for
+all vehicles, one for all overlapping bookings across every vehicle at
+once, with the per-vehicle day-clamping done in PHP.
+
+**A real curl-vs-Livewire verification boundary, stated honestly rather
+than glossed over:** Filament widgets default to `$isLazy = true` —
+real content renders via a follow-up child-Livewire-component request
+that neither a plain `curl` GET nor `Livewire::test()` against the
+*parent* Dashboard page ever triggers (confirmed by testing both and
+finding neither shows the real numbers). The correct, authoritative test
+target is each widget's own Livewire component directly — exactly what
+`BookingStatsOverviewTest`/`BookingVolumeChartTest`/`VehicleUtilizationTableTest`
+already do, with real exact-number assertions. Real HTTP + `tinker`
+confirmed the surrounding mechanism instead: `Filament::getWidgets()`
+genuinely lists all three new classes alongside the two defaults, and a
+real staff login + real `GET /admin` returns a genuine `200` — the
+container a real browser would fully hydrate.
+
+**Verified end-to-end (213 tests, Pint, Larastan both pass):** real
+vehicles and bookings seeded in the dev DB (one confirmed, one returned,
+one cancelled, exact expected Total Booking Value of 800.00 MAD
+hand-verified against the seeded data); confirmed via `tinker` that all
+three widgets are genuinely panel-registered; confirmed via real HTTP
+login + dashboard request that the page loads correctly. All test data
+cleaned up afterward; dev server stopped.
+
+**Automated coverage:** 14 new tests across three widget classes —
+`BookingStatsOverviewTest` (4, exact Total Booking Value/average/distinct-
+customer counts with the correct status filter), `BookingVolumeChartTest`
+(5, the cancelled-vs-pending/expired status distinction, correct day
+bucketing, window exclusion), `VehicleUtilizationTableTest` (5, exact
+percentage at a hand-computed boundary, window-clamping for a booking
+starting before the window, the query-count proof for rule 8).

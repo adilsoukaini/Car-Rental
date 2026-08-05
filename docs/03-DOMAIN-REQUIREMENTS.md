@@ -216,9 +216,18 @@ in one phase.
   `Vehicles/Show.tsx` via a new `vehicle.detailWidgets` Slot — the first
   Slot ever registered into a plugin-owned page rather than a core one.
   Verified end-to-end with real HTTP.
-- **Analytics dashboard** (reuse the extensible widget-builder pattern —
-  utilization rate per vehicle, revenue, booking volume are the rental
-  equivalents of the e-commerce revenue/top-products widgets)
+- **Analytics dashboard — DONE 2026-08-05.** Three Filament-native widgets
+  (`app/Filament/Widgets/`) auto-discovered via a mechanism found already
+  configured since Phase 4 but never given a real widget: a stats
+  overview ("Total Booking Value" — deliberately not "Revenue", since
+  `chargeFinal()` has never been wired to a real caller), a 30-day booking
+  volume chart, and a per-vehicle utilization table. Deliberately skipped
+  the source project's full custom widget-builder system (registry +
+  persisted instances + builder UI) — real infrastructure there for
+  multiple plugins competing for dashboard space, a need this project
+  doesn't have. See CLAUDE.md's "analytics dashboard" section for the
+  full reasoning and a real bug (an inconsistent 30.5-day window) caught
+  by an exact-number test.
 
 ---
 
@@ -241,8 +250,8 @@ changes, not architectural changes:
 - Payment gateways → identical pattern, same registry
 - Layout variants → identical mechanism, new regions
 - Reviews → nearly identical, swap "product" for "vehicle/booking"
-- Analytics dashboard → identical registry-based widget system, new data
-  queries
+- Analytics dashboard → DONE, but NOT via the identical registry-based
+  widget system — Filament's own native widgets instead, see above
 - Role-based access (`HasMinimumRole`) → identical
 - Guest checkout / order confirmation pattern → directly reusable for guest
   bookings
