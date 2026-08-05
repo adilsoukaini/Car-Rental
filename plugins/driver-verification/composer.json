@@ -1,0 +1,18 @@
+{
+    "name": "carrental/driver-verification",
+    "description": "Driver license upload + admin review, with a minimum-age-by-category eligibility check on booking.driverEligibilityCheck.",
+    "type": "library",
+    "license": "MIT",
+    "version": "1.0.0",
+    "autoload": {
+        "psr-4": {
+            "Plugins\\DriverVerification\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": []
+        }
+    },
+    "minimum-stability": "stable"
+}
