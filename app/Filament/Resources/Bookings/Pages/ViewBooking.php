@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Bookings\Pages;
 
 use App\Core\Events\BookingCancelled;
+use App\Core\Events\DamageReported;
 use App\Core\Events\VehicleCheckedOut;
 use App\Core\Events\VehicleReturned;
 use App\Core\Support\CancellationPolicyRequest;
@@ -10,8 +11,12 @@ use App\Core\Support\FilterRegistry;
 use App\Core\Support\PaymentGatewayRegistry;
 use App\Filament\Resources\Bookings\BookingResource;
 use App\Models\Booking;
+use App\Models\DamageReport;
 use App\Models\Payment;
 use Filament\Actions\Action;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
@@ -57,6 +62,21 @@ use RuntimeException;
  * judgment call staff makes after inspecting the vehicle — see
  * docs/03-DOMAIN-REQUIREMENTS.md's note on damage/additional-charge being
  * a staff-approval workflow, not an automatic pipeline step.
+ *
+ * Report Condition (added 2026-08-05) is an optional follow-up action,
+ * visible once a booking is `checked_out` or `returned` — deliberately
+ * NOT a required step before Check Out/Mark Returned can complete, to
+ * avoid changing those actions' already-verified behavior. Free-text
+ * description + photos, matching DamageReported's existing shape exactly
+ * — no structured checklist (a genuinely different, bigger data model)
+ * was built speculatively. Photos are stored on the `local` (private)
+ * disk, same treatment as driver-verification's license uploads — this
+ * data supports staff-facing deposit disputes, not public display.
+ * Deliberately fires DamageReported with no listener yet: whether a
+ * report warrants moving the vehicle to `maintenance` or capturing the
+ * deposit stays a separate, manual decision via the existing actions on
+ * this same page — this is intentional pure data capture, not another
+ * "modeled but never consumed" gap.
  */
 class ViewBooking extends ViewRecord
 {
@@ -68,9 +88,46 @@ class ViewBooking extends ViewRecord
             $this->cancelBookingAction(),
             $this->checkOutAction(),
             $this->markReturnedAction(),
+            $this->reportConditionAction(),
             $this->releaseDepositAction(),
             $this->captureDepositAction(),
         ];
+    }
+
+    private function reportConditionAction(): Action
+    {
+        return Action::make('reportCondition')
+            ->label('Report Condition')
+            ->color('gray')
+            ->visible(fn () => in_array($this->booking()->status, ['checked_out', 'returned'], true))
+            ->schema([
+                Select::make('stage')
+                    ->options(['pickup' => 'Pickup', 'return' => 'Return'])
+                    ->required(),
+                Textarea::make('description')
+                    ->label('Condition / damage description')
+                    ->required(),
+                FileUpload::make('photos')
+                    ->disk('local')
+                    ->directory('damage-reports')
+                    ->image()
+                    ->multiple(),
+            ])
+            ->action(function (array $data) {
+                $booking = $this->booking();
+
+                $report = DamageReport::create([
+                    'booking_id' => $booking->id,
+                    'stage' => $data['stage'],
+                    'description' => $data['description'],
+                    'photo_paths' => $data['photos'] ?? [],
+                    'reported_by' => auth()->id(),
+                ]);
+
+                DamageReported::dispatch($booking, $report->stage, $report->description, $report->photo_paths ?? []);
+
+                Notification::make()->title('Condition report logged')->success()->send();
+            });
     }
 
     private function checkOutAction(): Action

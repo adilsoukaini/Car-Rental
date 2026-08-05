@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "6d6717dfbcf0e71989f0a304226ce84e",
+    "content-hash": "f3b595f56b27d8ed6dc607433661af1d",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -372,6 +372,33 @@
                 "MIT"
             ],
             "description": "Availability-overlap checking and booking creation — the core booking/availability engine.",
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "carrental/damage-reporting",
+            "version": "1.0.0",
+            "dist": {
+                "type": "path",
+                "url": "plugins/damage-reporting",
+                "reference": "acf8234db7d70d28bd5a555bd1e7438b1f90d8f6"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": []
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Plugins\\DamageReporting\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "Owns the damage_reports migration for App\\Models\\DamageReport — the report logging itself lives on core's ViewBooking, using only core Events/Models.",
             "transport-options": {
                 "relative": true
             }

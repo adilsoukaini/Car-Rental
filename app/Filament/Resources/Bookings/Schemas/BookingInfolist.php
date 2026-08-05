@@ -43,6 +43,33 @@ class BookingInfolist
                             ])
                             ->columns(6),
                     ]),
+
+                Section::make('Condition / Damage Reports')
+                    ->schema([
+                        RepeatableEntry::make('damageReports')
+                            ->label('')
+                            ->schema([
+                                TextEntry::make('stage')->badge(),
+                                TextEntry::make('description'),
+                                TextEntry::make('photo_paths')
+                                    ->label('Photos')
+                                    // getStateUsing() (not formatStateUsing()) — Filament treats an
+                                    // empty array as "no state" and skips formatStateUsing entirely,
+                                    // which silently rendered blank for a report with zero photos
+                                    // instead of the intended "0 attached". Found by actually
+                                    // inspecting the real rendered HTML during verification, not by
+                                    // reading the code and assuming formatStateUsing would run.
+                                    ->getStateUsing(function ($record): string {
+                                        $paths = $record->photo_paths;
+                                        $paths = is_string($paths) ? json_decode($paths, true) : $paths;
+
+                                        return count($paths ?? []).' attached';
+                                    }),
+                                TextEntry::make('reportedBy.name')->label('Reported by'),
+                                TextEntry::make('created_at')->dateTime(),
+                            ])
+                            ->columns(5),
+                    ]),
             ]);
     }
 }

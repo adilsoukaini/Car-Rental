@@ -14,6 +14,7 @@
     "require": {
         "php": "^8.3",
         "carrental/booking-engine": "*",
+        "carrental/damage-reporting": "*",
         "carrental/driver-verification": "*",
         "carrental/fleet-management": "*",
         "carrental/payments-stripe": "*",

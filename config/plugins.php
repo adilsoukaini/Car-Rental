@@ -1,6 +1,7 @@
 <?php
 
 use Plugins\BookingEngine\BookingEngineServiceProvider;
+use Plugins\DamageReporting\DamageReportingServiceProvider;
 use Plugins\DriverVerification\DriverVerificationServiceProvider;
 use Plugins\FleetManagement\FleetManagementServiceProvider;
 use Plugins\PaymentsStripe\StripeServiceProvider;
@@ -18,6 +19,7 @@ return [
         'payments-stripe' => StripeServiceProvider::class,
         'driver-verification' => DriverVerificationServiceProvider::class,
         'reviews' => ReviewsServiceProvider::class,
+        'damage-reporting' => DamageReportingServiceProvider::class,
     ],
 
     /*

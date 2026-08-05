@@ -4,6 +4,7 @@ namespace Tests\Feature\Filament;
 
 use App\Core\Contracts\PaymentGateway;
 use App\Core\Events\BookingCancelled;
+use App\Core\Events\DamageReported;
 use App\Core\Events\VehicleCheckedOut;
 use App\Core\Events\VehicleReturned;
 use App\Core\Support\PaymentGatewayRegistry;
@@ -14,16 +15,30 @@ use App\Models\Payment;
 use App\Models\User;
 use App\Models\Vehicle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Mockery;
 use Plugins\BookingEngine\BookingEngineServiceProvider;
 use Plugins\BookingEngine\Support\BookingCreator;
+use Plugins\DamageReporting\DamageReportingServiceProvider;
 use Tests\TestCase;
 
 class BookingResourceTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // ViewBooking's infolist always queries the damageReports relation,
+        // so every test in this file needs the table — same pattern as any
+        // other first-time plugin-migration dependency in this project.
+        $this->app->register(DamageReportingServiceProvider::class);
+        $this->artisan('migrate', ['--path' => 'plugins/damage-reporting/database/migrations']);
+    }
 
     public function test_staff_can_view_the_booking_list(): void
     {
@@ -262,6 +277,85 @@ class BookingResourceTest extends TestCase
             ->callAction('markReturned');
 
         $this->assertSame($returnLocation->id, $vehicle->fresh()->location_id);
+    }
+
+    public function test_report_condition_action_is_hidden_before_checkout(): void
+    {
+        $staff = User::factory()->create(['role' => 'staff']);
+        $this->actingAs($staff);
+
+        $confirmed = Booking::factory()->create(['status' => 'confirmed']);
+        Livewire::test(ViewBooking::class, ['record' => $confirmed->getRouteKey()])
+            ->assertActionHidden('reportCondition');
+
+        $pending = Booking::factory()->create(['status' => 'pending']);
+        Livewire::test(ViewBooking::class, ['record' => $pending->getRouteKey()])
+            ->assertActionHidden('reportCondition');
+    }
+
+    public function test_report_condition_action_is_visible_once_checked_out_or_returned(): void
+    {
+        $staff = User::factory()->create(['role' => 'staff']);
+        $this->actingAs($staff);
+
+        $checkedOut = Booking::factory()->create(['status' => 'checked_out']);
+        Livewire::test(ViewBooking::class, ['record' => $checkedOut->getRouteKey()])
+            ->assertActionVisible('reportCondition');
+
+        $returned = Booking::factory()->create(['status' => 'returned']);
+        Livewire::test(ViewBooking::class, ['record' => $returned->getRouteKey()])
+            ->assertActionVisible('reportCondition');
+    }
+
+    public function test_report_condition_action_creates_a_real_report_and_dispatches(): void
+    {
+        Event::fake([DamageReported::class]);
+
+        $staff = User::factory()->create(['role' => 'staff']);
+        $this->actingAs($staff);
+
+        $booking = Booking::factory()->create(['status' => 'returned']);
+
+        Livewire::test(ViewBooking::class, ['record' => $booking->getRouteKey()])
+            ->callAction('reportCondition', data: [
+                'stage' => 'return',
+                'description' => 'Small scratch on the rear bumper.',
+            ]);
+
+        $report = $booking->fresh()->damageReports()->first();
+        $this->assertNotNull($report);
+        $this->assertSame('return', $report->stage);
+        $this->assertSame('Small scratch on the rear bumper.', $report->description);
+        $this->assertSame($staff->id, $report->reported_by);
+
+        Event::assertDispatched(DamageReported::class, fn (DamageReported $event) => $event->booking->is($booking)
+            && $event->stage === 'return'
+            && $event->description === 'Small scratch on the rear bumper.');
+    }
+
+    public function test_report_condition_action_stores_uploaded_photo_paths(): void
+    {
+        Storage::fake('local');
+
+        $staff = User::factory()->create(['role' => 'staff']);
+        $this->actingAs($staff);
+
+        $booking = Booking::factory()->create(['status' => 'checked_out']);
+
+        $photo = UploadedFile::fake()->image('scratch.jpg');
+
+        Livewire::test(ViewBooking::class, ['record' => $booking->getRouteKey()])
+            ->callAction('reportCondition', data: [
+                'stage' => 'pickup',
+                'description' => 'Pre-existing scuff, noted at handover.',
+                'photos' => [$photo],
+            ]);
+
+        $report = $booking->fresh()->damageReports()->first();
+        $this->assertNotNull($report);
+        $this->assertCount(1, $report->photo_paths);
+
+        Storage::disk('local')->assertExists($report->photo_paths[0]);
     }
 
     public function test_cancel_action_is_visible_for_a_confirmed_booking(): void
