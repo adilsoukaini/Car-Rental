@@ -281,8 +281,12 @@ would add its own line and adjust `totalPrice()` accordingly.
 ### `booking.cancellationPolicy` — result convention
 
 A normal transform-and-pass filter (like `booking.priceCalculation`, not
-short-circuiting). The value is `Plugins\BookingEngine\Support\CancellationPolicyRequest`
-(booking id, `pickupAt`, `cancelledAt`, mutable `refundPercent` defaulting
+short-circuiting). The value is `App\Core\Support\CancellationPolicyRequest`
+(moved here 2026-08-05 from `Plugins\BookingEngine\Support` — it's
+consumed by both a core class, `ViewBooking`, and this plugin's filter
+pipe, the same shape `DriverEligibilityCheckRequest` already exists to
+solve; the original plugin-namespaced placement was a real Hard Rule 1
+violation, see CLAUDE.md) — booking id, `pickupAt`, `cancelledAt`, mutable `refundPercent` defaulting
 to 100). **`CoreCancellationPolicyPipe`** applies a cliff/threshold refund
 percentage by whole days remaining until pickup — the highest threshold
 met wins, not cumulative, same model as `CoreDurationDiscountPipe`'s

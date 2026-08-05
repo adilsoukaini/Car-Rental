@@ -1303,3 +1303,27 @@ computation, cross-vehicle isolation, zeroed defaults), 4 `ReviewResourceTest`
 cases (staff-only access, Approve action), and a dedicated
 `VehicleControllerTest` case proving the real Slot renders on the real
 page with real review data.
+
+## Kernel fix: `ViewBooking` importing a plugin directly (verified 2026-08-05)
+
+**Found while pre-flighting damage-reporting, before adding anything new
+to the same file.** `app/Filament/Resources/Bookings/Pages/ViewBooking.php`
+— a core Filament resource, living in `/app` — had a direct
+`use Plugins\BookingEngine\Support\CancellationPolicyRequest;` import,
+added during the cancellation-refund-policy phase. A real, live Hard Rule
+1 violation ("Core never imports a plugin") that slipped through
+unnoticed for one full phase.
+
+**Fixed the same way `DriverEligibilityCheckRequest` was placed in Phase
+9** — `CancellationPolicyRequest` is consumed by both a core class
+(`ViewBooking`) and a plugin's filter pipe (`CoreCancellationPolicyPipe`),
+the exact shape that DTO already existed to solve. Moved from
+`Plugins\BookingEngine\Support` to `App\Core\Support`; no behavior change,
+just the namespace/location. Updated all three real consumers (`ViewBooking`,
+`CoreCancellationPolicyPipe`, `CancellationPolicyTest`).
+
+**Swept the rest of `/app` for the same class of mistake before moving
+on** — `grep -rln "use Plugins\\\\" app/` returns nothing else. This was
+an isolated slip, not a pattern repeated elsewhere.
+
+Verified: 195 tests, Pint, and Larastan all still pass after the move.
