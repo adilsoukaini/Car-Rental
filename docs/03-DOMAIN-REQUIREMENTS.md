@@ -233,7 +233,14 @@ in one phase.
 
 ## LOW — real features, genuinely fine to defer
 
-- Loyalty/repeat-customer discounts
+- **Loyalty/repeat-customer discounts — DONE 2026-08-05.** A tiered
+  discount, not a points ledger — `CoreLoyaltyDiscountPipe` on
+  `booking.priceCalculation`, keyed on the customer's count of prior
+  `returned` bookings (guests exempt, same precedent as driver
+  verification). Deliberately does not stack with the duration discount —
+  whichever tier is larger wins outright, keeping the maximum discount on
+  any booking bounded to a tier actually defined, never an unbounded
+  combination. See CLAUDE.md's "loyalty discounts" section.
 - Multi-language support (French/Arabic, same consideration as before)
 - A native mobile app (see the discussion on this — build the responsive web
   version first)

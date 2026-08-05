@@ -49,4 +49,25 @@ return [
         7 => 100,
         2 => 50,
     ],
+
+    /*
+     * PLACEHOLDER BUSINESS VALUES — same status as cancellation_refund_tiers
+     * above. Cliff/threshold model keyed on the customer's count of prior
+     * RETURNED bookings (the booking currently being priced never counts
+     * toward its own tier; guests have no user_id and are always exempt —
+     * see CoreLoyaltyDiscountPipe). The highest threshold met wins.
+     *
+     * Deliberately NOT combined with duration_discount_tiers above: whichever
+     * of the two produces the higher discount percent wins outright, they
+     * never stack — keeps the maximum possible discount on any booking
+     * bounded to a tier actually defined here, rather than an unbounded
+     * combination nobody explicitly decided on.
+     *
+     * Keys must be sorted descending so the first match found is the
+     * highest applicable tier.
+     */
+    'loyalty_discount_tiers' => [
+        10 => 15,
+        3 => 5,
+    ],
 ];

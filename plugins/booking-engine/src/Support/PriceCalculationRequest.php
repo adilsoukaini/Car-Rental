@@ -12,5 +12,6 @@ class PriceCalculationRequest
         public readonly int $vehicleId,
         public readonly CarbonInterface $pickupAt,
         public readonly CarbonInterface $returnAt,
+        public readonly ?int $userId = null,
     ) {}
 }

@@ -19,7 +19,7 @@ use Tests\TestCase;
  * These three near-identical test methods are the regression coverage: if
  * PluginManager::boot() ever stops flushing, or a future refactor changes
  * boot order so registration happens before the flush, the counts below
- * start growing (2, 4, 6 / 1, 2, 3) instead of staying constant, and these
+ * start growing (3, 6, 9 / 1, 2, 3) instead of staying constant, and these
  * fail. A single test method can't catch this class of bug — it depends on
  * multiple sequential Application boots in the same process, which is
  * exactly what running several methods in one file exercises for real.
@@ -33,9 +33,9 @@ class RegistryFlushTest extends TestCase
         $this->app->register(BookingEngineServiceProvider::class);
 
         $this->assertCount(
-            2,
+            3,
             FilterRegistry::pipesFor('booking.priceCalculation'),
-            'booking.priceCalculation should have exactly its 2 real pipes (CoreDurationDiscountPipe, CoreDepositPipe) — a higher count means FilterRegistry state leaked across Application boots.',
+            'booking.priceCalculation should have exactly its 3 real pipes (CoreDurationDiscountPipe, CoreLoyaltyDiscountPipe, CoreDepositPipe) — a higher count means FilterRegistry state leaked across Application boots.',
         );
 
         $this->assertCount(

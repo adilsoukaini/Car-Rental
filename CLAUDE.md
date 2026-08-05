@@ -1537,3 +1537,71 @@ Postgres now — fast tests stay fast, and the one thing that actually
 needed real Postgres semantics got them without paying that cost on every
 routine test run. A SQLite-specific-SQL compatibility sweep (raw `DATE()`
 calls, case-sensitivity-dependent lookups) found nothing else to fix.
+
+## Loyalty/repeat-customer discounts (verified 2026-08-05) — closing the last LOW item
+
+**Pre-flight resolved a real ledger-vs-tiered-discount fork before
+building, correctly toward the smaller option.** The domain doc's LOW
+item was a one-liner with no mechanism spec, and `docs/02-DESIGN-SYSTEM.md`'s
+only mention of "loyalty" was an illustrative example of the token-
+extension pattern (`components.loyaltyBadge`), not a commitment to a
+points ledger. A points-accrual/redemption system would be real new
+infrastructure (a ledger model, accrual on completion, a redemption step
+at checkout, expiry rules) — the same "don't build a second mechanism for
+a hypothetical need" reasoning already applied to extras, CMI, and the
+custom widget registry. Built a tiered discount instead, reusing the
+exact `booking.priceCalculation` pipe pattern already proven twice
+(`CoreDurationDiscountPipe`, `CoreCancellationPolicyPipe`). A dormant-state
+sweep (`grep -rn -i loyalt` across `app`/`plugins`/`database`/`resources`/
+`docs`) confirmed a genuinely clean slate before writing anything.
+
+**Two decisions reused established precedent directly, no new reasoning
+needed:** guest bookings are exempt (a guest has no persistent identity
+across bookings to count history against — same shape as driver
+verification's guest exemption), and only prior `returned` bookings count
+toward a customer's tier, never the booking currently being priced —
+same reasoning as the reviews plugin's `VerifiedRentalChecker`: a repeat
+customer is someone who has actually completed prior rentals, not someone
+with one merely in flight.
+
+**The one genuinely new decision: highest-single-discount-wins, not
+additive stacking**, when both the duration and loyalty tiers would apply
+to the same booking. Beyond matching the cliff/threshold style used
+everywhere else in this project, this is the substantive reason: additive
+stacking would let a long-duration rental from a loyal repeat customer
+reach a materially different, uncapped discount that neither tier was
+ever individually designed to represent (e.g. 25% + 15% = 40%, a number
+nobody explicitly decided on). Highest-wins guarantees the maximum
+discount on any booking is always exactly one tier that was actually
+defined and reasoned about.
+
+**Built:** `CoreLoyaltyDiscountPipe`, registered on `booking.priceCalculation`
+at priority 15 (between `CoreDurationDiscountPipe`'s 10 and `CoreDepositPipe`'s
+20 — it needs `dailyRate`/`days` already set, and may replace the discount
+already applied, which the deposit pipe must see reflected in the final
+subtotal). `PriceCalculationRequest` gained an optional `userId`, threaded
+through from both real construction sites (`BookingCreator::validateAndPrice()`,
+`BookingCheckoutController::show()`'s price preview). Placeholder tiers in
+`booking-engine.php` (`3 rentals → 5%`, `10 rentals → 15%`), same
+"real numbers not yet confirmed with the business" status as
+`cancellation_refund_tiers`.
+
+**Verified to the same standard as every other pricing-engine claim —
+exact hand-computed totals at real boundaries, not "a discount applied":**
+7 automated tests (`LoyaltyDiscountTest`) covering guest exemption, the
+tier boundary at exactly 2 vs. exactly 3 and exactly 10 prior rentals,
+non-`returned` statuses never counting, and — the two tests directly
+proving the highest-wins rule — a 30-day booking with 3 prior rentals
+(duration's 25% correctly beats loyalty's 5%) and a 7-day booking with 10
+prior rentals (loyalty's 15% correctly beats duration's 10%), both
+asserting the exact resulting subtotal, not just which percent number won.
+A stale hardcoded pipe count in `RegistryFlushTest` (asserting exactly 2
+real `booking.priceCalculation` pipes) was updated to 3 — caught
+immediately by the full suite, not a silent gap. Real `tinker` verification
+through the actual `BookingCreator::create()` entry point (not the
+isolated pipe test) confirmed a real booking for a user with 10 prior
+`returned` bookings priced at exactly 510.00 (200/day × 3 days × 0.85), and
+a separate real booking for a user with both 10 prior rentals and a
+30-day duration priced at exactly 2250.00 — the real 25% duration tier,
+not the loyalty tier's 15% and not a stacked 40%. 220 tests, Pint, and
+Larastan all pass.

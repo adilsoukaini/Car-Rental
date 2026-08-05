@@ -74,6 +74,7 @@ class BookingCheckoutController extends Controller
             vehicleId: $vehicle->id,
             pickupAt: $pickupAt,
             returnAt: $returnAt,
+            userId: $request->user()?->id,
         );
 
         /** @var PriceBreakdown $breakdown */

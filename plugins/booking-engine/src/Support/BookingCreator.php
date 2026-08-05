@@ -222,6 +222,7 @@ class BookingCreator
             vehicleId: $vehicle->id,
             pickupAt: $pickupAt,
             returnAt: $returnAt,
+            userId: $userId !== null ? (int) $userId : null,
         );
 
         /** @var PriceBreakdown $breakdown */

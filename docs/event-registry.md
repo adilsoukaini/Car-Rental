@@ -230,7 +230,7 @@ Registered via `App\Core\Support\FilterRegistry::register()`, run via `FilterReg
 
 | Filter name | Purpose | Registered by |
 |---|---|---|
-| `booking.priceCalculation` | Base daily rate → duration discounts → deposit (extras not yet built) | booking-engine plugin (`CoreDurationDiscountPipe` + `CoreDepositPipe`, Phase 6) |
+| `booking.priceCalculation` | Base daily rate → duration/loyalty discounts → deposit (extras not yet built) | booking-engine plugin (`CoreDurationDiscountPipe` + `CoreLoyaltyDiscountPipe` + `CoreDepositPipe`) |
 | `booking.availabilityCheck` | Is this vehicle actually available for this date range + pickup location | booking-engine plugin (`CoreAvailabilityCheckPipe`, Phase 5) |
 | `booking.cancellationPolicy` | How much of a held deposit is refunded given how close to pickup | booking-engine plugin (`CoreCancellationPolicyPipe`, added 2026-08-05) |
 | `booking.driverEligibilityCheck` | Is this driver eligible (age/category) to book this vehicle | driver-verification plugin (`CoreDriverEligibilityCheckPipe`, Phase 9) |
@@ -275,17 +275,31 @@ to actually hold a vehicle.
 A normal transform-and-pass filter (unlike `booking.availabilityCheck`,
 this one never short-circuits). The value passed through is a
 `Plugins\BookingEngine\Support\PriceBreakdown`, wrapping a
-`PriceCalculationRequest` (vehicle id, pickup/return datetimes). Each pipe
-fills in more of the breakdown and calls `$next($breakdown)`. Order
-matters and is enforced by `FilterRegistry::register()` priority —
-`CoreDurationDiscountPipe` (priority 10) must run before `CoreDepositPipe`
-(priority 20), since the deposit pipe reads `$breakdown->subtotal`.
+`PriceCalculationRequest` (vehicle id, pickup/return datetimes, optional
+`userId` — null for guests). Each pipe fills in more of the breakdown and
+calls `$next($breakdown)`. Order matters and is enforced by
+`FilterRegistry::register()` priority — `CoreDurationDiscountPipe`
+(priority 10) must run before `CoreLoyaltyDiscountPipe` (priority 15),
+which must run before `CoreDepositPipe` (priority 20), since the deposit
+pipe reads the final `$breakdown->subtotal`.
 
 **`CoreDurationDiscountPipe`** computes whole rental days (partial days
 round UP — a 2 day 3 hour rental bills as 3 days, minimum 1 day) and
 applies a **cliff/threshold** discount from
 `config('booking-engine.duration_discount_tiers')` — the highest day-count
 threshold met wins; discounts are not cumulative/graduated across tiers.
+
+**`CoreLoyaltyDiscountPipe`** (added 2026-08-05) applies a cliff/threshold
+discount from `config('booking-engine.loyalty_discount_tiers')`, keyed on
+the customer's count of prior `returned` bookings (guests, `userId ===
+null`, are always exempt — same precedent as driver verification; only
+completed rentals count, same precedent as the reviews plugin's
+`VerifiedRentalChecker`; the booking being priced never counts toward its
+own tier). **Does not stack with `CoreDurationDiscountPipe`** — whichever
+of the two produces the higher discount percent wins outright and
+replaces the other; the maximum discount on any booking is always exactly
+one tier that was actually defined, never an unbounded combination of
+both. See CLAUDE.md's "loyalty discounts" section for the full reasoning.
 
 **`CoreDepositPipe`** sets the security deposit to a flat percentage
 (`config('booking-engine.deposit_percentage_of_subtotal')`) of the
