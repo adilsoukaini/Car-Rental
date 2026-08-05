@@ -1063,3 +1063,91 @@ direct Stripe API retrieval confirmed the real `PaymentIntent`'s status is
 `canceled` on Stripe's own servers. All test data (bookings, vehicle,
 location, Stripe PaymentIntents, jobs, sessions) cleaned up afterward; dev
 server stopped.
+
+## Cancellation refund policy (verified 2026-08-05)
+
+**Pre-flight found a stale docblock, a live production gap Phase B
+silently introduced, and a conceptual mislabeling of the whole feature —
+all before writing a line of code for the thing it was actually asked to
+build.**
+
+`ViewBooking.php`'s own docblock still said "no real captured deposit to
+compute a refund against until the deposit-gate decision is made" — no
+longer true since Phase B. Separately, and more seriously: `activeAuthorization()`
+(gating the Release/Capture Deposit buttons) checks only `Payment.type`/`status`,
+with no booking-status check at all — since Phase B's checkout flow
+authorizes a real deposit hold *before* a booking is even confirmed for
+pickup, a just-confirmed booking already showed Cancel Booking, Release
+Deposit, and Capture Deposit all together in production, with nothing
+stopping staff from releasing/capturing a deposit for a booking that
+hadn't reached pickup at all. Found by actually re-reading the visibility
+gate before building on top of it, not assumed fine because it predated
+this phase.
+
+**A third finding reframed the feature itself.** `PaymentGateway::chargeFinal()`
+(the actual rental-total charge) has zero real callers anywhere — the only
+real money movement at booking time is the deposit hold. So
+`booking.cancellationPolicy`'s "how much refund" was never really about
+reversing a captured payment; it's about how much of a still-*held*,
+never-captured deposit to release vs. forfeit as a cancellation fee. A
+narrower, more accurate framing than the domain doc's generic wording,
+and it directly determined the mechanism: `captureDeposit()` already
+supported a partial amount (existing test coverage proved it), and
+Stripe's own partial-capture behavior on a manual-capture PaymentIntent
+automatically releases the uncaptured remainder in that same call — no
+new gateway operation needed. **Verified this claim before relying on
+it**, not just inferred from existing tests: confirmed against Stripe's
+own documentation ("A partial capture automatically releases the
+remaining amount") and a real test-mode API call (authorize 100.00,
+partially capture 40.00, `amount_received: 40.00`, `amount_capturable: 0`
+— the other 60.00 genuinely released in the same call, confirmed by
+re-retrieving the PaymentIntent independently).
+
+**The visibility-gate fix hit a second real conflict mid-implementation:**
+the natural fix ("gate Release/Capture to `checked_out`/`returned`
+statuses") would have made them permanently invisible again for every
+ordinary clean-return booking, since that checkout/return lifecycle still
+has zero real dispatch sites anywhere (the same gap found in the
+deposit-gate phase's pre-flight, now hit a second time as a live
+consequence rather than a noted gap). Resolved with an explicitly-named
+interim proxy — `pickup_at->isPast()` — a real, always-available signal
+standing in for the real lifecycle, to be replaced once
+`VehicleCheckedOut`/`VehicleReturned` actually get dispatched from real
+staff-facing actions. **This is the second time the missing checkout/return
+lifecycle has actively distorted how another feature has to be built** —
+it's no longer just a deferred nice-to-have.
+
+**Built:** `Plugins\BookingEngine\Support\CancellationPolicyRequest` +
+`CoreCancellationPolicyPipe`, registered as the new `booking.cancellationPolicy`
+filter — cliff/threshold refund tiers
+(`config('booking-engine.cancellation_refund_tiers')`, explicitly flagged
+as placeholder business numbers, same pattern as `duration_discount_tiers`
+before real numbers existed for it either). `ViewBooking`'s Cancel Booking
+action now resolves the deposit automatically as part of cancelling
+(proximity-to-pickup is a deterministic function of time, not a judgment
+call like damage inspection, so no separate manual step is needed) —
+100% refund releases; anything less captures the forfeited amount. The
+confirmation modal shows the live computed refund/forfeit amounts before
+staff confirms, matching this project's standing care around financial
+actions.
+
+**Verified end-to-end against real Stripe test-mode infrastructure, not
+mocked (166 tests, Pint, Larastan, `tsc --strict` all pass):** a real
+booking (#24) was created and authorized for a real deposit hold (240.00,
+pickup 3 days out — the 50%-refund tier); confirmed via a real Stripe test
+payment method exactly as Phase B's flow does; cancelled through the same
+logic `ViewBooking`'s action runs, computing `refundPercent: 50` and a
+forfeit of exactly 120.00; a direct, independent Stripe API retrieval
+afterward confirmed the real `PaymentIntent` shows `status: succeeded`,
+`amount_received: 12000` (120.00 MAD), `amount_capturable: 0` — the
+remaining 120.00 genuinely auto-released by Stripe itself, not just
+recorded locally. All test data cleaned up afterward.
+
+**Automated coverage:** 7 exact-boundary tests for the refund tiers
+(matching `PriceCalculationTest`'s standard — hand-computed expected
+percentages at 7-day/2-day boundaries, same-day, and after-pickup cases),
+plus 6 new/updated `BookingResourceTest` cases covering the visibility-gate
+fix (hidden before pickup even with a live hold; visible once pickup has
+passed) and the three real refund-wiring paths (full release, partial
+capture, full forfeit) via Mockery expectations on which gateway method
+gets called with which exact amount.

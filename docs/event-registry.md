@@ -182,7 +182,7 @@ Registered via `App\Core\Support\FilterRegistry::register()`, run via `FilterReg
 |---|---|---|
 | `booking.priceCalculation` | Base daily rate → duration discounts → deposit (extras not yet built) | booking-engine plugin (`CoreDurationDiscountPipe` + `CoreDepositPipe`, Phase 6) |
 | `booking.availabilityCheck` | Is this vehicle actually available for this date range + pickup location | booking-engine plugin (`CoreAvailabilityCheckPipe`, Phase 5) |
-| `booking.cancellationPolicy` | How much refund applies given how close to pickup | booking-engine plugin (not yet built) |
+| `booking.cancellationPolicy` | How much of a held deposit is refunded given how close to pickup | booking-engine plugin (`CoreCancellationPolicyPipe`, added 2026-08-05) |
 | `booking.driverEligibilityCheck` | Is this driver eligible (age/category) to book this vehicle | driver-verification plugin (`CoreDriverEligibilityCheckPipe`, Phase 9) |
 | `vehicle.listQuery` | Fleet listing query — filters/sorts applied to the base query | fleet-management plugin (Phase 4) |
 
@@ -200,14 +200,16 @@ returns either the original `$request` object (available — truthy) or
 a boolean.
 
 **`CoreAvailabilityCheckPipe`** (the base/first pipe, always registered)
-checks two things: (1) no `confirmed` or `checked_out` booking on the same
-vehicle overlaps the requested range — exclusive-end boundary, no
-turnaround buffer (see `docs/03-DOMAIN-REQUIREMENTS.md`'s explicit warning
-that a buffer must be added as a second pipe before real production use);
-(2) the vehicle's current `location_id` matches the requested pickup
-location. `pending` and `cancelled` bookings do not block, per
-`03-DOMAIN-REQUIREMENTS.md`'s explicit "any existing CONFIRMED booking"
-wording.
+checks two things: (1) no `confirmed`, `checked_out`, or still-live-`pending`
+booking on the same vehicle overlaps the requested range — exclusive-end
+boundary, no turnaround buffer (see `docs/03-DOMAIN-REQUIREMENTS.md`'s
+explicit warning that a buffer must be added as a second pipe before real
+production use); (2) the vehicle's current `location_id` matches the
+requested pickup location. `cancelled`/`expired` bookings never block. A
+`pending` booking blocks ONLY while its hold is still live
+(`hold_expires_at` in the future) — this is a 2026-08-04 revision of the
+original "pending never blocks" rule; see the pipe's own docblock and
+CLAUDE.md's "deposit-gate" section for why the revision was necessary.
 
 **`Plugins\BookingEngine\Support\BookingCreator`** is the only sanctioned
 way to create a `confirmed` booking — it locks the vehicle row
@@ -250,6 +252,38 @@ own data model (an add-ons table, a booking-extras pivot), not a line in
 this pipeline. `PriceBreakdown::totalPrice()` currently equals `subtotal`
 exactly because there's no extras total yet to add; a future extras pipe
 would add its own line and adjust `totalPrice()` accordingly.
+
+### `booking.cancellationPolicy` — result convention
+
+A normal transform-and-pass filter (like `booking.priceCalculation`, not
+short-circuiting). The value is `Plugins\BookingEngine\Support\CancellationPolicyRequest`
+(booking id, `pickupAt`, `cancelledAt`, mutable `refundPercent` defaulting
+to 100). **`CoreCancellationPolicyPipe`** applies a cliff/threshold refund
+percentage by whole days remaining until pickup — the highest threshold
+met wins, not cumulative, same model as `CoreDurationDiscountPipe`'s
+discount tiers. Days-until-pickup is computed directly from timestamps
+(`floor((pickupAt - cancelledAt) / 86400)`), not `Carbon::diffInDays()`,
+whose signed-difference convention has flipped across Carbon versions and
+is easy to get backwards silently.
+
+**This computes a refund percentage against a held deposit, not a
+"refund" in the everyday sense of reversing a captured payment.**
+`PaymentGateway::chargeFinal()` (the actual rental-total charge) has zero
+real callers anywhere in this project — the only real money movement at
+booking time is the deposit hold. So "how much refund" really means "how
+much of the still-*held*, never-captured deposit to release vs. forfeit as
+a cancellation fee." Applied in `ViewBooking`'s Cancel Booking action: 100%
+refund calls `releaseDeposit()`; anything less calls `captureDeposit()`
+with the forfeited amount — a manual-capture PaymentIntent's partial
+capture automatically releases the uncaptured remainder in that same call
+(confirmed against Stripe's own docs — *"A partial capture automatically
+releases the remaining amount"* — and a real test-mode API call before
+relying on it), so no second gateway call is needed.
+
+**`config('booking-engine.cancellation_refund_tiers')` values are
+explicitly flagged as placeholder business numbers**, unlike
+`duration_discount_tiers`/`deposit_percentage_of_subtotal` (which had real
+numbers from day one) — retune anytime, no code change needed.
 
 ### `booking.driverEligibilityCheck` — result convention
 

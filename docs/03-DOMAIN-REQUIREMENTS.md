@@ -155,20 +155,37 @@ in one phase.
   mistake `BookingConfirmed` was found and fixed for — the real prerequisite
   (staff-facing check-out/check-in actions that genuinely dispatch these
   events and set `booking.status`) needs to be its own phase first.
-- **Cancellation** — **DONE (status-only) 2026-08-04.** `ViewBooking`'s
-  "Cancel Booking" action (staff-only, confirmed booking → `cancelled`)
-  dispatches `BookingCancelled` for real and frees the vehicle for other
-  bookings on the same dates — verified both by automated test and a real
-  booking → blocked-rebooking → cancel → successful-rebooking walkthrough
-  (see CLAUDE.md). **The refund half of "cancellation policy engine"
-  (`booking.cancellationPolicy` — how much refund based on proximity to
-  pickup) is NOT built**, deliberately: there's no real captured/held
-  deposit on any booking to compute a refund against, since
-  `authorizeDeposit()` has no caller in the real booking flow (same gap
-  named in the confirmation-email item above). That same gap also leaves
-  `ViewBooking`'s Release/Capture Deposit buttons permanently invisible for
-  every real booking today — three separate symptoms of one undesigned
-  deposit-gate decision, which is the natural next dedicated phase.
+- **Cancellation** — **DONE, including the refund policy, 2026-08-05.**
+  `ViewBooking`'s "Cancel Booking" action (staff-only, confirmed booking →
+  `cancelled`) dispatches `BookingCancelled` for real and frees the vehicle
+  for other bookings on the same dates. `booking.cancellationPolicy`
+  (`CoreCancellationPolicyPipe`) now computes a real refund percentage by
+  proximity to pickup and resolves the held deposit automatically as part
+  of cancelling — full release above the top tier, a real partial
+  `captureDeposit()` below it (Stripe's own partial-capture behavior
+  auto-releases the remainder in the same call, confirmed against Stripe's
+  docs and a real test-mode API call). Config tiers
+  (`cancellation_refund_tiers`) are explicitly flagged as placeholder
+  business numbers pending real numbers from the business owner, same as
+  every other config-driven policy in this project before real numbers
+  existed for it. Verified against real Stripe test-mode infrastructure —
+  see CLAUDE.md's "cancellation refund policy" section.
+
+  **A live gap closed as part of this same phase, found by re-checking
+  before building on top of it:** `ViewBooking`'s Release/Capture Deposit
+  buttons had no booking-status gate at all — visible for any booking with
+  a live authorized hold, including one that hadn't reached pickup yet
+  (a real Phase-B-introduced consequence, not a hypothetical). Gated on
+  `pickup_at->isPast()` as an **explicit interim proxy** — `checked_out`/
+  `returned` statuses still don't exist on any real booking (see below),
+  so gating on those instead would have made the buttons permanently
+  invisible again for every ordinary clean return. Replace this proxy once
+  the real checkout/return lifecycle exists.
+
+  **The still-missing checkout/return lifecycle is no longer just a
+  deferred nice-to-have — it has now actively distorted how two separate
+  features had to be built** (this visibility gate, and damage-reporting's
+  scope split above). Worth being the next dedicated phase.
 - **Reviews** (reuse the reviews plugin pattern from the e-commerce build
   almost unchanged — verified-rental instead of verified-purchase)
 - **Analytics dashboard** (reuse the extensible widget-builder pattern —
