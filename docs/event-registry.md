@@ -69,9 +69,19 @@ registered in `AppServiceProvider::boot()`), block the vehicle's calendar, notif
 |---|---|---|
 | `$booking` | `Booking` | The booking being picked up |
 
-**Fires when:** The customer physically picks up the vehicle at the pickup location.
+**Fires when:** staff clicks "Check Out" on `ViewBooking` (added 2026-08-05)
+— this project's first real dispatch site for this event. Before this, it
+existed only as a definition; no code anywhere ever fired it. Deliberately
+no time gate (can't check out before `pickup_at`) — matches every other
+staff action on this page (Cancel/Release/Capture), none of which are
+gated on a scheduled time, since real-world pickups are routinely early
+or late.
 **Assumes:** Identity/license verification for this pickup has already happened (see `DriverVerified`).
-**Use cases:** mark the vehicle as `rented`, start the rental clock, log condition/photos at handover.
+**Use cases:** mark the vehicle as `rented` (done automatically by the
+same action, not left for staff to separately update on the Vehicle admin
+form — see `ViewBooking`'s docblock), start the rental clock, log
+condition/photos at handover (deferred — damage-reporting still needs its
+own data model).
 
 ---
 
@@ -81,9 +91,23 @@ registered in `AppServiceProvider::boot()`), block the vehicle's calendar, notif
 |---|---|---|
 | `$booking` | `Booking` | The booking being returned |
 
-**Fires when:** The customer returns the vehicle at the return location.
-**Assumes:** Return condition has been logged separately (see `DamageReported` if damage was found).
-**Use cases:** mark the vehicle as `available` (or `maintenance` if damaged), finalize billing, release/charge the security deposit.
+**Fires when:** staff clicks "Mark Returned" on `ViewBooking` (added
+2026-08-05) — the first real dispatch site for this event too.
+`RelocateVehicleOnReturn` (Phase 5) has listened for this since Phase 5,
+but its only invocation before this was a manual `tinker` dispatch during
+Phase 5's own verification — this is the first time it's fired by real
+application code. Verified end-to-end through this real path (not
+`tinker`): a real one-way booking, checked out then marked returned
+through these actions, correctly relocated the vehicle to its real return
+location.
+**Assumes:** Return condition has been logged separately (see `DamageReported` if damage was found — still not built, see the domain doc).
+**Use cases:** mark the vehicle as `available` (done automatically; the
+"send to `maintenance` if damaged" branch is deferred until damage-
+reporting exists — a clean return always goes back to `available` today),
+finalize billing, release/charge the security deposit (`ViewBooking`'s
+Release/Capture Deposit actions are now gated on `status === 'returned'`,
+a real status check replacing the `pickup_at->isPast()` interim proxy the
+cancellation-refund phase introduced one commit earlier).
 
 ---
 

@@ -144,17 +144,24 @@ in one phase.
   theming sweep should retokenize these; `AuthenticatedLayout.tsx` and
   `Profile/Edit.tsx`'s own wrapper markup were already retokenized as part
   of this phase.
+- **Checkout/return lifecycle — DONE 2026-08-05.** `ViewBooking`'s "Check
+  Out" (`confirmed` → `checked_out`) and "Mark Returned" (`checked_out` →
+  `returned`) actions are the first real dispatch sites `VehicleCheckedOut`/
+  `VehicleReturned` have ever had — before this, `BookingsTable`'s
+  `checked_out`/`returned` status badges/filter were UI for a lifecycle
+  nothing implemented, and `RelocateVehicleOnReturn` (real, correct code
+  since Phase 5) had only ever been invoked via a manual `tinker` dispatch.
+  Both actions also sync `Vehicle.status` (`available` ↔ `rented`)
+  automatically. Verified end-to-end: a real one-way booking walked
+  through confirmed → checked out → returned via these real actions,
+  confirming the vehicle disappeared from and reappeared in the public
+  fleet listing at the right times, and that it was genuinely relocated to
+  its real return location — see CLAUDE.md's "checkout/return lifecycle"
+  section.
 - **Damage/condition reporting at pickup and return** — photos + a
-  checklist, protects both the business and the customer. **Blocked on a
-  real checkout/return lifecycle that doesn't exist yet** — found
-  2026-08-04: `VehicleCheckedOut`/`VehicleReturned` have zero real dispatch
-  sites anywhere in the app (only ever manually fired in `tinker`
-  verification); `BookingsTable`'s `checked_out`/`returned` status
-  badges/filter are UI for a lifecycle nothing implements. Building
-  damage-reporting against events that never fire would repeat the exact
-  mistake `BookingConfirmed` was found and fixed for — the real prerequisite
-  (staff-facing check-out/check-in actions that genuinely dispatch these
-  events and set `booking.status`) needs to be its own phase first.
+  checklist, protects both the business and the customer. Its prerequisite
+  (a real checkout/return lifecycle) is now built, above — this is a
+  legitimate next item, no longer blocked.
 - **Cancellation** — **DONE, including the refund policy, 2026-08-05.**
   `ViewBooking`'s "Cancel Booking" action (staff-only, confirmed booking →
   `cancelled`) dispatches `BookingCancelled` for real and frees the vehicle

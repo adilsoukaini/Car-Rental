@@ -1151,3 +1151,73 @@ fix (hidden before pickup even with a live hold; visible once pickup has
 passed) and the three real refund-wiring paths (full release, partial
 capture, full forfeit) via Mockery expectations on which gateway method
 gets called with which exact amount.
+
+## Checkout/return lifecycle (verified 2026-08-05)
+
+**The escalation this project's discipline predicted actually played out.**
+`VehicleCheckedOut`/`VehicleReturned` were first found unused during the
+deposit-gate phase's pre-flight (a side discovery, not the point of that
+phase), then surfaced again as a live consequence during the cancellation
+phase (forced an interim `pickup_at->isPast()` proxy onto the Release/
+Capture visibility gate rather than a real status check). Two separate
+features distorted by the same missing lifecycle was the signal this
+phase had earned the same priority the deposit-gate decision got once it
+was shown to be blocking three things at once — the same escalating-
+priority pattern, tracked deliberately rather than treating every deferred
+item as equally low-priority indefinitely.
+
+**Real findings from tracing the actual code before building on top of
+it, same discipline as every prior phase:**
+- `Vehicle.status` has a third real value (`rented`, alongside `available`/
+  `maintenance`, all present in `VehicleForm.php`'s Filament select) that
+  nothing had ever set — 100% staff-manual and disconnected from booking
+  state before this phase.
+- `CoreAvailabilityCheckPipe` needed zero changes — `BLOCKING_STATUSES =
+  ['confirmed', 'checked_out']` already treated `checked_out` as blocking
+  and never blocked `returned`. It was forward-designed correctly for a
+  lifecycle that didn't exist yet, confirmed rather than assumed.
+
+**Two real forks resolved deliberately, not defaulted:**
+1. **`Vehicle.status` now syncs automatically** (Check Out → `rented`,
+   Mark Returned → `available`) rather than staying staff-manual. Since
+   `VehicleController`'s public fleet listing filters purely on this
+   field with no date/booking awareness at all, leaving it manual would
+   have meant building a real lifecycle and still requiring a human to
+   remember a second update to keep the public listing honest — exactly
+   the class of gap this phase exists to close, reintroduced in a
+   different spot. The "send to `maintenance` if damage found" branch on
+   return is deferred until damage-reporting exists; a clean return
+   always goes back to `available`.
+2. **No time gate on Check Out/Mark Returned** — visible purely on the
+   prior status (`confirmed`→checked out, `checked_out`→returned), same
+   as every other staff action already on this page (Cancel, Release,
+   Capture are all gated on status/data, never on whether a scheduled
+   time has arrived). A staff member handing over keys to a customer
+   standing in front of them shouldn't be blocked by the clock not having
+   struck the scheduled hour yet.
+
+**Retired last phase's interim proxy instead of leaving it running
+alongside the real thing it was standing in for:** `ViewBooking`'s
+Release/Capture Deposit visibility now checks `status === 'returned'`
+directly, replacing `pickup_at->isPast()`.
+
+**Verified end-to-end with the same rigor as every other lifecycle-
+defining phase (172 tests, Pint, Larastan, `tsc --strict` all pass):** a
+real one-way booking (pickup Fes, return Meknes) was confirmed, then
+checked out through the exact real action code — booking genuinely
+`checked_out`, vehicle genuinely `rented`, and confirmed via real HTTP
+that the vehicle correctly disappeared from the public fleet listing.
+Marked returned through the same real path — booking genuinely `returned`,
+vehicle genuinely `available` again, and `RelocateVehicleOnReturn`
+genuinely relocated the vehicle to its real return location (confirmed via
+the vehicle's own `location` relation) — the first time this listener has
+ever fired from real application code, not a manual `tinker` dispatch as
+in Phase 5. Confirmed via real HTTP afterward that the vehicle correctly
+reappeared in the public listing at its new location. All test data
+cleaned up afterward; dev server stopped.
+
+**Automated coverage:** 6 new `BookingResourceTest` cases — Check Out
+visible only on `confirmed`, Mark Returned visible only on `checked_out`,
+both real actions setting status/dispatching/syncing `Vehicle.status`
+correctly, and a dedicated one-way relocation test proving
+`RelocateVehicleOnReturn` fires correctly through this real path.
