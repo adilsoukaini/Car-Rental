@@ -1,0 +1,18 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app
+        - plugins
+
+    level: 5
+
+    # Plugin config files (plugins/<slug>/config/*.php) are real Laravel
+    # config files merged via mergeConfigFrom() — env() calls in them are as
+    # legitimate as in the root config/ directory. Larastan only recognizes
+    # config_path() by default; list each plugin's config dir explicitly.
+    configDirectories:
+        - config
+        - plugins/booking-engine/config
+        - plugins/payments-stripe/config
