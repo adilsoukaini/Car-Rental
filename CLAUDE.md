@@ -1671,3 +1671,88 @@ avoiding a window where the app expected a DB-backed active theme that
 didn't exist yet.
 
 220 tests, Pint, Larastan, and `tsc --noEmit --strict` all pass.
+
+## Frontend Foundation Phase, Task 4 — real storefront navigation + homepage (verified 2026-08-05)
+
+Closes the three HIGH-priority reachability-audit findings directly: no
+shared header/nav/footer anywhere on the storefront, the fleet listing
+unreachable from any real navigation, and `/` showing Laravel's default
+Welcome scaffold.
+
+**Used Stitch properly, per the phase doc's own instruction — downloaded
+the real HTML export, not just a canvas screenshot, and confirmed the
+relevant screens actually exist before assuming so.** Found a real,
+car-rental-specific Stitch project ("Premium Mobility Design System") with
+a genuine homepage screen ("Accueil - Project Atlas") and fleet-listing
+screens — but confirmed there is no standalone "Header" or "Footer" screen
+(normal — they live embedded in every full-page screen's HTML, not as
+separate assets). Downloaded and read the homepage's and a fleet-listing
+screen's real HTML to confirm the header/footer markup is genuinely
+identical across both before treating it as the shared design source —
+not assumed from one screenshot. **Also confirmed there is no Stitch
+screen at all for booking confirmation or driver verification** — those
+two pages' layouts were designed fresh, using the same token system, not
+adapted from a Stitch export that doesn't exist for them.
+
+**`PublicLayout.tsx`** — one real, fixed layout (not a `LayoutVariantRegistry`
+region, which doesn't exist in this project — see the "Layout Variant
+Regions" section). Visual structure (sticky blurred header, dark
+multi-column footer) follows the real Stitch HTML; every color/spacing
+value goes through this project's own theme tokens, and every nav item
+links to a real page — Stitch's marketing-site nav items (Services/À
+propos/FAQ) were deliberately not copied, since no such pages exist here.
+Wired onto all six storefront pages named in the reachability audit:
+`Vehicles/Index`, `Vehicles/Show`, `Bookings/Checkout`, `Bookings/Payment`,
+`Bookings/Show`, `DriverVerification/Show` — each confirmed individually
+with a real screenshot, not assumed consistent from a couple of checks.
+
+**The header's conditional "Driver Verification" link closes reachability-
+audit finding #4 for real** — previously zero inbound links existed
+anywhere. `HandleInertiaRequests` now shares `driverVerificationStatus`
+(`'none'|'pending'|'approved'|'rejected'|null`) computed from the user's
+latest `DriverVerification` row — no Hard Rule 1 concern, since
+`DriverVerification` is a core model (Phase 9 precedent). Also added a
+direct link to it on `Bookings/Checkout`'s error state, closing the
+reactive half of the same finding (a blocked booking previously showed a
+plain-text error with no path forward).
+
+**A real, wider regression than the Task 3 one, found and fixed correctly
+rather than patched around:** unconditionally querying `driver_verifications`
+from core middleware broke 21 tests across `Auth`, `Profile`,
+`BookingController`, `BookingCheckout`, and `Reviews` — because, unlike
+`themes` (a core migration, always present under `RefreshDatabase`),
+`driver_verifications` is a **plugin-owned** migration most tests never
+load. This is a real production risk, not just a test artifact: if the
+driver-verification plugin were ever disabled, or its migration hadn't
+run, every single authenticated page load would 500. Fixed by guarding
+with `Schema::hasTable('driver_verifications')` in the middleware itself
+(degrading to `null`) — the same "core middleware must not hard-crash the
+whole site over one optional feature" lesson as `StripeGateway`'s lazy-
+client fix in Phase 7 — rather than adding `RefreshDatabase`/migration
+calls to 21 unrelated test files, which would have masked the real risk
+instead of fixing it.
+
+**Homepage:** built a real `Home.tsx` (hero + a real "Featured vehicles"
+grid — the 4 most recently added available vehicles, one query, rule 8),
+informed by the Stitch homepage screen's structure but scoped to what
+this app has real data for today — no invented "Services"/testimonial
+sections. `Welcome.tsx` deleted outright (not just unrouted) — confirmed
+via grep that nothing else referenced it, so keeping it around would have
+been pure dead code, unlike `ThemeTest.tsx`/the disposable swap-proof
+theme, which still serve a real proof purpose.
+
+**Verified with real Playwright screenshots of a genuine click-through,
+not direct route hits** — `/` → click "Browse our fleet" → fleet listing
+→ click a real vehicle card → vehicle detail → submit dates → checkout →
+log in via a real header click → dashboard → profile (via the profile
+dropdown, confirming the booking-history widget shows the real seeded
+booking) → click into it → `Bookings/Show` → back to the fleet listing
+while authenticated (confirming the header's logged-in state) → click
+"Driver Verification" from the header. A separate, genuinely logged-out
+browser context completed a real guest checkout through to the real
+Stripe Elements Payment page. All ten screenshots show byte-for-byte the
+same header/footer structure, correctly reflecting guest vs. authenticated
+state at each step. All test data (bookings, vehicle, location, user)
+cleaned up afterward.
+
+220 tests, Pint, Larastan, and `tsc --noEmit --strict` all pass.

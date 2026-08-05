@@ -1,3 +1,4 @@
+import PublicLayout from '@/Layouts/PublicLayout';
 import { SlotOutlet } from '@/pluginComponentRegistry';
 import { Vehicle } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
@@ -25,14 +26,15 @@ export default function Show({ vehicle, detailWidgets }: { vehicle: Vehicle; det
     };
 
     return (
-        <div className="min-h-screen bg-background p-8 font-body text-text">
+        <PublicLayout>
             <Head title={`${vehicle.make} ${vehicle.model}`} />
 
+            <div className="mx-auto max-w-lg p-8">
             <Link href={route('vehicles.index')} className="mb-6 inline-block text-sm text-primary">
                 &larr; Back to fleet
             </Link>
 
-            <div className="max-w-lg rounded-container border border-border bg-surface p-8 shadow-resting">
+            <div className="rounded-container border border-border bg-surface p-8 shadow-resting">
                 <h1 className="mb-2 font-display text-2xl font-bold text-text">
                     {vehicle.make} {vehicle.model} ({vehicle.year})
                 </h1>
@@ -84,9 +86,10 @@ export default function Show({ vehicle, detailWidgets }: { vehicle: Vehicle; det
                 </form>
             </div>
 
-            <div className="mt-6 max-w-lg">
+            <div className="mt-6">
                 <SlotOutlet slot={detailWidgets} />
             </div>
-        </div>
+            </div>
+        </PublicLayout>
     );
 }

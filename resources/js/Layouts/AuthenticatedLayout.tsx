@@ -10,7 +10,8 @@ export default function AuthenticatedLayout({
     header,
     children,
 }: PropsWithChildren<{ header?: ReactNode }>) {
-    const user = usePage<PageProps>().props.auth.user;
+    // Non-null: this layout is only ever rendered behind the 'auth' middleware.
+    const user = usePage<PageProps>().props.auth.user!;
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState(false);

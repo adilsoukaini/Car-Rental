@@ -1,3 +1,4 @@
+import PublicLayout from '@/Layouts/PublicLayout';
 import { Booking } from '@/types';
 import { Head } from '@inertiajs/react';
 
@@ -26,10 +27,10 @@ function formatDateTime(iso: string): string {
 
 export default function Show({ booking }: { booking: Booking }) {
     return (
-        <div className="min-h-screen bg-background p-8 font-body text-text">
+        <PublicLayout>
             <Head title={`Booking #${booking.id}`} />
 
-            <div className="mx-auto max-w-lg">
+            <div className="mx-auto max-w-lg p-8">
                 <div className="mb-6 flex items-center justify-between">
                     <h1 className="font-display text-3xl font-bold text-text">
                         Booking #{booking.id}
@@ -83,6 +84,6 @@ export default function Show({ booking }: { booking: Booking }) {
                     </div>
                 </div>
             </div>
-        </div>
+        </PublicLayout>
     );
 }

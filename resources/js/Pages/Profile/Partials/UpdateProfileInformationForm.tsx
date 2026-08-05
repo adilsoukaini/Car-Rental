@@ -16,7 +16,8 @@ export default function UpdateProfileInformation({
     status?: string;
     className?: string;
 }) {
-    const user = usePage<PageProps>().props.auth.user;
+    // Non-null: this Partial only ever renders on the /profile page, behind 'auth'.
+    const user = usePage<PageProps>().props.auth.user!;
 
     const { data, setData, patch, errors, processing, recentlySuccessful } =
         useForm({

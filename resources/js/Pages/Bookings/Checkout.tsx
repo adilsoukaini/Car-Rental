@@ -1,5 +1,6 @@
+import PublicLayout from '@/Layouts/PublicLayout';
 import { PageProps, Vehicle } from '@/types';
-import { Head, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
 
 interface PriceBreakdown {
@@ -34,7 +35,8 @@ export default function Checkout({
     available: boolean;
     priceBreakdown: PriceBreakdown;
 }) {
-    const user = usePage<PageProps>().props.auth.user;
+    const { auth, driverVerificationStatus } = usePage<PageProps>().props;
+    const user = auth.user;
 
     const { data, setData, post, processing, errors } = useForm<{
         guest_name: string;
@@ -57,10 +59,10 @@ export default function Checkout({
     };
 
     return (
-        <div className="min-h-screen bg-background p-8 font-body text-text">
+        <PublicLayout>
             <Head title="Confirm your booking" />
 
-            <div className="mx-auto max-w-lg">
+            <div className="mx-auto max-w-lg p-8">
                 <h1 className="mb-6 font-display text-3xl font-bold text-text">
                     Confirm your booking
                 </h1>
@@ -153,7 +155,20 @@ export default function Checkout({
                             </>
                         )}
 
-                        {errors.pickup_at && <p className="text-sm text-danger">{errors.pickup_at}</p>}
+                        {errors.pickup_at && (
+                            <div className="text-sm text-danger">
+                                <p>{errors.pickup_at}</p>
+                                {user && driverVerificationStatus !== 'approved' && (
+                                    <p className="mt-1">
+                                        If this is about driver eligibility,{' '}
+                                        <Link href={route('driver-verification.show')} className="underline">
+                                            complete driver verification
+                                        </Link>
+                                        .
+                                    </p>
+                                )}
+                            </div>
+                        )}
 
                         <button
                             type="submit"
@@ -165,6 +180,6 @@ export default function Checkout({
                     </form>
                 )}
             </div>
-        </div>
+        </PublicLayout>
     );
 }

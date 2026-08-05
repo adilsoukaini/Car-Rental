@@ -7,8 +7,9 @@ export interface User {
 
 export interface PageProps {
     auth: {
-        user: User;
+        user: User | null;
     };
+    driverVerificationStatus: 'none' | 'pending' | 'approved' | 'rejected' | null;
     [key: string]: unknown;
 }
 

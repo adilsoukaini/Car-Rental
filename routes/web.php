@@ -2,16 +2,18 @@
 
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ProfileController;
-use Illuminate\Foundation\Application;
+use App\Models\Vehicle;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
+// Replaces Laravel's default Welcome scaffold — reachability-audit finding
+// #3. A single query for the featured set (rule 8) — no per-vehicle N+1.
 Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
+    return Inertia::render('Home', [
+        'featuredVehicles' => Vehicle::where('status', 'available')
+            ->latest()
+            ->take(4)
+            ->get(),
     ]);
 })->name('home');
 

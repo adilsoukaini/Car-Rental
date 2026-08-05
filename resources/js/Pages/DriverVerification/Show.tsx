@@ -1,3 +1,4 @@
+import PublicLayout from '@/Layouts/PublicLayout';
 import { DriverVerification } from '@/types';
 import { Head, useForm } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
@@ -26,9 +27,10 @@ export default function Show({ verification }: { verification: DriverVerificatio
     };
 
     return (
-        <div className="min-h-screen bg-background p-8 font-body text-text">
+        <PublicLayout>
             <Head title="Driver Verification" />
 
+            <div className="p-8">
             <h1 className="mb-8 font-display text-3xl font-bold text-text">
                 Driver Verification
             </h1>
@@ -117,6 +119,7 @@ export default function Show({ verification }: { verification: DriverVerificatio
                     </button>
                 </form>
             )}
-        </div>
+            </div>
+        </PublicLayout>
     );
 }
