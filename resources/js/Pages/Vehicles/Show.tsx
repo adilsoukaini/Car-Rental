@@ -1,8 +1,14 @@
+import { SlotOutlet } from '@/pluginComponentRegistry';
 import { Vehicle } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import { FormEventHandler, useState } from 'react';
 
-export default function Show({ vehicle }: { vehicle: Vehicle }) {
+interface SlotEntry {
+    component: string;
+    props: Record<string, unknown>;
+}
+
+export default function Show({ vehicle, detailWidgets }: { vehicle: Vehicle; detailWidgets: SlotEntry[] }) {
     const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
     const dayAfter = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
 
@@ -76,6 +82,10 @@ export default function Show({ vehicle }: { vehicle: Vehicle }) {
                         Book this vehicle
                     </button>
                 </form>
+            </div>
+
+            <div className="mt-6 max-w-lg">
+                <SlotOutlet slot={detailWidgets} />
             </div>
         </div>
     );

@@ -63,6 +63,16 @@ export interface Booking {
     return_location: Pick<Location, 'id' | 'name' | 'city'>;
 }
 
+export interface Review {
+    id: number;
+    authorName: string;
+    rating: number;
+    title: string | null;
+    body: string;
+    isVerifiedRental: boolean;
+    createdAt: string;
+}
+
 export interface DriverVerification {
     id: number;
     license_number: string;

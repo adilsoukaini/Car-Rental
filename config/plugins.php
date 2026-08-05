@@ -4,6 +4,7 @@ use Plugins\BookingEngine\BookingEngineServiceProvider;
 use Plugins\DriverVerification\DriverVerificationServiceProvider;
 use Plugins\FleetManagement\FleetManagementServiceProvider;
 use Plugins\PaymentsStripe\StripeServiceProvider;
+use Plugins\Reviews\ReviewsServiceProvider;
 
 return [
     /*
@@ -16,6 +17,7 @@ return [
         'booking-engine' => BookingEngineServiceProvider::class,
         'payments-stripe' => StripeServiceProvider::class,
         'driver-verification' => DriverVerificationServiceProvider::class,
+        'reviews' => ReviewsServiceProvider::class,
     ],
 
     /*

@@ -17,6 +17,7 @@
         "carrental/driver-verification": "*",
         "carrental/fleet-management": "*",
         "carrental/payments-stripe": "*",
+        "carrental/reviews": "*",
         "filament/filament": "^4.0",
         "inertiajs/inertia-laravel": "^2.0",
         "laravel/framework": "^13.8",

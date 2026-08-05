@@ -1,0 +1,18 @@
+{
+    "name": "carrental/reviews",
+    "description": "Vehicle reviews with verified-rental badging (a returned booking for that vehicle) and staff moderation.",
+    "type": "library",
+    "license": "MIT",
+    "version": "1.0.0",
+    "autoload": {
+        "psr-4": {
+            "Plugins\\Reviews\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": []
+        }
+    },
+    "minimum-stability": "stable"
+}

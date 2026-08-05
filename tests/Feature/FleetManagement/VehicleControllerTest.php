@@ -3,9 +3,11 @@
 namespace Tests\Feature\FleetManagement;
 
 use App\Models\Location;
+use App\Models\Review;
 use App\Models\Vehicle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Plugins\FleetManagement\FleetManagementServiceProvider;
+use Plugins\Reviews\ReviewsServiceProvider;
 use Tests\TestCase;
 
 /**
@@ -76,5 +78,30 @@ class VehicleControllerTest extends TestCase
         $response = $this->get("/vehicles/{$vehicle->id}");
 
         $response->assertNotFound();
+    }
+
+    /**
+     * Proves SlotRegistry works for a PLUGIN-owned page, not just core's
+     * account.dashboardWidgets — fleet-management never references the
+     * reviews plugin by name, only the named slot.
+     */
+    public function test_the_vehicle_detail_page_renders_the_reviews_slot_with_real_data(): void
+    {
+        $this->app->register(ReviewsServiceProvider::class);
+        $this->artisan('migrate', ['--path' => 'plugins/reviews/database/migrations']);
+
+        $vehicle = Vehicle::factory()->create(['status' => 'available']);
+        Review::factory()->create(['vehicle_id' => $vehicle->id, 'is_approved' => true, 'rating' => 4]);
+        Review::factory()->create(['vehicle_id' => $vehicle->id, 'is_approved' => false, 'rating' => 1]);
+
+        $response = $this->get("/vehicles/{$vehicle->id}");
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Vehicles/Show')
+            ->has('detailWidgets', 1)
+            ->where('detailWidgets.0.component', 'Reviews/VehicleReviews')
+            ->where('detailWidgets.0.props.reviewsData.reviewCount', 1)
+            ->where('detailWidgets.0.props.reviewsData.averageRating', 4));
     }
 }

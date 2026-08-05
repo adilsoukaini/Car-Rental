@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Plugins\FleetManagement\Http\Controllers;
 
 use App\Core\Support\FilterRegistry;
+use App\Core\Support\SlotRegistry;
 use App\Http\Controllers\Controller;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
@@ -31,14 +32,30 @@ class VehicleController extends Controller
         ]);
     }
 
+    /**
+     * `detailWidgets` is the first Slot registered into a PLUGIN-owned page
+     * (this one) rather than a core page — fleet-management never
+     * references the reviews plugin directly; it only knows the named
+     * slot exists, exactly like core's `account.dashboardWidgets`.
+     */
     public function show(Vehicle $vehicle): Response
     {
         abort_if($vehicle->status !== 'available', 404);
 
         $vehicle->loadMissing('location');
 
+        $reviewsData = FilterRegistry::applyWithContext(
+            'vehicle.reviews',
+            ['vehicleId' => $vehicle->id, 'averageRating' => 0.0, 'reviewCount' => 0, 'reviews' => []],
+            [Vehicle::class => $vehicle],
+        );
+
         return Inertia::render('Vehicles/Show', [
             'vehicle' => $vehicle,
+            'detailWidgets' => SlotRegistry::render('vehicle.detailWidgets', [
+                'vehicleId' => $vehicle->id,
+                'reviewsData' => $reviewsData,
+            ]),
         ]);
     }
 }

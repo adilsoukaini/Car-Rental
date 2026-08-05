@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "db088d86a64844590659a3766ed46503",
+    "content-hash": "6d6717dfbcf0e71989f0a304226ce84e",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -456,6 +456,33 @@
                 "MIT"
             ],
             "description": "Stripe payment gateway plugin — deposit hold (authorize/capture/release) and final charge via PaymentIntents.",
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "carrental/reviews",
+            "version": "1.0.0",
+            "dist": {
+                "type": "path",
+                "url": "plugins/reviews",
+                "reference": "99ff8718bdfb5cb01a9fe67ed58a3658668c428a"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": []
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Plugins\\Reviews\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "Vehicle reviews with verified-rental badging (a returned booking for that vehicle) and staff moderation.",
             "transport-options": {
                 "relative": true
             }
@@ -11042,12 +11069,12 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": [],
+    "stability-flags": {},
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
         "php": "^8.3"
     },
-    "platform-dev": [],
-    "plugin-api-version": "2.2.0"
+    "platform-dev": {},
+    "plugin-api-version": "2.9.0"
 }

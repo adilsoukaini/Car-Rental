@@ -10,6 +10,7 @@ import { lazy, Suspense } from 'react';
  */
 const registry: Record<string, React.ComponentType<any>> = {
     'Widgets/BookingHistory': lazy(() => import('@/Widgets/BookingHistory')),
+    'Reviews/VehicleReviews': lazy(() => import('@/Widgets/VehicleReviews')),
 };
 
 interface SlotEntry {
