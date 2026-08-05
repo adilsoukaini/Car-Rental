@@ -4,6 +4,8 @@ namespace Tests\Feature\Filament;
 
 use App\Core\Contracts\PaymentGateway;
 use App\Core\Events\BookingCancelled;
+use App\Core\Events\VehicleCheckedOut;
+use App\Core\Events\VehicleReturned;
 use App\Core\Support\PaymentGatewayRegistry;
 use App\Filament\Resources\Bookings\Pages\ViewBooking;
 use App\Models\Booking;
@@ -57,16 +59,16 @@ class BookingResourceTest extends TestCase
             ->assertActionHidden('captureDeposit');
     }
 
-    public function test_deposit_actions_are_hidden_before_pickup_even_with_an_active_authorization(): void
+    public function test_deposit_actions_are_hidden_for_a_confirmed_booking_even_with_an_active_authorization(): void
     {
-        // The interim proxy: checked_out/returned statuses never occur on
-        // a real booking today, so visibility is gated on pickup_at
-        // instead. A just-confirmed booking with a live hold (the real
-        // post-Phase-B checkout state) must NOT show these yet.
+        // A just-confirmed booking with a live hold (the real post-Phase-B
+        // checkout state) must NOT show these yet — only a real 'returned'
+        // status does, now that the checkout/return lifecycle is real
+        // (this replaced the pickup_at->isPast() interim proxy).
         $staff = User::factory()->create(['role' => 'staff']);
         $this->actingAs($staff);
 
-        $booking = Booking::factory()->create(['pickup_at' => now()->addDay()]);
+        $booking = Booking::factory()->create(['status' => 'confirmed']);
         Payment::factory()->create([
             'booking_id' => $booking->id,
             'type' => 'deposit_authorization',
@@ -79,12 +81,30 @@ class BookingResourceTest extends TestCase
             ->assertActionHidden('captureDeposit');
     }
 
-    public function test_deposit_actions_are_visible_once_pickup_has_passed(): void
+    public function test_deposit_actions_are_hidden_for_a_checked_out_booking_even_with_an_active_authorization(): void
     {
         $staff = User::factory()->create(['role' => 'staff']);
         $this->actingAs($staff);
 
-        $booking = Booking::factory()->create(['pickup_at' => now()->subDay()]);
+        $booking = Booking::factory()->create(['status' => 'checked_out']);
+        Payment::factory()->create([
+            'booking_id' => $booking->id,
+            'type' => 'deposit_authorization',
+            'status' => 'authorized',
+            'gateway' => 'stripe',
+        ]);
+
+        Livewire::test(ViewBooking::class, ['record' => $booking->getRouteKey()])
+            ->assertActionHidden('releaseDeposit')
+            ->assertActionHidden('captureDeposit');
+    }
+
+    public function test_deposit_actions_are_visible_once_the_booking_is_returned(): void
+    {
+        $staff = User::factory()->create(['role' => 'staff']);
+        $this->actingAs($staff);
+
+        $booking = Booking::factory()->create(['status' => 'returned']);
         Payment::factory()->create([
             'booking_id' => $booking->id,
             'type' => 'deposit_authorization',
@@ -102,7 +122,7 @@ class BookingResourceTest extends TestCase
         $staff = User::factory()->create(['role' => 'staff']);
         $this->actingAs($staff);
 
-        $booking = Booking::factory()->create(['pickup_at' => now()->subDay()]);
+        $booking = Booking::factory()->create(['status' => 'returned']);
         $authorization = Payment::factory()->create([
             'booking_id' => $booking->id,
             'type' => 'deposit_authorization',
@@ -130,7 +150,7 @@ class BookingResourceTest extends TestCase
         $staff = User::factory()->create(['role' => 'staff']);
         $this->actingAs($staff);
 
-        $booking = Booking::factory()->create(['pickup_at' => now()->subDay()]);
+        $booking = Booking::factory()->create(['status' => 'returned']);
         $authorization = Payment::factory()->create([
             'booking_id' => $booking->id,
             'type' => 'deposit_authorization',
@@ -153,6 +173,95 @@ class BookingResourceTest extends TestCase
 
         Livewire::test(ViewBooking::class, ['record' => $booking->getRouteKey()])
             ->callAction('captureDeposit', data: ['amount' => 200.0]);
+    }
+
+    public function test_check_out_action_is_visible_only_for_a_confirmed_booking(): void
+    {
+        $staff = User::factory()->create(['role' => 'staff']);
+        $this->actingAs($staff);
+
+        $confirmed = Booking::factory()->create(['status' => 'confirmed']);
+        Livewire::test(ViewBooking::class, ['record' => $confirmed->getRouteKey()])
+            ->assertActionVisible('checkOut');
+
+        $pending = Booking::factory()->create(['status' => 'pending']);
+        Livewire::test(ViewBooking::class, ['record' => $pending->getRouteKey()])
+            ->assertActionHidden('checkOut');
+    }
+
+    public function test_check_out_action_sets_status_dispatches_and_marks_the_vehicle_rented(): void
+    {
+        Event::fake([VehicleCheckedOut::class]);
+
+        $staff = User::factory()->create(['role' => 'staff']);
+        $this->actingAs($staff);
+
+        $vehicle = Vehicle::factory()->create(['status' => 'available']);
+        $booking = Booking::factory()->create(['status' => 'confirmed', 'vehicle_id' => $vehicle->id]);
+
+        Livewire::test(ViewBooking::class, ['record' => $booking->getRouteKey()])
+            ->callAction('checkOut');
+
+        $this->assertSame('checked_out', $booking->fresh()->status);
+        $this->assertSame('rented', $vehicle->fresh()->status);
+
+        Event::assertDispatched(VehicleCheckedOut::class, fn (VehicleCheckedOut $event) => $event->booking->is($booking));
+    }
+
+    public function test_mark_returned_action_is_visible_only_for_a_checked_out_booking(): void
+    {
+        $staff = User::factory()->create(['role' => 'staff']);
+        $this->actingAs($staff);
+
+        $checkedOut = Booking::factory()->create(['status' => 'checked_out']);
+        Livewire::test(ViewBooking::class, ['record' => $checkedOut->getRouteKey()])
+            ->assertActionVisible('markReturned');
+
+        $confirmed = Booking::factory()->create(['status' => 'confirmed']);
+        Livewire::test(ViewBooking::class, ['record' => $confirmed->getRouteKey()])
+            ->assertActionHidden('markReturned');
+    }
+
+    public function test_mark_returned_action_sets_status_dispatches_and_frees_the_vehicle(): void
+    {
+        Event::fake([VehicleReturned::class]);
+
+        $staff = User::factory()->create(['role' => 'staff']);
+        $this->actingAs($staff);
+
+        $vehicle = Vehicle::factory()->create(['status' => 'rented']);
+        $booking = Booking::factory()->create(['status' => 'checked_out', 'vehicle_id' => $vehicle->id]);
+
+        Livewire::test(ViewBooking::class, ['record' => $booking->getRouteKey()])
+            ->callAction('markReturned');
+
+        $this->assertSame('returned', $booking->fresh()->status);
+        $this->assertSame('available', $vehicle->fresh()->status);
+
+        Event::assertDispatched(VehicleReturned::class, fn (VehicleReturned $event) => $event->booking->is($booking));
+    }
+
+    public function test_mark_returned_relocates_the_vehicle_for_a_real_one_way_booking(): void
+    {
+        $this->app->register(BookingEngineServiceProvider::class);
+
+        $staff = User::factory()->create(['role' => 'staff']);
+        $this->actingAs($staff);
+
+        $pickupLocation = Location::factory()->create();
+        $returnLocation = Location::factory()->create();
+        $vehicle = Vehicle::factory()->create(['status' => 'rented', 'location_id' => $pickupLocation->id]);
+        $booking = Booking::factory()->create([
+            'status' => 'checked_out',
+            'vehicle_id' => $vehicle->id,
+            'pickup_location_id' => $pickupLocation->id,
+            'return_location_id' => $returnLocation->id,
+        ]);
+
+        Livewire::test(ViewBooking::class, ['record' => $booking->getRouteKey()])
+            ->callAction('markReturned');
+
+        $this->assertSame($returnLocation->id, $vehicle->fresh()->location_id);
     }
 
     public function test_cancel_action_is_visible_for_a_confirmed_booking(): void

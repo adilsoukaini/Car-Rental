@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\Bookings\Pages;
 
 use App\Core\Events\BookingCancelled;
+use App\Core\Events\VehicleCheckedOut;
+use App\Core\Events\VehicleReturned;
 use App\Core\Support\FilterRegistry;
 use App\Core\Support\PaymentGatewayRegistry;
 use App\Filament\Resources\Bookings\BookingResource;
@@ -16,22 +18,29 @@ use Plugins\BookingEngine\Support\CancellationPolicyRequest;
 use RuntimeException;
 
 /**
- * The mutations available from the admin panel for a booking: cancel it, or
- * release/(partially) capture a previously-authorized security deposit
- * hold. This is the ONLY place in the application that actually calls
- * PaymentGateway::releaseDeposit()/captureDeposit() outside of tests.
+ * The mutations available from the admin panel for a booking: cancel it,
+ * check the vehicle out, mark it returned, or release/(partially) capture
+ * a previously-authorized security deposit hold.
  *
- * Release/Capture Deposit are gated on `pickup_at` having already
- * passed, NOT on booking status — as of 2026-08-05, this is a deliberate
- * interim proxy, not the real design. The real checkout/return lifecycle
- * (VehicleCheckedOut/VehicleReturned) still has zero real dispatch sites
- * anywhere in this application (found in the deposit-gate phase, confirmed
- * live again here), so a `checked_out`/`returned` status never actually
- * occurs on a real booking today. Gating on those statuses instead would
- * make these buttons permanently invisible for every ordinary clean-return
- * booking — the same "always hidden" bug closed in the deposit-gate phase,
- * from a different cause. Replace this proxy with a real status check once
- * that lifecycle is built.
+ * Check Out / Mark Returned (added 2026-08-05) are this project's first
+ * real dispatch sites for VehicleCheckedOut/VehicleReturned — before this,
+ * both events existed only as definitions, with RelocateVehicleOnReturn's
+ * only invocation ever being a manual `tinker` dispatch during Phase 5's
+ * own verification. Deliberately no time gate (can't check out before
+ * pickup_at, etc.) — every other staff action on this page (Cancel,
+ * Release, Capture) is gated on status/data, never on whether a scheduled
+ * time has arrived, and real-world pickups/returns are routinely early or
+ * late. Both actions also sync `Vehicle.status` (`available` <-> `rented`)
+ * — deliberately automatic, not left for staff to separately remember on
+ * the Vehicle admin form, since VehicleController's public fleet listing
+ * filters purely on that field. The "send to maintenance if damage found"
+ * branch on return is deferred until damage-reporting exists; a clean
+ * return always goes back to `available`.
+ *
+ * Release/Capture Deposit are gated on the booking's status now being
+ * `returned` — a REAL status check, replacing the `pickup_at->isPast()`
+ * interim proxy this file used before this same phase built the lifecycle
+ * that makes a real check possible.
  *
  * Cancel Booking resolves the deposit per `booking.cancellationPolicy`
  * (refund percentage by proximity to pickup — see
@@ -47,11 +56,7 @@ use RuntimeException;
  * to release (clean return) or capture (damage found) requires a human
  * judgment call staff makes after inspecting the vehicle — see
  * docs/03-DOMAIN-REQUIREMENTS.md's note on damage/additional-charge being
- * a staff-approval workflow, not an automatic pipeline step. Cancellation's
- * own deposit resolution is different: proximity-to-pickup is a pure,
- * deterministic function of time, not a judgment call, so it's resolved
- * automatically as part of cancelling rather than left as a second manual
- * step staff could forget.
+ * a staff-approval workflow, not an automatic pipeline step.
  */
 class ViewBooking extends ViewRecord
 {
@@ -61,9 +66,49 @@ class ViewBooking extends ViewRecord
     {
         return [
             $this->cancelBookingAction(),
+            $this->checkOutAction(),
+            $this->markReturnedAction(),
             $this->releaseDepositAction(),
             $this->captureDepositAction(),
         ];
+    }
+
+    private function checkOutAction(): Action
+    {
+        return Action::make('checkOut')
+            ->label('Check Out')
+            ->color('primary')
+            ->requiresConfirmation()
+            ->modalDescription('Marks the vehicle as checked out to the customer. This cannot be undone.')
+            ->visible(fn () => $this->booking()->status === 'confirmed')
+            ->action(function () {
+                $booking = $this->booking();
+                $booking->update(['status' => 'checked_out']);
+                $booking->vehicle->update(['status' => 'rented']);
+
+                VehicleCheckedOut::dispatch($booking->fresh());
+
+                Notification::make()->title('Vehicle checked out')->success()->send();
+            });
+    }
+
+    private function markReturnedAction(): Action
+    {
+        return Action::make('markReturned')
+            ->label('Mark Returned')
+            ->color('primary')
+            ->requiresConfirmation()
+            ->modalDescription('Marks the vehicle as returned and frees it for other bookings. This cannot be undone.')
+            ->visible(fn () => $this->booking()->status === 'checked_out')
+            ->action(function () {
+                $booking = $this->booking();
+                $booking->update(['status' => 'returned']);
+                $booking->vehicle->update(['status' => 'available']);
+
+                VehicleReturned::dispatch($booking->fresh());
+
+                Notification::make()->title('Vehicle marked returned')->success()->send();
+            });
     }
 
     private function cancelBookingAction(): Action
@@ -160,11 +205,6 @@ class ViewBooking extends ViewRecord
         return $payment instanceof Payment ? $payment : null;
     }
 
-    private function pickupHasPassed(): bool
-    {
-        return $this->booking()->pickup_at->isPast();
-    }
-
     private function releaseDepositAction(): Action
     {
         return Action::make('releaseDeposit')
@@ -172,7 +212,7 @@ class ViewBooking extends ViewRecord
             ->color('success')
             ->requiresConfirmation()
             ->modalDescription('Releases the held security deposit back to the customer — the clean-return path. This cannot be undone.')
-            ->visible(fn () => $this->pickupHasPassed() && $this->activeAuthorization() !== null)
+            ->visible(fn () => $this->booking()->status === 'returned' && $this->activeAuthorization() !== null)
             ->action(function () {
                 $authorization = $this->activeAuthorization();
 
@@ -209,7 +249,7 @@ class ViewBooking extends ViewRecord
                     ->default(fn () => (float) $this->activeAuthorization()?->amount)
                     ->required(),
             ])
-            ->visible(fn () => $this->pickupHasPassed() && $this->activeAuthorization() !== null)
+            ->visible(fn () => $this->booking()->status === 'returned' && $this->activeAuthorization() !== null)
             ->action(function (array $data) {
                 $authorization = $this->activeAuthorization();
 
