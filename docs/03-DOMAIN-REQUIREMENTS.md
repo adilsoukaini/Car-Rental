@@ -193,8 +193,18 @@ in one phase.
   deferred nice-to-have — it has now actively distorted how two separate
   features had to be built** (this visibility gate, and damage-reporting's
   scope split above). Worth being the next dedicated phase.
-- **Reviews** (reuse the reviews plugin pattern from the e-commerce build
-  almost unchanged — verified-rental instead of verified-purchase)
+- **Reviews — DONE 2026-08-05.** A `reviews` plugin (`Review` model,
+  `is_verified_rental`/`is_approved` moderation, staff-only approve/reject),
+  ported from the source e-commerce project with two deliberate
+  adaptations rather than an unchanged copy: verified-rental requires a
+  genuine `returned` booking (not just "paid" — the closest source
+  concept, but the wrong bar for a rental review), and no
+  `LayoutVariantRegistry` port (that mechanism was found to have never
+  actually been built in this project at all, despite being documented as
+  if it existed — see CLAUDE.md's "vehicle reviews" section). Displayed on
+  `Vehicles/Show.tsx` via a new `vehicle.detailWidgets` Slot — the first
+  Slot ever registered into a plugin-owned page rather than a core one.
+  Verified end-to-end with real HTTP.
 - **Analytics dashboard** (reuse the extensible widget-builder pattern —
   utilization rate per vehicle, revenue, booking volume are the rental
   equivalents of the e-commerce revenue/top-products widgets)

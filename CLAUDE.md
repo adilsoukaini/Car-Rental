@@ -1221,3 +1221,85 @@ visible only on `confirmed`, Mark Returned visible only on `checked_out`,
 both real actions setting status/dispatching/syncing `Vehicle.status`
 correctly, and a dedicated one-way relocation test proving
 `RelocateVehicleOnReturn` fires correctly through this real path.
+
+## Vehicle reviews (verified 2026-08-05)
+
+Deliberately chosen as a contained, mostly-mechanical win right after two
+phases (deposit-gate, checkout/return lifecycle) that each escalated well
+past their initial framing — and it mostly stayed that size, with one
+real exception found by explicitly checking rather than assuming a
+"mechanical port" was exempt from this project's most common bug class.
+
+**Explicit check #1 (requested): verified-rental eligibility, re-derived
+not copied.** The source e-commerce project's `VerifiedPurchaseChecker`
+requires only `Order.payment_status === 'paid'` — payment succeeded,
+delivery not required. A car-rental review is about the actual rental
+experience, which is only assessable once the rental has concluded, so
+`VerifiedRentalChecker` requires a genuine `returned` `Booking` for that
+vehicle+user — not `confirmed`/`checked_out`, which a quick copy-paste of
+"paid" as "the closest-sounding status" would have defaulted to. Only
+possible now, not just copied, because `returned` became a real reachable
+status in the immediately preceding phase. Verified with the same
+boundary rigor as every other eligibility gate in this project: a
+dedicated test proves `returned` verifies and `pending`/`confirmed`/
+`checked_out`/`cancelled` all correctly don't, plus cross-vehicle and
+cross-user isolation.
+
+**Explicit check #2 (requested): searched for "modeled but never
+consumed" in what's being ported, found something real.** `docs/event-registry.md`
+had documented `App\Core\Support\LayoutVariantRegistry`/a `LayoutSlot`
+React component as an established core mechanism since Phase 2 — but
+`grep -rn "LayoutVariantRegistry" app/` returns nothing. The class was
+never created. This is a sharper-edged sixth instance of this project's
+recurring bug class: every prior instance (`Location.is_active`, the
+payment lifecycle methods, `BookingConfirmed`, `SlotRegistry` sitting
+idle, `checked_out`/`returned` in the UI) was real code or a real column
+that existed and had no caller. This one is the documentation itself
+asserting kernel infrastructure exists and describing how to use it, when
+it was simply never written — a false statement about the architecture
+sitting in the project's own source of truth, not a dormant feature.
+Corrected in `docs/event-registry.md` to state plainly: planned, not
+implemented, and why (the source project's version serves 6+ real client
+themes needing genuinely different review layouts; this project has one
+real theme, so building the mechanism now would serve a hypothetical
+need — the same reasoning already applied once to
+`client-swap-proof-DISPOSABLE.ts`).
+
+**A real model-placement mistake caught before it compounded, not after:**
+first drafted `Review` as a plugin-owned model (`Plugins\Reviews\Models\Review`),
+which would have made the core `ReviewSubmitted` event import a plugin
+class — a genuine Hard Rule 1 violation. Caught while writing the event
+itself, before any test ran against it. Fixed by moving `Review` to
+`App\Models`, the exact same precedent already established for
+`DriverVerification` — plugin owns the migration/logic/Filament resource,
+core owns the model.
+
+**A genuinely new architectural proof, not just a new feature:**
+`vehicle.detailWidgets` is the first Slot ever registered into a
+**plugin-owned** page (`fleet-management`'s `Vehicles/Show.tsx`) rather
+than a core one. `account.dashboardWidgets` (the first real slot overall)
+renders into core's `Profile/Edit.tsx`; this proves the identical
+mechanism works when the host page itself belongs to another plugin —
+`fleet-management` never references the reviews plugin by name, only the
+named slot, the same as core never referencing any plugin.
+
+**Verified end-to-end with real HTTP (195 tests, Pint, Larastan,
+`tsc --strict` all pass):** two real users, two real vehicles — one with
+no returned booking, one with a real `returned` booking created first.
+Both submitted real reviews over real HTTP; confirmed via direct DB
+inspection that only the second was marked `is_verified_rental`. Confirmed
+the public vehicle page correctly hid both while unapproved (`reviewCount: 0`
+in the real Inertia props), approved the verified one via the exact real
+Filament action code, and confirmed via a second real HTTP request that
+it then appeared publicly with the correct author, rating, title, and
+`isVerifiedRental: true`. All test data cleaned up afterward; dev server
+stopped.
+
+**Automated coverage:** 8 `VerifiedRentalCheckerTest` boundary cases, 6
+`ReviewControllerTest` cases (auth required, verified-flag correctness in
+both directions, unique-constraint rejection, rating validation), 4
+`GetVehicleReviewsPipeTest` cases (approval filtering, average-rating
+computation, cross-vehicle isolation, zeroed defaults), 4 `ReviewResourceTest`
+cases (staff-only access, Approve action), and a dedicated
+`VehicleControllerTest` case proving the real Slot renders on the real
+page with real review data.

@@ -209,6 +209,7 @@ Registered via `App\Core\Support\FilterRegistry::register()`, run via `FilterReg
 | `booking.cancellationPolicy` | How much of a held deposit is refunded given how close to pickup | booking-engine plugin (`CoreCancellationPolicyPipe`, added 2026-08-05) |
 | `booking.driverEligibilityCheck` | Is this driver eligible (age/category) to book this vehicle | driver-verification plugin (`CoreDriverEligibilityCheckPipe`, Phase 9) |
 | `vehicle.listQuery` | Fleet listing query — filters/sorts applied to the base query | fleet-management plugin (Phase 4) |
+| `vehicle.reviews` | Approved reviews + average rating for a vehicle's detail page | reviews plugin (`GetVehicleReviewsPipe`, added 2026-08-05) |
 
 ### `booking.availabilityCheck` — result convention
 
@@ -341,6 +342,60 @@ admin-review step to happen *before* a booking can be confirmed, which
 conflicts with `BookingCreator`'s current immediate-confirm design (no
 pending→reviewed→confirmed workflow exists). Per-User composes cleanly
 with what's already built, at the cost of guest exemption above.
+
+## Vehicle Reviews (added 2026-08-05)
+
+A near-mechanical port of the source e-commerce project's reviews plugin,
+renamed for this domain (`Product` → `Vehicle`), with two deliberate
+adaptations, not verbatim copies:
+
+1. **Verified-rental eligibility is a real domain improvement, not a
+   ported concept.** The source `VerifiedPurchaseChecker` requires only
+   `Order.payment_status === 'paid'` — payment succeeded, delivery not
+   required. `Plugins\Reviews\Services\VerifiedRentalChecker` requires a
+   genuine `returned` `Booking` for that vehicle+user — a review is about
+   the actual rental experience, which is only assessable once the rental
+   has concluded, not once payment succeeded. Only possible now that
+   `returned` is a real, reachable status (see the checkout/return
+   lifecycle phase) — explicit test coverage proves the boundary (a
+   `confirmed`/`checked_out` booking does NOT verify; only `returned`
+   does).
+2. **No `LayoutVariantRegistry`/`LayoutSlot` port.** The source plugin
+   renders 9 different per-client-theme review-display components via
+   that registry — a real need there (6+ real client themes). This
+   project has one real client theme; building that whole mechanism now
+   would serve a hypothetical future need, not a real one (see the
+   corrected "Layout Variant Regions" section above for the full finding).
+   `Widgets/VehicleReviews.tsx` is a single tokenized component instead.
+
+**`App\Models\Review`** is a core model (not plugin-owned), same
+precedent as `DriverVerification` — the `reviews` plugin owns the
+migration, business logic, and Filament resource, but the model lives in
+`App\Models` so core's `ReviewSubmitted` event can reference it without
+core ever importing the plugin's namespace (Hard Rule 1). Unique
+constraint on `(vehicle_id, user_id)` — one review per customer per
+vehicle, not per booking (a customer who rents the same car twice still
+reviews it once).
+
+**`vehicle.detailWidgets`** — the first Slot registered into a
+**plugin-owned** page (`fleet-management`'s `Vehicles/Show.tsx`) rather
+than a core one. `account.dashboardWidgets` (the first real slot overall)
+renders into core's `Profile/Edit.tsx`; this proves the same mechanism
+works when the host page itself belongs to another plugin —
+`fleet-management` never references the reviews plugin by name, only the
+named slot, exactly like core never references it.
+
+**`App\Core\Events\ReviewSubmitted`** carries the `Review` model, not raw
+ids — a deliberate adaptation from the source project's version (which
+carries `reviewId`/`productId`/`userId`/`rating` as scalars), matching
+this project's own convention for domain events (`BookingConfirmed`,
+`BookingCancelled`, etc.).
+
+Review submission has no eligibility gate — matching the source pattern
+exactly: any authenticated user can review any vehicle, `is_verified_rental`
+is tracked and displayed as a badge, not required to submit. Unapproved
+reviews are invisible to everyone except staff (via `ReviewResource`,
+list + Approve/Reject-via-delete, same shape as `BookingResource`).
 
 ## Public Booking Checkout (the real booking-creation flow)
 
@@ -501,10 +556,31 @@ Registered via `App\Core\Support\SlotRegistry::register()`, rendered via the `Sl
 
 **`account.dashboardWidgets`** (added 2026-08-04, booking-history phase) — the first real slot in this project. Registered from `AppServiceProvider::boot()` (core-owned, not plugin-owned — matches the source e-commerce project's own `RecentOrders`/`MyWishlist` widgets being core account features, not plugin extensions). Rendered from `ProfileController::edit()` into `Profile/Edit.tsx`, passed `recentBookings` (the current user's last 5 bookings, batch-loaded with `vehicle`/`pickupLocation`/`returnLocation` in one query per rule 8) as props. Current consumer: `Widgets/BookingHistory` (`resources/js/Widgets/BookingHistory.tsx`), listing recent bookings linking to `bookings.show`.
 
+**`vehicle.detailWidgets`** (added 2026-08-05, reviews phase) — see the "Vehicle Reviews" section above for the full mechanism. The first slot registered into a plugin-owned page rather than a core one.
+
 **Real bug found and fixed while wiring this up — see CLAUDE.md's booking-history section for full detail.** `SlotRegistry`/`FilterRegistry`'s static state was never cleared between `PluginManager::boot()` calls, silently accumulating duplicate entries across every Application boot in the same PHP process (every PHPUnit test method boots a fresh Application in the same process; a persistent-worker deployment like Octane would hit the identical issue in production). This had been masked by luck for `FilterRegistry` — every `booking.*` pipe so far recomputes from immutable input rather than compounding, so duplicate execution produced the same final number — until `SlotRegistry` (which has no such luck; a widget genuinely renders N times) exposed it via an exact-count test assertion. Fixed by adding `flush()` to both registries, called at the top of `PluginManager::boot()`.
 
 ## Layout Variant Regions
 
-Registered via `App\Core\Support\LayoutVariantRegistry::register()`, rendered via the `LayoutSlot` React component.
+**Corrected 2026-08-05 — this section previously overstated reality.** It
+read "Registered via `App\Core\Support\LayoutVariantRegistry::register()`,
+rendered via the `LayoutSlot` React component," phrased as if that
+mechanism existed. It never did: `grep -rn "LayoutVariantRegistry" app/`
+returns nothing — the class was never created in this project at all, in
+either kernel phase. This is a sharper-edged version of this project's
+recurring "modeled but never consumed" pattern (see CLAUDE.md) — every
+prior instance was real code or a real column sitting unused; this one is
+documentation asserting kernel infrastructure exists when it was simply
+never written, which a future session could reasonably try to use and
+find nothing there.
 
-No regions registered yet beyond the Phase 3 theme-test throwaway page. Real regions (`header`, `footer`, `vehicle-card`, `booking-calendar`, `vehicle-gallery` per `01-SYSTEM-DESIGN.md` §6) get registered and documented here once a second real design exists for each — not before, per `PROCESS-GUIDE.md` rule 6.
+**Status: planned, not implemented.** The source e-commerce project's
+version exists to let each of its 6+ real client themes render a genuinely
+different layout for the same feature (9 different review-display
+components, for example) — a real, load-bearing need there. This project
+currently has exactly one real client theme (plus one disposable
+theme-swap proof file) — building `LayoutVariantRegistry`/`LayoutSlot` now
+would mean constructing kernel infrastructure with only a hypothetical
+future consumer, the exact thing `PROCESS-GUIDE.md` rule 6 exists to
+prevent. Build it for real the first time a second real client theme
+genuinely needs a different layout for the same feature — not before.
