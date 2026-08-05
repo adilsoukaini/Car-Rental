@@ -1478,3 +1478,62 @@ customer counts with the correct status filter), `BookingVolumeChartTest`
 bucketing, window exclusion), `VehicleUtilizationTableTest` (5, exact
 percentage at a hand-computed boundary, window-clamping for a booking
 starting before the window, the query-count proof for rule 8).
+
+## Dev database: SQLite → Postgres, and closing the Phase 5 concurrency gap (verified 2026-08-05)
+
+A deliberately small, self-contained task, explicitly scoped as *not* the
+full production-readiness phase — real credentials, deployment, and the
+`php.ini`/PATH-shim environment quirks all remain separately deferred. Just
+moving the dev `.env` off SQLite onto a real local Postgres instance
+already running on this machine, into its own new `car_rental_dev`/
+`car_rental_test` databases (owned by a new `car_rental` user, deliberately
+isolated from the e-commerce project's `store` database and the unrelated
+`car_data` database on the same server).
+
+**A real SQLite-vs-Postgres behavioral difference found, not just a
+config change.** Postgres aborts the *entire* current transaction block on
+any failed statement within it (SQLSTATE 25P02) until an explicit
+`ROLLBACK` — SQLite doesn't. `ReviewControllerTest`'s duplicate-review test
+broke under `RefreshDatabase`'s ambient per-test transaction: the
+controller's second `Review::create()` correctly failed and was correctly
+caught, but the test's own follow-up verification query then hit the
+poisoned transaction. Confirmed this was a test-harness-only artifact (a
+`tinker` replay of the identical sequence outside any wrapping transaction
+worked cleanly), then fixed with a genuine production-code improvement
+rather than a test workaround: `ReviewController::store()` now pre-checks
+for an existing review before attempting the insert, keeping the original
+`try/catch` only as a defensive fallback for the rare, low-stakes race
+between the check and the insert. This is a strictly better pattern
+regardless of database engine — not a Postgres-specific patch — since it
+stops relying on catching a unique-constraint exception as primary control
+flow.
+
+**Closed the one honest limitation carried forward since Phase 5 — with
+the strongest form of proof this project has produced for any claim.**
+Phase 5's `BookingCreator` concurrency section stated plainly that SQLite
+has no true row-level locking, so `lockForUpdate()`'s correctness under
+genuine concurrent connections could only be proven once a real
+row-locking database was available — until now, only a *sequential*
+same-process test existed as a weaker stand-in. With real Postgres in
+place, built a genuine **two-process** proof: one PHP process opens a
+transaction, takes `Vehicle::lockForUpdate()`, and sleeps 3 seconds while
+holding it; a fully separate PHP process (its own DB connection) starts
+~21ms later and attempts the same lock. Result: the second process
+**genuinely blocked for 2.987 seconds** — a real wait, not an immediate
+"database locked" error — until the first committed, then correctly saw
+the just-created booking as an overlap and rejected it. This is concrete,
+measured evidence of real row-level blocking across two truly simultaneous
+connections, not "the logic looks right" — the strongest verification
+standard this project has applied to anything, fittingly used on its
+single highest-stakes correctness question. Test data cleaned up
+afterward.
+
+**Scope discipline on the switch itself:** `phpunit.xml` was only
+*temporarily* pointed at Postgres to run this proof and the full suite
+once against it (213/213 passed); it was then reverted back to SQLite
+`:memory:` as the permanent day-to-day test default (confirmed 213/213
+still pass after reverting). Only `.env`'s dev database is permanently
+Postgres now — fast tests stay fast, and the one thing that actually
+needed real Postgres semantics got them without paying that cost on every
+routine test run. A SQLite-specific-SQL compatibility sweep (raw `DATE()`
+calls, case-sensitivity-dependent lookups) found nothing else to fix.
