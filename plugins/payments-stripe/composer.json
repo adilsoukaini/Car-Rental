@@ -1,0 +1,21 @@
+{
+    "name": "carrental/payments-stripe",
+    "description": "Stripe payment gateway plugin — deposit hold (authorize/capture/release) and final charge via PaymentIntents.",
+    "type": "library",
+    "license": "MIT",
+    "version": "1.0.0",
+    "autoload": {
+        "psr-4": {
+            "Plugins\\PaymentsStripe\\": "src/"
+        }
+    },
+    "require": {
+        "stripe/stripe-php": "^15.0"
+    },
+    "extra": {
+        "laravel": {
+            "providers": []
+        }
+    },
+    "minimum-stability": "stable"
+}
