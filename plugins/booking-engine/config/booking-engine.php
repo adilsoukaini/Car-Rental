@@ -30,4 +30,23 @@ return [
      * anything still pending past this window.
      */
     'hold_ttl_minutes' => 15,
+
+    /*
+     * PLACEHOLDER BUSINESS VALUES — not confirmed with the actual business
+     * owner, unlike duration_discount_tiers/deposit_percentage_of_subtotal
+     * above (which had real numbers from day one). Retune freely, no code
+     * change needed — same cliff/threshold model as duration_discount_tiers:
+     * minimum whole days before pickup at the moment of cancellation =>
+     * percent of the held deposit refunded (100 - this = percent forfeited
+     * as a cancellation fee). The highest threshold met wins; not
+     * cumulative. A cancellation with fewer days remaining than the lowest
+     * key (including after pickup has already passed) refunds 0%.
+     *
+     * Keys must be sorted descending so the first match found is the
+     * highest applicable tier.
+     */
+    'cancellation_refund_tiers' => [
+        7 => 100,
+        2 => 50,
+    ],
 ];
