@@ -120,9 +120,35 @@ cancellation-refund phase introduced one commit earlier).
 | `$description` | `string` | Free-text description of the damage/condition issue |
 | `$photoPaths` | `list<string>` | Storage paths of any photos attached to the report |
 
-**Fires when:** Staff logs a damage/condition issue at pickup or return.
-**Assumes:** Nothing about vehicle status — listeners decide whether this warrants moving the vehicle to `maintenance`.
-**Use cases:** notify staff/admin, attach to the booking's record for deposit dispute resolution, flag the vehicle for inspection.
+**Fires when:** staff uses `ViewBooking`'s "Report Condition" action (added
+2026-08-05) — this event's first real dispatch site. Optional, not
+mandatory — visible once a booking is `checked_out` or `returned`, but
+deliberately not required before Check Out/Mark Returned can complete
+(building that as a required step would have meant a real behavioral
+change to those already-verified actions).
+**Persisted as `App\Models\DamageReport`** (core model, migration owned by
+the `damage-reporting` plugin — same core-model/plugin-migration split as
+`Review`/`DriverVerification`) — the event alone was never durable enough
+to satisfy "attach to the booking's record for deposit dispute
+resolution" below; something has to be queryable later, not just an
+ephemeral fired event. Free-text `description` + photos only — no
+structured checklist (a genuinely different, bigger data model) was built
+speculatively; this matches the event's own shape exactly. Photos are
+stored on the `local` (private) disk, same treatment as
+driver-verification's license uploads — this is staff-facing dispute
+evidence, not public content.
+**Assumes:** Nothing about vehicle status — deliberately has **no
+listener** as of this writing. Whether a report warrants moving the
+vehicle to `maintenance` or capturing the deposit stays a separate,
+manual staff decision via the existing Capture Deposit / Vehicle-status
+actions — matching this project's established "manual for damage, not
+automatic on a lifecycle event" precedent. This is intentional pure data
+capture, not another "modeled but never consumed" gap — stated explicitly
+so a future session doesn't miscategorize it as one.
+**Use cases:** notify staff/admin (not built), attach to the booking's
+record for deposit dispute resolution (done — see `BookingInfolist`'s
+"Condition / Damage Reports" section), flag the vehicle for inspection
+(not built — a manual staff decision today).
 
 ---
 

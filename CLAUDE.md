@@ -1327,3 +1327,65 @@ on** — `grep -rln "use Plugins\\\\" app/` returns nothing else. This was
 an isolated slip, not a pattern repeated elsewhere.
 
 Verified: 195 tests, Pint, and Larastan all still pass after the move.
+
+## Damage/condition reporting (verified 2026-08-05)
+
+**A pre-flight that surfaced a real, live kernel violation before the
+feature itself was designed.** Checking `ViewBooking.php` (this phase's
+natural attachment point) before adding anything to it found
+`CancellationPolicyRequest` imported directly from the plugin namespace —
+fixed as its own dedicated commit first (see the kernel-fix section
+above) before any damage-reporting code was written on top of the same
+file.
+
+**Two real scope forks, both resolved toward the smaller, already-proven
+option:** free-text description + photos (matching `DamageReported`'s
+existing shape exactly) over a genuinely new structured-checklist
+comparison model; and an optional "Report Condition" follow-up action
+over making condition-logging mandatory before Check Out/Mark Returned
+complete — the mandatory option would have meant a real behavioral
+change to actions verified end-to-end just one phase ago, not a natural
+extension of them.
+
+**`App\Models\DamageReport`** is a core model per the same
+`Review`/`DriverVerification` precedent — the new `damage-reporting`
+plugin owns only the migration (`DamageReportingServiceProvider` is
+deliberately minimal, just `loadMigrationsFrom()`); the "Report Condition"
+action itself lives entirely on core's `ViewBooking`, using only core
+classes. `DamageReported` gets its first real dispatch site here, with no
+listener — deliberate, documented explicitly so it isn't miscategorized
+as another "modeled but never consumed" gap later.
+
+**A real display bug found by actually reading the rendered HTML, not by
+reading the code and assuming it worked:** `BookingInfolist`'s new
+"Photos" column used `formatStateUsing()`, which Filament silently skips
+for a state it considers "empty" — a report with zero photos rendered
+completely blank instead of "0 attached", the exact case most likely to
+occur in practice (most condition reports won't have photos attached).
+Fixed by switching to `getStateUsing()`, which fully overrides state
+resolution rather than being subject to the same empty-state skip. A
+tangent while chasing this via real `curl` requests, corrected before it
+became a false finding: an initial context-based `grep` search looked
+immediately after the "Photos" label's closing tag and found nothing,
+which looked like a genuine curl-vs-browser Livewire hydration gap —
+re-checking with a full-file search (Filament's actual HTML nests the
+label and value in separate, non-adjacent div structures) showed the
+content was there all along. Worth naming as an example of catching one's
+own verification mistake before reporting it as a real gap, the same
+rigor applied to any other finding.
+
+**Verified end-to-end with real HTTP (199 tests, Pint, Larastan both
+pass):** a real booking, checked out, with a real "Report Condition"
+report logged against it (description + zero photos, matching the exact
+action code) via real DB state; confirmed via real staff login and a real
+`GET` to the booking's actual admin page that both the description text
+and the correctly-computed "0 attached" photo count render in the real
+HTML. Separately, the photo-upload path itself (`Storage::fake('local')`,
+a real `UploadedFile::fake()->image()`) is covered by an automated test
+asserting the file genuinely exists on disk at the stored path. All test
+data cleaned up afterward; dev server stopped.
+
+**Automated coverage:** 4 new `BookingResourceTest` cases — the action
+hidden before checkout, visible once `checked_out`/`returned`, a real
+report created with the correct `reported_by` and dispatched event, and
+the real photo-upload-and-storage path.

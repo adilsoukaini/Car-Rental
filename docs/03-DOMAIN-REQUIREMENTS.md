@@ -158,10 +158,21 @@ in one phase.
   fleet listing at the right times, and that it was genuinely relocated to
   its real return location — see CLAUDE.md's "checkout/return lifecycle"
   section.
-- **Damage/condition reporting at pickup and return** — photos + a
-  checklist, protects both the business and the customer. Its prerequisite
-  (a real checkout/return lifecycle) is now built, above — this is a
-  legitimate next item, no longer blocked.
+- **Damage/condition reporting at pickup and return — DONE 2026-08-05.**
+  `ViewBooking`'s "Report Condition" action (optional, visible once
+  `checked_out`/`returned`) logs a real `App\Models\DamageReport` —
+  free-text description + photos, matching `DamageReported`'s existing
+  shape exactly (no structured checklist built speculatively; a genuinely
+  different, bigger data model if ever needed). Photos stored privately.
+  Retrievable from the same booking's admin view (`BookingInfolist`'s
+  "Condition / Damage Reports" section). No automatic consequence (deposit
+  capture, maintenance transition) — those stay separate, manual staff
+  decisions, matching this project's established precedent. Verified
+  end-to-end with real HTTP — see CLAUDE.md.
+  **Found and fixed along the way:** a real, live Hard Rule 1 violation in
+  `ViewBooking.php` from the immediately preceding phase (a core class
+  importing a plugin's DTO directly), caught during this phase's
+  pre-flight before adding anything new to the same file.
 - **Cancellation** — **DONE, including the refund policy, 2026-08-05.**
   `ViewBooking`'s "Cancel Booking" action (staff-only, confirmed booking →
   `cancelled`) dispatches `BookingCancelled` for real and frees the vehicle
