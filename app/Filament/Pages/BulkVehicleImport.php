@@ -170,6 +170,10 @@ class BulkVehicleImport extends Page
 
     public function downloadTemplate(): \Symfony\Component\HttpFoundation\StreamedResponse
     {
+        if (! auth()->user()?->hasAtLeast(Role::Admin)) {
+            abort(403);
+        }
+
         $headers = ['make', 'model', 'year', 'category', 'license_plate', 'daily_rate', 'seat_count', 'transmission_type', 'fuel_type', 'mileage', 'status'];
 
         return response()->streamDownload(function () use ($headers) {
