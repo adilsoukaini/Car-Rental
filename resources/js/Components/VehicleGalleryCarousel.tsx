@@ -39,6 +39,7 @@ export default function VehicleGalleryCarousel({ images }: { images: VehicleGall
                     <img
                         src={currentImage.url}
                         alt={currentImage.altText ?? 'Photo du véhicule'}
+                        loading="lazy"
                         className="aspect-video w-full object-cover"
                     />
                 ) : (
@@ -84,6 +85,7 @@ export default function VehicleGalleryCarousel({ images }: { images: VehicleGall
                             <img
                                 src={image.url}
                                 alt={image.altText ?? `Photo du véhicule ${index + 1}`}
+                                loading="lazy"
                                 className="h-full w-full object-cover"
                             />
                         </button>
