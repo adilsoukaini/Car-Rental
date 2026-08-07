@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\Role;
+use App\Notifications\ResetPasswordNotification;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
@@ -32,6 +33,16 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
     public function hasAtLeast(Role $role): bool
     {
         return $this->role->level() >= $role->level();
+    }
+
+    /**
+     * Send the password reset notification.
+     *
+     * @param  string  $token
+     */
+    public function sendPasswordResetNotification(#[\SensitiveParameter] $token): void
+    {
+        $this->notify(new ResetPasswordNotification($token));
     }
 
     /**
