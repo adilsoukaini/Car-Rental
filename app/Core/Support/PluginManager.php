@@ -49,6 +49,7 @@ class PluginManager
     {
         FilterRegistry::flush();
         SlotRegistry::flush();
+        LayoutVariantRegistry::flush();
 
         foreach (static::enabled() as $slug) {
             $providerClass = config("plugins.registry.{$slug}");

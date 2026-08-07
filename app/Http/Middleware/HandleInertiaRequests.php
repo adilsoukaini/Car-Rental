@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Core\Support\LayoutVariantRegistry;
 use App\Core\Support\ThemeManager;
 use App\Models\DriverVerification;
 use App\Models\User;
@@ -66,6 +67,16 @@ class HandleInertiaRequests extends Middleware
             'driverVerificationStatus' => ($user instanceof User && Schema::hasTable('driver_verifications'))
                 ? $this->latestDriverVerificationStatus($user)
                 : null,
+            // Resolves every registered layout slot to its active variant
+            // component name — consumed by LayoutSlot in
+            // resources/js/layoutComponentRegistry.tsx. Guarded on the
+            // layout_settings table existing (same "core middleware must not
+            // hard-crash the entire site over one optional feature" lesson as
+            // driverVerificationStatus above): on a fresh install before that
+            // migration has run, every page would otherwise 500.
+            'activeLayoutVariants' => Schema::hasTable('layout_settings')
+                ? $this->activeLayoutVariants()
+                : [],
             // Site identity — drives the storefront SiteLogo component's
             // name/logo. siteName falls back to config('app.name'); logoUrl
             // comes from config/site.php (null when not configured, in which
@@ -91,5 +102,23 @@ class HandleInertiaRequests extends Middleware
         $latest = $user->driverVerifications()->latest('id')->first();
 
         return $latest instanceof DriverVerification ? $latest->status : 'none';
+    }
+
+    /**
+     * Build the slot → active component-name map shared to every page. Each
+     * registered slot is resolved via LayoutVariantRegistry, which falls
+     * back to the first registered variant when no DB row exists yet.
+     *
+     * @return array<string, string>
+     */
+    private function activeLayoutVariants(): array
+    {
+        $variants = [];
+
+        foreach (LayoutVariantRegistry::allRegisteredSlots() as $slotName) {
+            $variants[$slotName] = LayoutVariantRegistry::activeComponentFor($slotName);
+        }
+
+        return $variants;
     }
 }

@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Core\Events\BookingConfirmed;
 use App\Core\Listeners\SendBookingConfirmationEmail;
+use App\Core\Support\LayoutVariantRegistry;
 use App\Core\Support\PluginManager;
 use App\Core\Support\SlotRegistry;
 use App\Core\Support\ThemeSchemaRegistry;
@@ -35,6 +36,16 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(BookingConfirmed::class, SendBookingConfirmationEmail::class);
 
         SlotRegistry::register('account.dashboardWidgets', 'Widgets/BookingHistory');
+
+        // vehicleCard layout variants — the storefront's vehicle-card region
+        // (rendered via LayoutSlot name="vehicleCard" on the homepage, and
+        // the future fleet listing). Registered in core (not the
+        // fleet-management plugin) because the vehicle-card components and
+        // the primary consumer (Home) are both core-owned — core must not
+        // depend on a plugin being enabled for its own homepage to work.
+        // Matches the component names in resources/js/layoutComponentRegistry.tsx.
+        LayoutVariantRegistry::register('vehicleCard', 'vertical', 'Vertical', 'Layout/VehicleCard/Vertical');
+        LayoutVariantRegistry::register('vehicleCard', 'horizontal-split', 'Horizontal Split', 'Layout/VehicleCard/HorizontalSplit');
 
         // Plugins may call ThemeSchemaRegistry::registerField() from their own
         // boot() to add their own token fields — matches the Semantic interface
