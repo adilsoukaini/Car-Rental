@@ -19,6 +19,9 @@ use Illuminate\Support\Str;
  * @property Carbon|null $hold_expires_at
  * @property array<string, mixed>|null $metadata
  * @property-read User|null $user null for a guest booking — see guest_name/guest_email/guest_phone
+ * @property-read Vehicle $vehicle
+ * @property-read Location $pickupLocation
+ * @property-read Location $returnLocation
  */
 #[Fillable([
     'vehicle_id', 'user_id', 'guest_name', 'guest_email', 'guest_phone',

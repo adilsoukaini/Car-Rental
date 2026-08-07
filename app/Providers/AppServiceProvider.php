@@ -2,10 +2,16 @@
 
 namespace App\Providers;
 
+use App\Core\Events\BookingCancelled;
 use App\Core\Events\BookingConfirmed;
+use App\Core\Events\VehicleCheckedOut;
+use App\Core\Events\VehicleReturned;
 use App\Core\Filters\VehicleCategoryFilter;
 use App\Core\Filters\VehicleTransmissionFilter;
+use App\Core\Listeners\SendBookingCancelledEmail;
+use App\Core\Listeners\SendBookingCheckedOutEmail;
 use App\Core\Listeners\SendBookingConfirmationEmail;
+use App\Core\Listeners\SendBookingReturnedEmail;
 use App\Core\Sorts\VehicleNameAscending;
 use App\Core\Sorts\VehiclePriceAscending;
 use App\Core\Sorts\VehiclePriceDescending;
@@ -41,6 +47,9 @@ class AppServiceProvider extends ServiceProvider
         PluginManager::boot();
 
         Event::listen(BookingConfirmed::class, SendBookingConfirmationEmail::class);
+        Event::listen(VehicleCheckedOut::class, SendBookingCheckedOutEmail::class);
+        Event::listen(VehicleReturned::class, SendBookingReturnedEmail::class);
+        Event::listen(BookingCancelled::class, SendBookingCancelledEmail::class);
 
         SlotRegistry::register('account.dashboardWidgets', 'Widgets/BookingHistory');
 
