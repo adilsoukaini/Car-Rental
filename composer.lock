@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "6810fcb0a356576af23d854f28cc9ad6",
+    "content-hash": "e3320abeeb617f41f826fae7f0c23bee",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -488,6 +488,60 @@
             }
         },
         {
+            "name": "carrental/promotions",
+            "version": "1.0.0",
+            "dist": {
+                "type": "path",
+                "url": "plugins/promotions",
+                "reference": "2599389026646be93eb12d80078bc959feb44caf"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": []
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Plugins\\Promotions\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "Promo/discount codes for bookings — promo_codes data, a PromoCodePipe on booking.priceCalculation, and the admin PromoCodeResource.",
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "carrental/recommendations",
+            "version": "1.0.0",
+            "dist": {
+                "type": "path",
+                "url": "plugins/recommendations",
+                "reference": "7c88a3d008c8ae4592d09dc75cc9f4a9be0cdf0f"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": []
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Plugins\\Recommendations\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "Vehicle recommendations plugin — 'You might also like' similar vehicles on the detail page via the vehicle.recommendations filter.",
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
             "name": "carrental/reviews",
             "version": "1.0.0",
             "dist": {
@@ -510,6 +564,33 @@
                 "MIT"
             ],
             "description": "Vehicle reviews with verified-rental badging (a returned booking for that vehicle) and staff moderation.",
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "carrental/vehicle-attributes",
+            "version": "1.0.0",
+            "dist": {
+                "type": "path",
+                "url": "plugins/vehicle-attributes",
+                "reference": "8408ecf69841f3a059c141dabbcd09e120eb3a76"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": []
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Plugins\\VehicleAttributes\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "EAV vehicle attributes — typed definitions (text/number/textarea/boolean/select), admin CRUD, dynamic form section on VehicleResource, and a vehicle.attributes filter pipe.",
             "transport-options": {
                 "relative": true
             }
@@ -11123,12 +11204,12 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {},
+    "stability-flags": [],
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
         "php": "^8.3"
     },
-    "platform-dev": {},
-    "plugin-api-version": "2.9.0"
+    "platform-dev": [],
+    "plugin-api-version": "2.3.0"
 }
