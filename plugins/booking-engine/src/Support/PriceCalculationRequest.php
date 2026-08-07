@@ -13,5 +13,6 @@ class PriceCalculationRequest
         public readonly CarbonInterface $pickupAt,
         public readonly CarbonInterface $returnAt,
         public readonly ?int $userId = null,
+        public readonly ?string $promoCode = null,
     ) {}
 }

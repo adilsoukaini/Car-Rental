@@ -75,6 +75,7 @@ class BookingCheckoutController extends Controller
             pickupAt: $pickupAt,
             returnAt: $returnAt,
             userId: $request->user()?->id,
+            promoCode: $request->input('promo_code'),
         );
 
         /** @var PriceBreakdown $breakdown */
@@ -91,7 +92,9 @@ class BookingCheckoutController extends Controller
                 'discountPercent' => $breakdown->discountPercent,
                 'totalPrice' => $breakdown->totalPrice(),
                 'depositAmount' => $breakdown->depositAmount,
+                'promoDiscount' => $breakdown->promoDiscount,
             ],
+            'promoError' => $breakdown->promoError,
         ]);
     }
 
@@ -126,6 +129,7 @@ class BookingCheckoutController extends Controller
                 'return_location_id' => $vehicle->location_id,
                 'pickup_at' => $validated['pickup_at'],
                 'return_at' => $validated['return_at'],
+                'promo_code' => $validated['promo_code'] ?? null,
             ]);
         } catch (VehicleNotAvailableException) {
             throw ValidationException::withMessages([
@@ -253,6 +257,7 @@ class BookingCheckoutController extends Controller
         return [
             'pickup_at' => ['required', 'date', 'after:now'],
             'return_at' => ['required', 'date', 'after:pickup_at'],
+            'promo_code' => ['nullable', 'string', 'max:50'],
         ];
     }
 }

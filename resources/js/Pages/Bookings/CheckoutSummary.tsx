@@ -13,6 +13,7 @@ export interface PriceBreakdown {
     discountPercent: number;
     totalPrice: number;
     depositAmount: number;
+    promoDiscount: number;
 }
 
 /**
@@ -124,6 +125,12 @@ export default function CheckoutSummary({
                             ).toFixed(0)}{' '}
                             DH
                         </span>
+                    </div>
+                )}
+                {priceBreakdown.promoDiscount > 0 && (
+                    <div className="flex justify-between text-sm text-success">
+                        <span>Code promo</span>
+                        <span>-{priceBreakdown.promoDiscount.toFixed(0)} DH</span>
                     </div>
                 )}
                 <div className="flex justify-between text-sm">

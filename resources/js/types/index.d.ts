@@ -57,6 +57,14 @@ export interface VehicleGalleryImage {
     isPrimary: boolean;
 }
 
+/** A single custom attribute resolved by the vehicle.attributes pipe (GetVehicleAttributesPipe). */
+export interface VehicleAttribute {
+    key: string;
+    label: string;
+    type: string;
+    value: string | number | boolean;
+}
+
 export interface PaginationLink {
     url: string | null;
     label: string;

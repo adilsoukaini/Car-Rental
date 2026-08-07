@@ -1,6 +1,6 @@
 import CheckoutLayout from '@/Layouts/CheckoutLayout';
 import { PageProps, Vehicle } from '@/types';
-import { Head, Link, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { FormEventHandler, useState } from 'react';
 import { AlertCircle, Lock } from 'lucide-react';
 import CheckoutForm, { CheckoutFormData } from '@/Pages/Bookings/CheckoutForm';
@@ -29,12 +29,14 @@ export default function Checkout({
     returnAt,
     available,
     priceBreakdown,
+    promoError,
 }: {
     vehicle: Vehicle;
     pickupAt: string;
     returnAt: string;
     available: boolean;
     priceBreakdown: PriceBreakdown;
+    promoError: string | null;
 }) {
     const { auth, driverVerificationStatus, activeLayoutVariants } = usePage<PageProps>().props;
     const user = auth.user;
@@ -57,12 +59,28 @@ export default function Checkout({
         guest_phone: '',
         pickup_at: pickupAt,
         return_at: returnAt,
+        promo_code: '',
     });
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         setData('guest_name', `${firstName} ${lastName}`.trim());
         post(route('bookings.store', vehicle.id));
+    };
+
+    // Re-fetch the price preview with the promo code so the summary card
+    // reflects the discount before payment. preserveState keeps the form's
+    // other fields (name/email/phone) intact across the server re-render.
+    const applyPromo = () => {
+        router.get(
+            route('bookings.checkout', vehicle.id),
+            {
+                pickup_at: data.pickup_at,
+                return_at: data.return_at,
+                promo_code: data.promo_code,
+            },
+            { preserveState: true, preserveScroll: true }
+        );
     };
 
     const formProps = {
@@ -79,6 +97,9 @@ export default function Checkout({
         pickupAt,
         returnAt,
         onSubmit: submit,
+        promoError,
+        promoApplied: priceBreakdown.promoDiscount > 0,
+        onApplyPromo: applyPromo,
     };
 
     const summaryProps = {
