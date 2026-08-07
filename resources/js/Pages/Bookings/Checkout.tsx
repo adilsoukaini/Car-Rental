@@ -1,5 +1,6 @@
 import CheckoutLayout from '@/Layouts/CheckoutLayout';
 import { PageProps, Vehicle } from '@/types';
+import { useTranslation } from '@/hooks/useTranslation';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { FormEventHandler, useState } from 'react';
 import { AlertCircle, Lock } from 'lucide-react';
@@ -41,6 +42,7 @@ export default function Checkout({
     dateError?: string | null;
 }) {
     const { auth, driverVerificationStatus, activeLayoutVariants } = usePage<PageProps>().props;
+    const { t } = useTranslation();
     const user = auth.user;
 
     // Which checkout layout is active, shared from HandleInertiaRequests.
@@ -114,7 +116,7 @@ export default function Checkout({
 
     return (
         <CheckoutLayout backHref={route('vehicles.show', vehicle.id)}>
-            <Head title="Finaliser la réservation" />
+            <Head title={t('Finalize booking')} />
 
             {!available && (
                 <div
@@ -124,10 +126,10 @@ export default function Checkout({
                     <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0" />
                     <div>
                         <p className="font-semibold">
-                            {dateError ?? "Ce véhicule n'est plus disponible pour ces dates."}
+                            {dateError ?? t('This vehicle is no longer available for these dates.')}
                         </p>
                         <Link href={route('vehicles.show', vehicle.id)} className="mt-1 inline-block underline">
-                            Retourner et choisir d'autres dates
+                            {t('Go back and choose different dates')}
                         </Link>
                     </div>
                 </div>
@@ -164,7 +166,7 @@ export default function Checkout({
                     <div className="fixed bottom-0 left-0 z-40 w-full border-t border-border bg-surface px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] lg:hidden">
                         <div className="flex items-center justify-between gap-4">
                             <div>
-                                <p className="text-xs text-textMuted">Total</p>
+                                <p className="text-xs text-textMuted">{t('Total')}</p>
                                 <p className="font-display text-lg font-bold text-text">
                                     {priceBreakdown.totalPrice.toFixed(0)} DH
                                 </p>
@@ -176,10 +178,10 @@ export default function Checkout({
                                 className="flex items-center gap-2 rounded-interactive bg-primary px-6 py-3 font-semibold text-onPrimary transition active:scale-[0.98] disabled:opacity-50"
                             >
                                 {processing ? (
-                                    'Traitement...'
+                                    t('Processing...')
                                 ) : (
                                     <>
-                                        Payer maintenant
+                                        {t('Pay now')}
                                         <Lock className="h-4 w-4" aria-hidden="true" />
                                     </>
                                 )}

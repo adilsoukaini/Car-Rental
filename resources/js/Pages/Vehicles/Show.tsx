@@ -2,6 +2,7 @@ import PublicLayout from '@/Layouts/PublicLayout';
 import { LayoutSlot } from '@/layoutComponentRegistry';
 import { ReviewsData } from '@/Widgets/VehicleReviewsCardList';
 import { Vehicle, VehicleAttribute, VehicleGalleryImage } from '@/types';
+import { useTranslation } from '@/hooks/useTranslation';
 import { Head, Link, router } from '@inertiajs/react';
 import Breadcrumbs from '@/Components/Breadcrumbs';
 import EmptyState from '@/Components/EmptyState';
@@ -12,27 +13,28 @@ import { FormEventHandler, useState } from 'react';
 
 /**
  * Presentational labels for the specs grid + pills. The raw stored values are
- * lowercase English enum-ish strings; these map the common ones to the French
- * display language the Stitch design uses, with a capitalize fallback for any
- * value not in the map.
+ * lowercase English enum-ish strings; these map the common ones to canonical
+ * English display strings, which useTranslation() then localizes (French for
+ * the current storefront), with a capitalize fallback for any value not in the
+ * map.
  */
 const CATEGORY_LABELS: Record<string, string> = { suv: 'SUV' };
 const TRANSMISSION_LABELS: Record<string, string> = {
-    automatic: 'Automatique',
-    manual: 'Manuelle',
+    automatic: 'Automatic',
+    manual: 'Manual',
 };
 const FUEL_LABELS: Record<string, string> = {
-    petrol: 'Essence',
+    petrol: 'Petrol',
     diesel: 'Diesel',
-    electric: 'Électrique',
-    hybrid: 'Hybride',
+    electric: 'Electric',
+    hybrid: 'Hybrid',
 };
 
 const INCLUDED_FEATURES = [
-    'Assurance tous risques',
-    'Kilométrage illimité',
-    'Assistance 24/7',
-    'Annulation gratuite (jusqu’à 48h)',
+    'Full coverage insurance',
+    'Unlimited mileage',
+    '24/7 assistance',
+    'Free cancellation (up to 48h)',
 ];
 
 const formatLabel = (value: string): string =>
@@ -56,28 +58,29 @@ export default function Show({
 
     const [pickupAt, setPickupAt] = useState(tomorrow);
     const [returnAt, setReturnAt] = useState(dayAfter);
+    const { t } = useTranslation();
 
     if (!vehicle) {
         return (
             <PublicLayout>
-                <Head title="Vehicle not found" />
+                <Head title={t('Vehicle not found')} />
 
                 <div className="mx-auto max-w-lg p-8">
                     <Breadcrumbs
-                        items={[{ label: 'Our Fleet', href: route('vehicles.index') }]}
+                        items={[{ label: t('Our Fleet'), href: route('vehicles.index') }]}
                         className="mb-4"
                     />
 
                     <EmptyState
                         icon={<Car className="h-10 w-10" />}
-                        title="Vehicle not found"
-                        description="This vehicle may no longer be available."
+                        title={t('Vehicle not found')}
+                        description={t('This vehicle may no longer be available.')}
                         action={
                             <Link
                                 href={route('vehicles.index')}
                                 className="text-sm font-medium text-primary hover:text-primaryHover"
                             >
-                                Browse our fleet
+                                {t('Browse our fleet')}
                             </Link>
                         }
                     />
@@ -100,28 +103,28 @@ export default function Show({
     const price = String(Number(vehicle.daily_rate));
 
     const specs = [
-        { icon: Users, label: `${vehicle.seat_count} sièges`, available: vehicle.seat_count != null },
+        { icon: Users, label: `${vehicle.seat_count} ${t('seats')}`, available: vehicle.seat_count != null },
         {
             icon: Cog,
             label: vehicle.transmission_type
-                ? TRANSMISSION_LABELS[vehicle.transmission_type] ?? formatLabel(vehicle.transmission_type)
+                ? t(TRANSMISSION_LABELS[vehicle.transmission_type] ?? formatLabel(vehicle.transmission_type))
                 : '',
             available: Boolean(vehicle.transmission_type),
         },
         {
             icon: Wind,
-            label: 'Climatisation',
+            label: t('Air conditioning'),
             available: vehicle.air_conditioning === true,
         },
         {
             icon: DoorOpen,
-            label: vehicle.door_count != null ? `${vehicle.door_count} portes` : '',
+            label: vehicle.door_count != null ? `${vehicle.door_count} ${t('doors')}` : '',
             available: vehicle.door_count != null,
         },
         {
             icon: Gauge,
             label: vehicle.fuel_type
-                ? FUEL_LABELS[vehicle.fuel_type] ?? formatLabel(vehicle.fuel_type)
+                ? t(FUEL_LABELS[vehicle.fuel_type] ?? formatLabel(vehicle.fuel_type))
                 : '',
             available: Boolean(vehicle.fuel_type),
         },
@@ -134,14 +137,14 @@ export default function Show({
             <div className="mx-auto max-w-7xl p-8">
                 <Breadcrumbs
                     items={[
-                        { label: 'Our Fleet', href: route('vehicles.index') },
+                        { label: t('Our Fleet'), href: route('vehicles.index') },
                         { label: `${vehicle.make} ${vehicle.model}` },
                     ]}
                     className="mb-4"
                 />
 
                 <Link href={route('vehicles.index')} className="mb-6 inline-block text-sm text-primary">
-                    &larr; Back to fleet
+                    &larr; {t('Back to fleet')}
                 </Link>
 
                 <div className="grid gap-8 lg:grid-cols-[1.15fr_1fr]">
@@ -155,25 +158,25 @@ export default function Show({
                         <LayoutSlot name="vehicle-gallery" images={galleryImages} />
 
                         <div className="rounded-container border border-border bg-surface p-6 shadow-resting">
-                            <Text variant="h3">Inclus dans le prix</Text>
+                            <Text variant="h3">{t('Included in the price')}</Text>
                             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                                 {INCLUDED_FEATURES.map((feature) => (
                                     <div key={feature} className="flex items-center gap-3">
                                         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-success/10 text-success">
                                             <Check className="h-4 w-4" strokeWidth={2.5} />
                                         </span>
-                                        <span className="text-sm text-text">{feature}</span>
+                                        <span className="text-sm text-text">{t(feature)}</span>
                                     </div>
                                 ))}
                             </div>
                         </div>
 
                         <div className="rounded-container border border-border bg-surface p-6 shadow-resting">
-                            <Text variant="h3">Réserver</Text>
+                            <Text variant="h3">{t('Book')}</Text>
                             <form onSubmit={submit} className="mt-4 space-y-4">
                                 <div className="grid gap-4 sm:grid-cols-2">
                                     <div>
-                                        <label className="mb-1 block text-sm text-textMuted">Pickup date</label>
+                                        <label className="mb-1 block text-sm text-textMuted">{t('Pickup date')}</label>
                                         <input
                                             type="datetime-local"
                                             value={pickupAt}
@@ -184,7 +187,7 @@ export default function Show({
                                     </div>
 
                                     <div>
-                                        <label className="mb-1 block text-sm text-textMuted">Return date</label>
+                                        <label className="mb-1 block text-sm text-textMuted">{t('Return date')}</label>
                                         <input
                                             type="datetime-local"
                                             value={returnAt}
@@ -199,7 +202,7 @@ export default function Show({
                                     type="submit"
                                     className="w-full rounded-interactive bg-primary px-4 py-3 font-body font-semibold text-onPrimary shadow-resting hover:bg-primaryHover"
                                 >
-                                    Continuer la réservation
+                                    {t('Continue booking')}
                                 </button>
                             </form>
                         </div>
@@ -218,12 +221,12 @@ export default function Show({
                                 </span>
                                 <span className="rounded-pill border border-border bg-background px-2 py-1 text-xs text-textMuted">
                                     {vehicle.transmission_type
-                                        ? TRANSMISSION_LABELS[vehicle.transmission_type] ?? formatLabel(vehicle.transmission_type)
+                                        ? t(TRANSMISSION_LABELS[vehicle.transmission_type] ?? formatLabel(vehicle.transmission_type))
                                         : '—'}
                                 </span>
                                 <span className="rounded-pill border border-border bg-background px-2 py-1 text-xs text-textMuted">
                                     {vehicle.fuel_type
-                                        ? FUEL_LABELS[vehicle.fuel_type] ?? formatLabel(vehicle.fuel_type)
+                                        ? t(FUEL_LABELS[vehicle.fuel_type] ?? formatLabel(vehicle.fuel_type))
                                         : '—'}
                                 </span>
                             </div>
@@ -232,7 +235,7 @@ export default function Show({
                                 <p className="mt-3 flex items-center gap-1.5 text-sm text-textMuted">
                                     <Star className="h-4 w-4 fill-secondary text-secondary" aria-hidden="true" />
                                     <span className="font-semibold text-text">{reviewsData.averageRating.toFixed(1)}</span>
-                                    <span>({reviewsData.reviewCount} avis)</span>
+                                    <span>({reviewsData.reviewCount} {t('reviews')})</span>
                                 </p>
                             ) : null}
                         </div>
@@ -263,7 +266,7 @@ export default function Show({
                             carries no attribute values. */}
                         {attributes.length > 0 ? (
                             <div className="rounded-container border border-border bg-surface p-6 shadow-resting">
-                                <Text variant="h3">Caractéristiques</Text>
+                                <Text variant="h3">{t('Features')}</Text>
                                 <dl className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                                     {attributes.map((attr) => (
                                         <div
@@ -274,8 +277,8 @@ export default function Show({
                                             <dd className="text-sm font-medium text-text">
                                                 {attr.type === 'boolean'
                                                     ? attr.value
-                                                        ? 'Oui'
-                                                        : 'Non'
+                                                        ? t('Yes')
+                                                        : t('No')
                                                     : String(attr.value)}
                                             </dd>
                                         </div>
@@ -286,7 +289,7 @@ export default function Show({
 
                         <div className="rounded-container border border-border bg-surface p-6 shadow-raised">
                             <p className="font-mono text-3xl font-bold text-text">
-                                {price} <span className="text-base font-semibold text-textMuted">DH / jour</span>
+                                {price} <span className="text-base font-semibold text-textMuted">{t('DH / day')}</span>
                             </p>
 
                             <Link
@@ -294,11 +297,11 @@ export default function Show({
                                 data={{ pickup_at: pickupAt, return_at: returnAt }}
                                 className="mt-4 block w-full rounded-interactive bg-primary px-4 py-3 text-center font-body font-semibold text-onPrimary shadow-resting transition hover:bg-primaryHover"
                             >
-                                Continuer la réservation
+                                {t('Continue booking')}
                             </Link>
 
                             <p className="mt-2 text-center text-xs text-textMuted">
-                                Aucun paiement requis maintenant
+                                {t('No payment required now')}
                             </p>
                         </div>
                     </div>

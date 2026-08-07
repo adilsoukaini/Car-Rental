@@ -38,8 +38,22 @@ class HandleInertiaRequests extends Middleware
     {
         $user = $request->user();
 
+        // Resolve the storefront locale from the ?lang= query param (set by
+        // the header's FR|EN switcher) or default to French — the
+        // storefront's current language. Shared to every Inertia page so the
+        // frontend useTranslation hook keys off the same value
+        // app()->getLocale() reports. Unknown values normalize to the French
+        // default so a hand-typed ?lang=xx degrades cleanly instead of
+        // leaking the config-level locale (en) to the frontend.
+        $locale = $request->query('lang') ?: 'fr';
+        if (! in_array($locale, ['en', 'fr'], true)) {
+            $locale = 'fr';
+        }
+        app()->setLocale($locale);
+
         return [
             ...parent::share($request),
+            'locale' => app()->getLocale(),
             'auth' => [
                 'user' => $user,
             ],

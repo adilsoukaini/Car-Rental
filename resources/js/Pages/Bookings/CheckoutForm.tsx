@@ -1,4 +1,5 @@
 import { PageProps, User, Vehicle } from '@/types';
+import { useTranslation } from '@/hooks/useTranslation';
 import { Link } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
 import { Calendar, MapPin, Tag, User as UserIcon } from 'lucide-react';
@@ -65,13 +66,14 @@ export default function CheckoutForm({
     promoApplied,
     onApplyPromo,
 }: CheckoutFormProps) {
+    const { t } = useTranslation();
     return (
         <form id="main-checkout-form" onSubmit={onSubmit}>
             {/* Personal info card */}
             <section className="rounded-container bg-surface p-6 shadow-resting">
                 <h2 className="mb-4 flex items-center gap-2 font-display text-lg font-semibold text-text">
                     <UserIcon className="h-5 w-5 text-textMuted" aria-hidden="true" />
-                    Informations personnelles
+                    {t('Personal information')}
                 </h2>
 
                 {user ? (
@@ -84,7 +86,7 @@ export default function CheckoutForm({
                         </div>
                         <div>
                             <p className="text-sm font-semibold text-text">
-                                Vous êtes connecté(e) en tant que {user.name}
+                                {t('You are logged in as')} {user.name}
                             </p>
                             <p className="text-sm text-textMuted">{user.email}</p>
                         </div>
@@ -94,7 +96,7 @@ export default function CheckoutForm({
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div>
                                 <label htmlFor="firstName" className="mb-1 block text-sm font-medium text-text">
-                                    Prénom
+                                    {t('First name')}
                                 </label>
                                 <input
                                     id="firstName"
@@ -102,13 +104,13 @@ export default function CheckoutForm({
                                     value={firstName}
                                     onChange={(e) => onFirstNameChange(e.target.value)}
                                     className={inputClass}
-                                    placeholder="Votre prénom"
+                                    placeholder={t('Your first name')}
                                     required
                                 />
                             </div>
                             <div>
                                 <label htmlFor="lastName" className="mb-1 block text-sm font-medium text-text">
-                                    Nom
+                                    {t('Last name')}
                                 </label>
                                 <input
                                     id="lastName"
@@ -116,7 +118,7 @@ export default function CheckoutForm({
                                     value={lastName}
                                     onChange={(e) => onLastNameChange(e.target.value)}
                                     className={inputClass}
-                                    placeholder="Votre nom"
+                                    placeholder={t('Your last name')}
                                     required
                                 />
                             </div>
@@ -127,7 +129,7 @@ export default function CheckoutForm({
 
                         <div>
                             <label htmlFor="guest_email" className="mb-1 block text-sm font-medium text-text">
-                                Email
+                                {t('Email')}
                             </label>
                             <input
                                 id="guest_email"
@@ -145,7 +147,7 @@ export default function CheckoutForm({
 
                         <div>
                             <label htmlFor="guest_phone" className="mb-1 block text-sm font-medium text-text">
-                                Téléphone
+                                {t('Phone')}
                             </label>
                             <div className="flex">
                                 <span className={phonePrefixClass}>+212</span>
@@ -178,12 +180,12 @@ export default function CheckoutForm({
                         <p>{errors.pickup_at}</p>
                         {user && driverVerificationStatus !== 'approved' && (
                             <p className="mt-1">
-                                Si cela concerne l'éligibilité conducteur,{' '}
+                                {t('If this concerns driver eligibility,')}{' '}
                                 <Link
                                     href={route('driver-verification.show')}
                                     className="underline"
                                 >
-                                    complétez votre vérification
+                                    {t('complete your verification')}
                                 </Link>
                                 .
                             </p>
@@ -204,7 +206,7 @@ export default function CheckoutForm({
                         </div>
                         <div>
                             <p className="text-xs font-semibold uppercase tracking-wide text-textMuted">
-                                Prise en charge
+                                {t('Pickup')}
                             </p>
                             <p className="text-sm text-text">{formatDateTime(pickupAt)}</p>
                             {vehicle.location && (
@@ -223,7 +225,7 @@ export default function CheckoutForm({
                         </div>
                         <div>
                             <p className="text-xs font-semibold uppercase tracking-wide text-textMuted">
-                                Retour
+                                {t('Return')}
                             </p>
                             <p className="text-sm text-text">{formatDateTime(returnAt)}</p>
                             {vehicle.location && (
@@ -242,7 +244,7 @@ export default function CheckoutForm({
             <section className="mt-6 rounded-container bg-surface p-6 shadow-resting">
                 <h2 className="mb-4 flex items-center gap-2 font-display text-lg font-semibold text-text">
                     <Tag className="h-5 w-5 text-textMuted" aria-hidden="true" />
-                    Code promo
+                    {t('Promo code')}
                 </h2>
                 <div className="flex gap-2">
                     <input
@@ -251,21 +253,21 @@ export default function CheckoutForm({
                         value={data.promo_code}
                         onChange={(e) => onDataChange('promo_code', e.target.value)}
                         className={inputClass}
-                        placeholder="Ex : WELCOME10 (optionnel)"
+                        placeholder={t('e.g. WELCOME10 (optional)')}
                     />
                     <button
                         type="button"
                         onClick={onApplyPromo}
                         className="shrink-0 rounded-interactive bg-secondary px-4 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
                     >
-                        Appliquer
+                        {t('Apply')}
                     </button>
                 </div>
                 {promoError && (
                     <p className="mt-2 text-sm text-danger">{promoError}</p>
                 )}
                 {promoApplied && !promoError && (
-                    <p className="mt-2 text-sm text-success">Code promo appliqué</p>
+                    <p className="mt-2 text-sm text-success">{t('Promo code applied')}</p>
                 )}
             </section>
         </form>

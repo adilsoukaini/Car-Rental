@@ -1,6 +1,7 @@
 import SiteLogo from '@/Components/SiteLogo';
 import { PageProps } from '@/types';
-import { Link, usePage } from '@inertiajs/react';
+import { useTranslation } from '@/hooks/useTranslation';
+import { Link, router, usePage } from '@inertiajs/react';
 import { PropsWithChildren, useState } from 'react';
 
 /**
@@ -16,15 +17,56 @@ import { PropsWithChildren, useState } from 'react';
  * tokens (Hard Rule 3), and every nav item is a real link to a page that
  * actually exists here, not a copy of Stitch's marketing-site nav
  * (Services/À propos/FAQ have no corresponding real page in this app).
+ *
+ * The header carries a FR|EN locale switcher: it re-issues the current URL
+ * with a `?lang=` param (preserving any existing query — search, filters,
+ * etc.), which HandleInertiaRequests resolves into the shared `locale` prop
+ * the useTranslation hook keys off.
  */
 export default function PublicLayout({ children }: PropsWithChildren) {
-    const { auth, driverVerificationStatus, siteIdentity } = usePage<
-        PageProps & { siteIdentity?: { siteName?: string } }
+    const { auth, driverVerificationStatus, siteIdentity, locale } = usePage<
+        PageProps & { siteIdentity?: { siteName?: string }; locale?: string }
     >().props;
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const { t } = useTranslation();
+    const currentLocale = locale ?? 'fr';
 
     const needsDriverVerification =
         auth.user !== null && driverVerificationStatus !== null && driverVerificationStatus !== 'approved';
+
+    const switchLocale = (lang: string) => {
+        const url = new URL(window.location.href);
+        url.searchParams.set('lang', lang);
+        router.get(url.pathname + url.search, {}, {
+            preserveState: true,
+            replace: true,
+            preserveScroll: true,
+        });
+    };
+
+    const localeSwitcher = (
+        <div
+            className="flex items-center rounded-pill border border-border p-0.5 text-xs font-semibold"
+            role="group"
+            aria-label="Language"
+        >
+            {(['fr', 'en'] as const).map((code) => (
+                <button
+                    key={code}
+                    type="button"
+                    onClick={() => switchLocale(code)}
+                    aria-pressed={currentLocale === code}
+                    className={`rounded-pill px-2 py-1 uppercase transition-colors ${
+                        currentLocale === code
+                            ? 'bg-primary text-onPrimary'
+                            : 'text-textMuted hover:text-text'
+                    }`}
+                >
+                    {code}
+                </button>
+            ))}
+        </div>
+    );
 
     return (
         <div className="flex min-h-screen flex-col bg-background font-body text-text">
@@ -36,46 +78,48 @@ export default function PublicLayout({ children }: PropsWithChildren) {
 
                     <nav className="hidden items-center gap-8 md:flex">
                         <Link href={route('vehicles.index')} className="text-sm font-semibold text-textMuted transition-colors hover:text-primary">
-                            Our Fleet
+                            {t('Our Fleet')}
                         </Link>
 
                         {auth.user ? (
                             <>
                                 <Link href={route('profile.edit')} className="text-sm font-semibold text-textMuted transition-colors hover:text-primary">
-                                    My Account
+                                    {t('My Account')}
                                 </Link>
                                 {needsDriverVerification && (
                                     <Link
                                         href={route('driver-verification.show')}
                                         className="text-sm font-semibold text-warning transition-colors hover:text-primary"
                                     >
-                                        Driver Verification
+                                        {t('Driver Verification')}
                                     </Link>
                                 )}
                                 <Link href={route('logout')} method="post" as="button" className="text-sm font-semibold text-textMuted transition-colors hover:text-primary">
-                                    Log Out
+                                    {t('Log Out')}
                                 </Link>
                             </>
                         ) : (
                             <>
                                 <Link href={route('login')} className="text-sm font-semibold text-textMuted transition-colors hover:text-primary">
-                                    Log In
+                                    {t('Log In')}
                                 </Link>
                                 <Link
                                     href={route('register')}
                                     className="rounded-interactive bg-primary px-4 py-2 text-sm font-semibold text-onPrimary transition-colors hover:bg-primaryHover"
                                 >
-                                    Sign Up
+                                    {t('Sign Up')}
                                 </Link>
                             </>
                         )}
+
+                        {localeSwitcher}
                     </nav>
 
                     <button
                         type="button"
                         className="text-text md:hidden"
                         onClick={() => setMobileMenuOpen((open) => !open)}
-                        aria-label="Toggle menu"
+                        aria-label={t('Toggle menu')}
                     >
                         <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -86,32 +130,33 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                 {mobileMenuOpen && (
                     <nav className="flex flex-col gap-1 border-t border-border bg-surface px-4 py-3 md:hidden">
                         <Link href={route('vehicles.index')} className="rounded-interactive px-2 py-2 text-sm font-semibold text-textMuted hover:bg-background">
-                            Our Fleet
+                            {t('Our Fleet')}
                         </Link>
                         {auth.user ? (
                             <>
                                 <Link href={route('profile.edit')} className="rounded-interactive px-2 py-2 text-sm font-semibold text-textMuted hover:bg-background">
-                                    My Account
+                                    {t('My Account')}
                                 </Link>
                                 {needsDriverVerification && (
                                     <Link href={route('driver-verification.show')} className="rounded-interactive px-2 py-2 text-sm font-semibold text-warning hover:bg-background">
-                                        Driver Verification
+                                        {t('Driver Verification')}
                                     </Link>
                                 )}
                                 <Link href={route('logout')} method="post" as="button" className="rounded-interactive px-2 py-2 text-left text-sm font-semibold text-textMuted hover:bg-background">
-                                    Log Out
+                                    {t('Log Out')}
                                 </Link>
                             </>
                         ) : (
                             <>
                                 <Link href={route('login')} className="rounded-interactive px-2 py-2 text-sm font-semibold text-textMuted hover:bg-background">
-                                    Log In
+                                    {t('Log In')}
                                 </Link>
                                 <Link href={route('register')} className="rounded-interactive px-2 py-2 text-sm font-semibold text-textMuted hover:bg-background">
-                                    Sign Up
+                                    {t('Sign Up')}
                                 </Link>
                             </>
                         )}
+                        <div className="pt-2">{localeSwitcher}</div>
                     </nav>
                 )}
             </header>
@@ -121,39 +166,39 @@ export default function PublicLayout({ children }: PropsWithChildren) {
             <footer className="mt-auto grid grid-cols-1 gap-8 bg-primary px-4 py-16 text-onPrimary sm:px-6 md:grid-cols-4 lg:px-8">
                 <div className="space-y-4">
                     <SiteLogo textClassName="text-onPrimary" iconClassName="text-onPrimary" />
-                    <p className="text-sm text-onPrimary/80">Your trusted partner for premium, hassle-free mobility.</p>
+                    <p className="text-sm text-onPrimary/80">{t('Your trusted partner for premium, hassle-free mobility.')}</p>
                 </div>
 
                 <div className="flex flex-col gap-3">
-                    <span className="text-sm font-semibold">Browse</span>
+                    <span className="text-sm font-semibold">{t('Browse')}</span>
                     <Link href={route('vehicles.index')} className="text-sm text-onPrimary/80 transition-colors hover:text-onPrimary">
-                        Our Fleet
+                        {t('Our Fleet')}
                     </Link>
                 </div>
 
                 <div className="flex flex-col gap-3">
-                    <span className="text-sm font-semibold">Account</span>
+                    <span className="text-sm font-semibold">{t('Account')}</span>
                     <Link href={route('bookings.track')} className="text-sm text-onPrimary/80 transition-colors hover:text-onPrimary">
-                        Track your booking
+                        {t('Track your booking')}
                     </Link>
                     {auth.user ? (
                         <Link href={route('profile.edit')} className="text-sm text-onPrimary/80 transition-colors hover:text-onPrimary">
-                            My Account
+                            {t('My Account')}
                         </Link>
                     ) : (
                         <>
                             <Link href={route('login')} className="text-sm text-onPrimary/80 transition-colors hover:text-onPrimary">
-                                Log In
+                                {t('Log In')}
                             </Link>
                             <Link href={route('register')} className="text-sm text-onPrimary/80 transition-colors hover:text-onPrimary">
-                                Sign Up
+                                {t('Sign Up')}
                             </Link>
                         </>
                     )}
                 </div>
 
                 <div className="flex flex-col justify-end text-sm text-onPrimary/80 md:text-right">
-                    © {new Date().getFullYear()} {siteIdentity?.siteName ?? 'Car Rental'}. All rights reserved.
+                    © {new Date().getFullYear()} {siteIdentity?.siteName ?? 'Car Rental'}. {t('All rights reserved.')}
                 </div>
             </footer>
         </div>

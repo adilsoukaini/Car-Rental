@@ -1,5 +1,6 @@
 import VehiclePlaceholderIcon from '@/Components/VehiclePlaceholderIcon';
 import { Vehicle } from '@/types';
+import { useTranslation } from '@/hooks/useTranslation';
 import { Link } from '@inertiajs/react';
 import { Cog, Gauge, Users } from 'lucide-react';
 
@@ -20,6 +21,7 @@ function capitalize(value: string): string {
 }
 
 export default function Vertical({ vehicle }: { vehicle: Vehicle }) {
+    const { t } = useTranslation();
     return (
         <Link
             href={route('vehicles.show', vehicle.id)}
@@ -52,29 +54,29 @@ export default function Vertical({ vehicle }: { vehicle: Vehicle }) {
                     {vehicle.transmission_type && (
                         <span className="inline-flex items-center gap-1">
                             <Cog className="h-3.5 w-3.5" />
-                            {capitalize(vehicle.transmission_type)}
+                            {t(capitalize(vehicle.transmission_type))}
                         </span>
                     )}
                     {vehicle.seat_count > 0 && (
                         <span className="inline-flex items-center gap-1">
                             <Users className="h-3.5 w-3.5" />
-                            {vehicle.seat_count} sièges
+                            {vehicle.seat_count} {t('seats')}
                         </span>
                     )}
                     {vehicle.fuel_type && (
                         <span className="inline-flex items-center gap-1">
                             <Gauge className="h-3.5 w-3.5" />
-                            {capitalize(vehicle.fuel_type)}
+                            {t(capitalize(vehicle.fuel_type))}
                         </span>
                     )}
                 </div>
 
                 <p className="mt-3 font-display text-xl font-bold text-text">
-                    {vehicle.daily_rate} DH / jour
+                    {vehicle.daily_rate} {t('DH / day')}
                 </p>
 
                 <span className="mt-3 w-full rounded-interactive bg-primary py-2.5 text-center text-sm font-semibold text-onPrimary group-hover:bg-primaryHover">
-                    Réserver maintenant
+                    {t('Book now')}
                 </span>
             </div>
         </Link>

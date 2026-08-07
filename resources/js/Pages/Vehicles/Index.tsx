@@ -1,5 +1,6 @@
 import PublicLayout from '@/Layouts/PublicLayout';
 import { PageProps, Paginated, Vehicle } from '@/types';
+import { useTranslation } from '@/hooks/useTranslation';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import SearchBox from '@/Components/SearchBox';
 import FilterBar from '@/Components/FilterBar';
@@ -52,6 +53,7 @@ export default function Index({
     const { activeLayoutVariants } = usePage<PageProps>().props;
     const fleetLayout = activeLayoutVariants?.fleetLayout ?? 'fleet-layout-default';
     const isSidebarLayout = fleetLayout === 'fleet-layout-sidebar';
+    const { t } = useTranslation();
 
     /**
      * The query params currently reflected in the URL. Read live from the
@@ -124,7 +126,7 @@ export default function Index({
     const resultsSummary =
         vehicles.total > 0 ? (
             <p className="mb-4 text-sm text-textMuted">
-                Showing {vehicles.total} {vehicles.total === 1 ? 'vehicle' : 'vehicles'}
+                {t('Showing')} {vehicles.total} {vehicles.total === 1 ? t('vehicle') : t('vehicles')}
             </p>
         ) : null;
 
@@ -135,13 +137,13 @@ export default function Index({
                     icon={<Car className="h-10 w-10" />}
                     title={
                         isFiltered
-                            ? 'No vehicles match your search'
-                            : 'No vehicles available right now'
+                            ? t('No vehicles match your search')
+                            : t('No vehicles available right now')
                     }
                     description={
                         isFiltered
-                            ? 'Try adjusting your filters or search terms.'
-                            : 'Check back soon — we update our fleet regularly.'
+                            ? t('Try adjusting your filters or search terms.')
+                            : t('Check back soon — we update our fleet regularly.')
                     }
                     action={
                         isFiltered ? (
@@ -149,7 +151,7 @@ export default function Index({
                                 onClick={clearFilters}
                                 className="text-sm font-medium text-primary hover:text-primaryHover"
                             >
-                                Clear filters
+                                {t('Clear filters')}
                             </button>
                         ) : undefined
                     }
@@ -164,9 +166,10 @@ export default function Index({
         );
 
     // Pagination links carry the query string (paginate()->withQueryString()),
-    // so filtering and paging compose. `key` on the SearchBox + defaultValue
-    // make the input reflect the URL's search on back/forward and shared links
-    // without the page owning the input's typing state.
+    // so filtering and paging compose. SearchBox re-syncs its value from the
+    // server-provided `search` prop whenever the input isn't focused (back/
+    // forward, shared links), so the page doesn't own the input's typing state
+    // and the live server-side filter never clobbers what's being typed.
     const pagination =
         vehicles.last_page > 1 ? (
             <nav className="mt-8 flex gap-2">
@@ -200,13 +203,13 @@ export default function Index({
 
     return (
         <PublicLayout>
-            <Head title="Our Fleet" />
+            <Head title={t('Our Fleet')} />
 
             <div className="mx-auto max-w-7xl p-8">
-                <Breadcrumbs items={[{ label: 'Our Fleet' }]} className="mb-4" />
+                <Breadcrumbs items={[{ label: t('Our Fleet') }]} className="mb-4" />
 
                 <Text variant="h1" className="mb-6">
-                    Our Fleet
+                    {t('Our Fleet')}
                 </Text>
 
                 {isSidebarLayout ? (
@@ -217,10 +220,9 @@ export default function Index({
                         <aside className="w-full shrink-0 md:sticky md:top-24 md:w-1/4">
                             <div className="space-y-6 rounded-container border border-border bg-surface p-5 shadow-resting">
                                 <SearchBox
-                                    key={search}
                                     defaultValue={search}
                                     onSearch={handleSearch}
-                                    placeholder="Search vehicles..."
+                                    placeholder={t('Search vehicles...')}
                                 />
                                 <FilterBar {...filterBarProps} />
                             </div>
@@ -236,10 +238,9 @@ export default function Index({
                     <>
                         <div className="mb-6 space-y-4">
                             <SearchBox
-                                key={search}
                                 defaultValue={search}
                                 onSearch={handleSearch}
-                                placeholder="Search vehicles..."
+                                placeholder={t('Search vehicles...')}
                                 className="max-w-md"
                             />
 

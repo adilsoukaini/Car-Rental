@@ -1,6 +1,7 @@
 import PublicLayout from '@/Layouts/PublicLayout';
 import { LayoutSlot } from '@/layoutComponentRegistry';
 import { Vehicle } from '@/types';
+import { useTranslation } from '@/hooks/useTranslation';
 import { Head, Link } from '@inertiajs/react';
 import {
     Calendar,
@@ -28,36 +29,40 @@ import {
  * The booking card is visual only: both fields and the CTA are links to the
  * real fleet page, so the homepage reads like a real booking experience
  * without inventing a form that submits nowhere.
+ *
+ * Hero/value-prop/CTA copy is admin-editable via the Filament "Homepage
+ * Content" page (the `homepageContent` prop). Admin-provided content renders
+ * verbatim; only the hardcoded fallbacks are translated via useTranslation.
  */
 const features = [
     {
         icon: Hand,
-        title: 'Réservation facile',
+        title: 'Easy booking',
         description:
-            'En quelques clics, choisissez votre véhicule et validez votre réservation sans tracas.',
+            'Pick your vehicle and confirm your reservation in just a few clicks, hassle-free.',
     },
     {
         icon: Lock,
-        title: 'Paiement sécurisé',
-        description: 'Des transactions protégées et transparentes, sans frais cachés.',
+        title: 'Secure payment',
+        description: 'Protected, transparent transactions with no hidden fees.',
     },
     {
         icon: FileText,
-        title: 'Contrat digital',
-        description: 'Fini la paperasse. Signez votre contrat directement sur votre smartphone.',
+        title: 'Digital contract',
+        description: 'No more paperwork. Sign your contract right from your smartphone.',
     },
     {
         icon: Car,
-        title: 'Véhicules récents',
-        description: 'Une flotte constamment renouvelée pour votre confort et votre sécurité.',
+        title: 'Recent vehicles',
+        description: 'A constantly renewed fleet for your comfort and safety.',
     },
 ] as const;
 
 const stats = [
-    { icon: Star, value: '+5000', label: 'Clients satisfaits' },
-    { icon: Car, value: '+100', label: 'Véhicules disponibles' },
-    { icon: Headphones, value: '24/7', label: 'Assistance' },
-    { icon: Shield, value: 'Meilleurs prix', label: 'Garantie' },
+    { icon: Star, value: '+5000', label: 'Satisfied customers' },
+    { icon: Car, value: '+100', label: 'Vehicles available' },
+    { icon: Headphones, value: '24/7', label: 'Support' },
+    { icon: Shield, value: 'Best prices', label: 'Guarantee' },
 ] as const;
 
 interface HomepageContentProps {
@@ -84,23 +89,24 @@ export default function Home({
     featuredVehicles: Vehicle[];
     homepageContent?: HomepageContentProps;
 }) {
-    const heroTitle = homepageContent?.hero_title ?? "L'excellence de la location de voitures.";
+    const { t } = useTranslation();
+    const heroTitle = homepageContent?.hero_title ?? t('Excellence in car rental.');
     const heroSubtitle =
         homepageContent?.hero_subtitle ??
-        'Découvrez une flotte premium pour des voyages sans compromis. Réservation rapide, véhicules impeccables, service irréprochable.';
-    const heroCtaText = homepageContent?.hero_cta_text ?? 'Trouver un véhicule';
+        t('Discover a premium fleet for uncompromising travel. Fast booking, immaculate vehicles, impeccable service.');
+    const heroCtaText = homepageContent?.hero_cta_text ?? t('Find a vehicle');
     const heroCtaLink = homepageContent?.hero_cta_link || route('vehicles.index');
-    const featuresTitle = homepageContent?.features_title ?? 'Pourquoi choisir Project Atlas ?';
+    const featuresTitle = homepageContent?.features_title ?? t('Why choose Project Atlas?');
     const featuresSubtitle =
         homepageContent?.features_subtitle ??
-        'Nous redéfinissons la location de voitures avec des processus simplifiés et une flotte soigneusement entretenue.';
-    const ctaBandTitle = homepageContent?.cta_band_title ?? "Prêt pour l'aventure ?";
+        t("We're redefining car rental with streamlined processes and a carefully maintained fleet.");
+    const ctaBandTitle = homepageContent?.cta_band_title ?? t('Ready for adventure?');
     const ctaBandSubtitle =
-        homepageContent?.cta_band_subtitle ?? 'Réservez dès maintenant et profitez du Maroc en toute liberté.';
+        homepageContent?.cta_band_subtitle ?? t('Book now and enjoy Morocco with total freedom.');
 
     return (
         <PublicLayout>
-            <Head title="Accueil" />
+            <Head title={t('Home')} />
 
             {/* Hero — full-width navy band with a split text/visual layout; the
                 booking card below straddles its bottom edge. */}
@@ -109,7 +115,7 @@ export default function Home({
                     <div className="grid items-center gap-12 lg:grid-cols-2">
                         <div className="max-w-3xl">
                             <span className="mb-4 inline-block rounded-pill bg-onPrimary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-onPrimary">
-                                NOUVEAU STANDARD
+                                {t('NEW STANDARD')}
                             </span>
                             <h1 className="font-display text-4xl font-bold leading-tight text-onPrimary sm:text-5xl lg:text-6xl">
                                 {heroTitle}
@@ -137,7 +143,7 @@ export default function Home({
                             className="flex select-none cursor-text items-center gap-3 rounded-interactive border border-border bg-background px-4 py-3 transition-colors hover:border-primary"
                         >
                             <MapPin className="h-5 w-5 shrink-0 text-primary" />
-                            <span className="text-sm font-medium text-text">Lieu de prise en charge</span>
+                            <span className="text-sm font-medium text-text">{t('Pickup location')}</span>
                         </Link>
 
                         <Link
@@ -145,7 +151,7 @@ export default function Home({
                             className="flex select-none cursor-text items-center gap-3 rounded-interactive border border-border bg-background px-4 py-3 transition-colors hover:border-primary"
                         >
                             <Calendar className="h-5 w-5 shrink-0 text-primary" />
-                            <span className="text-sm font-medium text-text">Date de prise en charge</span>
+                            <span className="text-sm font-medium text-text">{t('Pickup date')}</span>
                         </Link>
 
                         <Link
@@ -178,10 +184,10 @@ export default function Home({
                                     <Icon className="h-7 w-7" />
                                 </div>
                                 <h3 className="mt-4 font-display text-xl font-semibold text-text">
-                                    {title}
+                                    {t(title)}
                                 </h3>
                                 <p className="mt-2 text-sm leading-relaxed text-textMuted">
-                                    {description}
+                                    {t(description)}
                                 </p>
                             </div>
                         ))}
@@ -195,22 +201,22 @@ export default function Home({
                     <div className="mb-10 flex items-end justify-between gap-4">
                         <div>
                             <h2 className="font-display text-3xl font-bold text-text">
-                                Notre sélection de véhicules
+                                {t('Our selection of vehicles')}
                             </h2>
                             <p className="mt-2 text-textMuted">
-                                Des modèles adaptés à chaque besoin de mobilité.
+                                {t('Models suited to every mobility need.')}
                             </p>
                         </div>
                         <Link
                             href={route('vehicles.index')}
                             className="whitespace-nowrap text-sm font-semibold text-primary hover:underline"
                         >
-                            Voir tout le catalogue &rarr;
+                            {t('View full catalog')} &rarr;
                         </Link>
                     </div>
 
                     {featuredVehicles.length === 0 ? (
-                        <p className="text-textMuted">Aucun véhicule disponible pour le moment.</p>
+                        <p className="text-textMuted">{t('No vehicles available right now')}</p>
                     ) : (
                         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                             {featuredVehicles.slice(0, 4).map((vehicle) => (
@@ -235,13 +241,13 @@ export default function Home({
                             href={route('vehicles.index')}
                             className="rounded-interactive border border-onPrimary/30 px-6 py-3 font-semibold text-onPrimary transition-colors hover:bg-onPrimary/10"
                         >
-                            Découvrir nos véhicules
+                            {t('Discover our vehicles')}
                         </Link>
                         <Link
                             href={route('vehicles.index')}
                             className="rounded-interactive bg-secondary px-6 py-3 font-semibold text-onSecondary transition-opacity hover:opacity-90"
                         >
-                            Réserver maintenant
+                            {t('Book now')}
                         </Link>
                     </div>
                 </div>
@@ -255,9 +261,9 @@ export default function Home({
                             <div key={label} className="flex flex-col items-center text-center">
                                 <Icon className="h-8 w-8 text-primary" />
                                 <span className="mt-3 font-display text-4xl font-bold text-text">
-                                    {value}
+                                    {t(value)}
                                 </span>
-                                <span className="mt-1 text-sm font-medium text-textMuted">{label}</span>
+                                <span className="mt-1 text-sm font-medium text-textMuted">{t(label)}</span>
                             </div>
                         ))}
                     </div>

@@ -1,4 +1,5 @@
 import { AvailableFilter, AvailableSort } from '@/types/filters';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface FilterBarProps {
     filters: AvailableFilter[];
@@ -35,6 +36,7 @@ export default function FilterBar({
     onClear,
     className = '',
 }: FilterBarProps) {
+    const { t } = useTranslation();
     const inputClass =
         'rounded-interactive border border-border bg-surface px-3 py-2 text-text focus:border-focusRing focus:outline-none focus:ring-focusRing';
 
@@ -68,7 +70,7 @@ export default function FilterBar({
                                 onChange={(e) => onFilterChange(filter.id, e.target.value)}
                                 className={inputClass}
                             >
-                                <option value="">All</option>
+                                <option value="">{t('All')}</option>
                                 {filter.options?.map((option) => (
                                     <option key={String(option.value)} value={String(option.value)}>
                                         {option.label}
@@ -111,7 +113,7 @@ export default function FilterBar({
                                 <input
                                     type="number"
                                     aria-label={`${filter.label} minimum`}
-                                    placeholder="Min"
+                                    placeholder={t('Min')}
                                     min={filter.min}
                                     max={filter.max}
                                     value={isArray ? (raw[0] ?? '') : ''}
@@ -127,7 +129,7 @@ export default function FilterBar({
                                 <input
                                     type="number"
                                     aria-label={`${filter.label} maximum`}
-                                    placeholder="Max"
+                                    placeholder={t('Max')}
                                     min={filter.min}
                                     max={filter.max}
                                     value={isArray ? (raw[1] ?? '') : ''}
@@ -150,7 +152,7 @@ export default function FilterBar({
                     htmlFor="filter-sort"
                     className="text-xs font-semibold text-textMuted"
                 >
-                    Sort by
+                    {t('Sort by')}
                 </label>
                 <select
                     id="filter-sort"
@@ -158,7 +160,7 @@ export default function FilterBar({
                     onChange={(e) => onSortChange(e.target.value)}
                     className={inputClass}
                 >
-                    <option value="">Default</option>
+                    <option value="">{t('Default')}</option>
                     {sorts.map((sort) => (
                         <option key={sort.id} value={sort.id}>
                             {sort.label}
@@ -173,7 +175,7 @@ export default function FilterBar({
                     onClick={onClear}
                     className="rounded-interactive border border-border bg-surface px-3 py-2 text-sm font-medium text-textMuted transition-colors hover:bg-background hover:text-text"
                 >
-                    Clear all
+                    {t('Clear all')}
                 </button>
             )}
         </div>
