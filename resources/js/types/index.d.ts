@@ -38,6 +38,9 @@ export interface Vehicle {
     location: Location | null;
     /** Batch-loaded via vehicle.listQuery's EagerLoadPrimaryImagePipe — never null-checked per-card (rule 8: one query for the whole page). */
     primary_image?: VehicleImage | null;
+    /** Optional spec fields — only present once a vehicle actually carries them. The detail page's specs grid hides a cell when the value is unavailable. */
+    air_conditioning?: boolean | null;
+    door_count?: number | null;
 }
 
 export interface VehicleImage {
@@ -45,6 +48,13 @@ export interface VehicleImage {
     url: string;
     alt_text: string | null;
     is_primary: boolean;
+}
+
+/** A single entry in the vehicle gallery, as resolved by the vehicle.gallery pipe (GetVehicleGalleryPipe). */
+export interface VehicleGalleryImage {
+    url: string;
+    altText: string | null;
+    isPrimary: boolean;
 }
 
 export interface PaginationLink {

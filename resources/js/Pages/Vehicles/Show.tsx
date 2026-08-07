@@ -1,11 +1,12 @@
 import PublicLayout from '@/Layouts/PublicLayout';
 import { SlotOutlet } from '@/pluginComponentRegistry';
-import { Vehicle } from '@/types';
+import { Vehicle, VehicleGalleryImage } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import Breadcrumbs from '@/Components/Breadcrumbs';
 import EmptyState from '@/Components/EmptyState';
 import Text from '@/Components/Text';
-import { Car } from 'lucide-react';
+import VehiclePlaceholderIcon from '@/Components/VehiclePlaceholderIcon';
+import { Car, Check, Cog, DoorOpen, Gauge, Star, Users, Wind } from 'lucide-react';
 import { FormEventHandler, useState } from 'react';
 
 interface SlotEntry {
@@ -13,12 +14,49 @@ interface SlotEntry {
     props: Record<string, unknown>;
 }
 
-export default function Show({ vehicle, detailWidgets }: { vehicle: Vehicle | null; detailWidgets: SlotEntry[] }) {
+/**
+ * Presentational labels for the specs grid + pills. The raw stored values are
+ * lowercase English enum-ish strings; these map the common ones to the French
+ * display language the Stitch design uses, with a capitalize fallback for any
+ * value not in the map.
+ */
+const CATEGORY_LABELS: Record<string, string> = { suv: 'SUV' };
+const TRANSMISSION_LABELS: Record<string, string> = {
+    automatic: 'Automatique',
+    manual: 'Manuelle',
+};
+const FUEL_LABELS: Record<string, string> = {
+    petrol: 'Essence',
+    diesel: 'Diesel',
+    electric: 'Électrique',
+    hybrid: 'Hybride',
+};
+
+const INCLUDED_FEATURES = [
+    'Assurance tous risques',
+    'Kilométrage illimité',
+    'Assistance 24/7',
+    'Annulation gratuite (jusqu’à 48h)',
+];
+
+const formatLabel = (value: string): string =>
+    value.charAt(0).toUpperCase() + value.slice(1);
+
+export default function Show({
+    vehicle,
+    galleryImages = [],
+    detailWidgets,
+}: {
+    vehicle: Vehicle | null;
+    galleryImages: VehicleGalleryImage[];
+    detailWidgets: SlotEntry[];
+}) {
     const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
     const dayAfter = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
 
     const [pickupAt, setPickupAt] = useState(tomorrow);
     const [returnAt, setReturnAt] = useState(dayAfter);
+    const [activeImage, setActiveImage] = useState(0);
 
     if (!vehicle) {
         return (
@@ -58,78 +96,219 @@ export default function Show({ vehicle, detailWidgets }: { vehicle: Vehicle | nu
         });
     };
 
+    // daily_rate arrives as "550.00" — trim the trailing zeros for display
+    // ("550 DH / jour"), matching the Stitch reference.
+    const price = String(Number(vehicle.daily_rate));
+
+    // Clamp the active index to the actual gallery size (defensive, since
+    // activeImage is state) and expose the current image for the hero.
+    const safeActive = Math.min(activeImage, Math.max(galleryImages.length - 1, 0));
+    const currentImage = galleryImages.length > 0 ? galleryImages[safeActive] : null;
+
+    const specs = [
+        { icon: Users, label: `${vehicle.seat_count} sièges`, available: vehicle.seat_count != null },
+        {
+            icon: Cog,
+            label: vehicle.transmission_type
+                ? TRANSMISSION_LABELS[vehicle.transmission_type] ?? formatLabel(vehicle.transmission_type)
+                : '',
+            available: Boolean(vehicle.transmission_type),
+        },
+        {
+            icon: Wind,
+            label: 'Climatisation',
+            available: vehicle.air_conditioning === true,
+        },
+        {
+            icon: DoorOpen,
+            label: vehicle.door_count != null ? `${vehicle.door_count} portes` : '',
+            available: vehicle.door_count != null,
+        },
+        {
+            icon: Gauge,
+            label: vehicle.fuel_type
+                ? FUEL_LABELS[vehicle.fuel_type] ?? formatLabel(vehicle.fuel_type)
+                : '',
+            available: Boolean(vehicle.fuel_type),
+        },
+    ].filter((spec) => spec.available && spec.label !== '');
+
     return (
         <PublicLayout>
             <Head title={`${vehicle.make} ${vehicle.model}`} />
 
-            <div className="mx-auto max-w-lg p-8">
-            <Breadcrumbs
-                items={[
-                    { label: 'Our Fleet', href: route('vehicles.index') },
-                    { label: `${vehicle.make} ${vehicle.model}` },
-                ]}
-                className="mb-4"
-            />
+            <div className="mx-auto max-w-7xl p-8">
+                <Breadcrumbs
+                    items={[
+                        { label: 'Our Fleet', href: route('vehicles.index') },
+                        { label: `${vehicle.make} ${vehicle.model}` },
+                    ]}
+                    className="mb-4"
+                />
 
-            <Link href={route('vehicles.index')} className="mb-6 inline-block text-sm text-primary">
-                &larr; Back to fleet
-            </Link>
+                <Link href={route('vehicles.index')} className="mb-6 inline-block text-sm text-primary">
+                    &larr; Back to fleet
+                </Link>
 
-            <div className="rounded-container border border-border bg-surface p-8 shadow-resting">
-                <Text variant="h1" className="mb-2">
-                    {vehicle.make} {vehicle.model} ({vehicle.year})
-                </Text>
+                <div className="grid gap-8 lg:grid-cols-[1.15fr_1fr]">
+                    {/* Left column: gallery + included + booking form */}
+                    <div className="space-y-6">
+                        <div className="rounded-container border border-border bg-surface p-4 shadow-resting">
+                            <div className="overflow-hidden rounded-container bg-background">
+                                {currentImage ? (
+                                    <img
+                                        src={currentImage.url}
+                                        alt={currentImage.altText ?? `${vehicle.make} ${vehicle.model}`}
+                                        className="aspect-video w-full object-cover"
+                                    />
+                                ) : (
+                                    <div className="flex aspect-video w-full items-center justify-center">
+                                        <VehiclePlaceholderIcon />
+                                    </div>
+                                )}
+                            </div>
 
-                <p className="mb-4 text-sm text-textMuted">
-                    {vehicle.category} · {vehicle.seat_count} seats · {vehicle.transmission_type} ·{' '}
-                    {vehicle.fuel_type}
-                </p>
+                            {galleryImages.length > 1 && (
+                                <div className="mt-3 flex items-center justify-center gap-2">
+                                    {galleryImages.map((image, index) => (
+                                        <button
+                                            key={index}
+                                            type="button"
+                                            aria-label={`Voir l'image ${index + 1}`}
+                                            onClick={() => setActiveImage(index)}
+                                            className={`h-2 w-2 rounded-pill transition-colors ${
+                                                index === activeImage ? 'bg-primary' : 'bg-border'
+                                            }`}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
 
-                {vehicle.location && (
-                    <p className="mb-4 text-sm text-textMuted">
-                        Available at {vehicle.location.name}, {vehicle.location.city}
-                    </p>
-                )}
+                        <div className="rounded-container border border-border bg-surface p-6 shadow-resting">
+                            <Text variant="h3">Inclus dans le prix</Text>
+                            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                {INCLUDED_FEATURES.map((feature) => (
+                                    <div key={feature} className="flex items-center gap-3">
+                                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-success/10 text-success">
+                                            <Check className="h-4 w-4" strokeWidth={2.5} />
+                                        </span>
+                                        <span className="text-sm text-text">{feature}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
 
-                <Text variant="mono-price" className="mb-6">
-                    {vehicle.daily_rate} MAD / day
-                </Text>
+                        <div className="rounded-container border border-border bg-surface p-6 shadow-resting">
+                            <Text variant="h3">Réserver</Text>
+                            <form onSubmit={submit} className="mt-4 space-y-4">
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <label className="mb-1 block text-sm text-textMuted">Pickup date</label>
+                                        <input
+                                            type="datetime-local"
+                                            value={pickupAt}
+                                            onChange={(e) => setPickupAt(e.target.value)}
+                                            className="w-full rounded-interactive border border-border bg-background px-3 py-2 text-text focus:border-focusRing focus:outline-none"
+                                            required
+                                        />
+                                    </div>
 
-                <form onSubmit={submit} className="space-y-4">
-                    <div>
-                        <label className="mb-1 block text-sm text-textMuted">Pickup</label>
-                        <input
-                            type="datetime-local"
-                            value={pickupAt}
-                            onChange={(e) => setPickupAt(e.target.value)}
-                            className="w-full rounded-interactive border border-border bg-surface px-3 py-2 text-text focus:border-focusRing focus:outline-none"
-                            required
-                        />
+                                    <div>
+                                        <label className="mb-1 block text-sm text-textMuted">Return date</label>
+                                        <input
+                                            type="datetime-local"
+                                            value={returnAt}
+                                            onChange={(e) => setReturnAt(e.target.value)}
+                                            className="w-full rounded-interactive border border-border bg-background px-3 py-2 text-text focus:border-focusRing focus:outline-none"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    className="w-full rounded-interactive bg-primary px-4 py-3 font-body font-semibold text-onPrimary shadow-resting hover:bg-primaryHover"
+                                >
+                                    Continuer la réservation
+                                </button>
+                            </form>
+                        </div>
                     </div>
 
-                    <div>
-                        <label className="mb-1 block text-sm text-textMuted">Return</label>
-                        <input
-                            type="datetime-local"
-                            value={returnAt}
-                            onChange={(e) => setReturnAt(e.target.value)}
-                            className="w-full rounded-interactive border border-border bg-surface px-3 py-2 text-text focus:border-focusRing focus:outline-none"
-                            required
-                        />
+                    {/* Right column: heading/tags/rating + specs + booking card */}
+                    <div className="space-y-6">
+                        <div>
+                            <Text variant="h1" className="mb-3">
+                                {vehicle.make} {vehicle.model} ({vehicle.year})
+                            </Text>
+
+                            <div className="flex flex-wrap gap-2">
+                                <span className="rounded-pill border border-border bg-background px-2 py-1 text-xs text-textMuted">
+                                    {CATEGORY_LABELS[vehicle.category] ?? formatLabel(vehicle.category)}
+                                </span>
+                                <span className="rounded-pill border border-border bg-background px-2 py-1 text-xs text-textMuted">
+                                    {vehicle.transmission_type
+                                        ? TRANSMISSION_LABELS[vehicle.transmission_type] ?? formatLabel(vehicle.transmission_type)
+                                        : '—'}
+                                </span>
+                                <span className="rounded-pill border border-border bg-background px-2 py-1 text-xs text-textMuted">
+                                    {vehicle.fuel_type
+                                        ? FUEL_LABELS[vehicle.fuel_type] ?? formatLabel(vehicle.fuel_type)
+                                        : '—'}
+                                </span>
+                            </div>
+
+                            <p className="mt-3 flex items-center gap-1.5 text-sm text-textMuted">
+                                <Star className="h-4 w-4 fill-secondary text-secondary" aria-hidden="true" />
+                                <span className="font-semibold text-text">4.8</span>
+                                <span>(124 avis)</span>
+                            </p>
+                        </div>
+
+                        <div className="rounded-container border border-border bg-surface p-6 shadow-resting">
+                            <div className="grid grid-cols-2 gap-6">
+                                {specs.map((spec) => {
+                                    const Icon = spec.icon;
+
+                                    return (
+                                        <div
+                                            key={spec.label}
+                                            className="flex flex-col items-center gap-2 text-center"
+                                        >
+                                            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-background text-textMuted">
+                                                <Icon className="h-5 w-5" />
+                                            </span>
+                                            <span className="text-sm text-text">{spec.label}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <div className="rounded-container border border-border bg-surface p-6 shadow-raised">
+                            <p className="font-mono text-3xl font-bold text-text">
+                                {price} <span className="text-base font-semibold text-textMuted">DH / jour</span>
+                            </p>
+
+                            <Link
+                                href={route('bookings.checkout', vehicle.id)}
+                                data={{ pickup_at: pickupAt, return_at: returnAt }}
+                                className="mt-4 block w-full rounded-interactive bg-primary px-4 py-3 text-center font-body font-semibold text-onPrimary shadow-resting transition hover:bg-primaryHover"
+                            >
+                                Continuer la réservation
+                            </Link>
+
+                            <p className="mt-2 text-center text-xs text-textMuted">
+                                Aucun paiement requis maintenant
+                            </p>
+                        </div>
                     </div>
+                </div>
 
-                    <button
-                        type="submit"
-                        className="w-full rounded-interactive bg-primary px-4 py-2 font-body text-onPrimary shadow-resting hover:bg-primaryHover"
-                    >
-                        Book this vehicle
-                    </button>
-                </form>
-            </div>
-
-            <div className="mt-6">
-                <SlotOutlet slot={detailWidgets} />
-            </div>
+                <div className="mt-8">
+                    <SlotOutlet slot={detailWidgets} />
+                </div>
             </div>
         </PublicLayout>
     );

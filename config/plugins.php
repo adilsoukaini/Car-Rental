@@ -6,6 +6,7 @@ use Plugins\DriverVerification\DriverVerificationServiceProvider;
 use Plugins\FleetManagement\FleetManagementServiceProvider;
 use Plugins\PaymentsStripe\StripeServiceProvider;
 use Plugins\Reviews\ReviewsServiceProvider;
+use Plugins\VehicleMedia\VehicleMediaServiceProvider;
 
 return [
     /*
@@ -20,6 +21,7 @@ return [
         'driver-verification' => DriverVerificationServiceProvider::class,
         'reviews' => ReviewsServiceProvider::class,
         'damage-reporting' => DamageReportingServiceProvider::class,
+        'vehicle-media' => VehicleMediaServiceProvider::class,
     ],
 
     /*
