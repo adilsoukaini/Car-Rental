@@ -17,6 +17,7 @@ use Illuminate\Support\Str;
  * @property string $status
  * @property string $booking_number random public booking reference — auto-generated on create, never user-supplied (mass-assignment guarded)
  * @property Carbon|null $hold_expires_at
+ * @property array<string, mixed>|null $metadata
  * @property-read User|null $user null for a guest booking — see guest_name/guest_email/guest_phone
  */
 #[Fillable([
