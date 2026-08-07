@@ -2036,3 +2036,69 @@ are typed once in a place both `fleet-management`'s host page and the
 plugin-owned variant components can import, without either importing the other
 (Hard Rule 2 — the shared type is the boundary, same shape as core-owned DTOs
 for cross-plugin data).
+
+## Production Readiness Phase — security, CI/CD, accessibility, Meilisearch (verified 2026-08-08)
+
+### Security hardening
+
+**SecurityHeaders middleware** (`app/Http/Middleware/SecurityHeaders.php`):
+`X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection`,
+`Referrer-Policy`, `Permissions-Policy`, with HSTS in production only.
+
+**Rate limiting** on all public POST endpoints:
+- `POST /vehicles/{id}/book` → `throttle:10,1` (prevents hold-flood DoS)
+- `POST /vehicles/{id}/reviews` → `throttle:20,1`
+- `POST /account/driver-verification` → `throttle:20,1`
+- `POST /bookings/track` → `throttle:20,1`
+- `POST /login` → 5-attempt lockout (Breeze default)
+
+**CSRF hardening**: `GET /bookings/{id}/confirm` changed to POST. A
+non-mutating GET interstitial handles the Stripe 3DS redirect-back case.
+
+### Meilisearch search
+
+Meilisearch v1.10 runs in Docker on `:7700` with `MEILI_MASTER_KEY`.
+`SCOUT_DRIVER=meilisearch`, `meilisearch/meilisearch-php` installed. The
+`Vehicle` model uses `Laravel\Scout\Searchable` — `toSearchableArray()`
+returns `id, make, model, category, year`. The `SearchController::suggestions()`
+endpoint queries Meilisearch with `->where('status', 'available')` (requires
+`status` to be filterable when switching from database driver). A full
+migration guide from `database` to `meilisearch` driver is in
+`docs/17-SEARCH-SUGGESTIONS.md`.
+
+### CI/CD (GitHub Actions)
+
+`.github/workflows/test.yml`: PHP 8.4 + Postgres 16 + Node 20. Steps:
+composer install, npm ci, npm build, Pint, Larastan, TSC strict, php artisan
+test. Triggers on push to `master`/`main`/`feat/*` and PRs to `master`/`main`.
+
+### Production infrastructure
+
+**Docker Compose** (`docker-compose.yml`): app (PHP 8.4), postgres:16, redis:7,
+meilisearch:v1.10 — one-command dev setup with `docker compose up`.
+
+**Error pages**: Inertia-rendered 404 (`Errors/NotFound.tsx`) and 500
+(`Errors/ServerError.tsx`), wired in `bootstrap/app.php` via
+`$exceptions->respond()`. PublicLayout is auth-safe (destructures `auth` with
+default) for unmatched-route 404s where `HandleInertiaRequests` never runs.
+
+**SEO**: OG meta tags + Twitter card in `app.blade.php`, per-page override via
+`seo` Inertia prop. Vehicle detail page sets dynamic og:title.
+
+**Sitemap**: `GET /sitemap.xml` returns homepage + fleet + all available vehicles.
+
+**Cookie consent**: `CookieBanner.tsx` — fixed-bottom, localStorage persistence,
+FR/EN translations.
+
+**Image optimization**: `docs/18-IMAGE-OPTIMIZATION.md` documents the strategy
+(upload-time responsive sizes + WebP via intervention/image, delivery via
+`<picture>` + srcset, CDN caching). Gallery images use `loading="lazy"`.
+
+### Accessibility (WCAG 2.1)
+
+- Skip-to-content link in PublicLayout + CheckoutLayout
+- Color contrast: warning `#B45309` (4.78:1), success `#15803D` (4.77:1)
+- Visible focus indicators on all interactive elements (`focus:ring-focusRing`)
+- ARIA: `aria-required`, `aria-describedby`, `aria-invalid`, `aria-label`
+- Proper heading hierarchy (h1→h2→h3), configurable `headingLevel` on cards
+- Alt text on vehicle images, `aria-hidden` on decorative icons
