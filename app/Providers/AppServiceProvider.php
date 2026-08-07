@@ -62,6 +62,34 @@ class AppServiceProvider extends ServiceProvider
         LayoutVariantRegistry::register('fleetLayout', 'default', 'Inline Search', 'fleet-layout-default', 'fleet-management');
         LayoutVariantRegistry::register('fleetLayout', 'sidebar', 'Sidebar Search', 'fleet-layout-sidebar', 'fleet-management');
 
+        // reviewDisplay layout variants — how reviews render on the vehicle
+        // detail page (resources/js/Pages/Vehicles/Show.tsx). Previously
+        // reviews rendered via a single SlotRegistry entry
+        // (vehicle.detailWidgets -> Widgets/VehicleReviews); the display is
+        // now a LayoutVariant so an admin can switch between a full card list
+        // (default) and a compact inline list. Registered in core (not the
+        // reviews plugin) because the components are core-owned
+        // (resources/js/Widgets/) — the same precedent as vehicleCard /
+        // fleetLayout above. The 'reviews' plugin slug is metadata for the
+        // admin picker, not a class reference (Hard Rule 1 safe). Matches the
+        // component names in resources/js/layoutComponentRegistry.tsx.
+        LayoutVariantRegistry::register('reviewDisplay', 'card-list', 'Card List', 'Widgets/VehicleReviewsCardList', 'reviews');
+        LayoutVariantRegistry::register('reviewDisplay', 'compact', 'Compact', 'Widgets/VehicleReviewsCompact', 'reviews');
+
+        // checkoutStyle page-layout variants — how the booking checkout page
+        // (resources/js/Pages/Bookings/Checkout.tsx) arranges the form and
+        // the price summary. 'sidebar-flow' is the existing 2-column design
+        // (form left, sticky summary right, default); 'vertical-stack' is a
+        // single centered column with the summary card stacked below the
+        // form. Like fleetLayout these aren't mapped to separate React
+        // components in layoutComponentRegistry.tsx (no LayoutSlot is used
+        // for the page itself): Checkout.tsx reads the active component name
+        // directly from the shared activeLayoutVariants prop and switches
+        // its render. The componentName strings are the exact keys that page
+        // checks.
+        LayoutVariantRegistry::register('checkoutStyle', 'sidebar-flow', 'Sidebar Flow', 'checkout-sidebar', 'booking-engine');
+        LayoutVariantRegistry::register('checkoutStyle', 'vertical-stack', 'Vertical Stack', 'checkout-vertical', 'booking-engine');
+
         // Plugins may call ThemeSchemaRegistry::registerField() from their own
         // boot() to add their own token fields — matches the Semantic interface
         // in resources/theme/semantic.ts. Keyed by dot-path, not appended to a

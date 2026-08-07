@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Plugins\FleetManagement\Http\Controllers;
 
 use App\Core\Support\FilterRegistry;
-use App\Core\Support\SlotRegistry;
 use App\Http\Controllers\Controller;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
@@ -33,10 +32,12 @@ class VehicleController extends Controller
     }
 
     /**
-     * `detailWidgets` is the first Slot registered into a PLUGIN-owned page
-     * (this one) rather than a core page — fleet-management never
-     * references the reviews plugin directly; it only knows the named
-     * slot exists, exactly like core's `account.dashboardWidgets`.
+     * `reviewsData` is resolved via the `vehicle.reviews` filter (registered
+     * by the reviews plugin) and shared as a direct page prop — the vehicle
+     * detail page renders it through the `reviewDisplay` layout variant
+     * (LayoutVariantRegistry), which swaps between the card-list and compact
+     * review components. fleet-management never references the reviews
+     * plugin directly; it only knows the named filter exists.
      */
     public function show(Vehicle $vehicle): Response
     {
@@ -63,10 +64,7 @@ class VehicleController extends Controller
         return Inertia::render('Vehicles/Show', [
             'vehicle' => $vehicle,
             'galleryImages' => $galleryImages,
-            'detailWidgets' => SlotRegistry::render('vehicle.detailWidgets', [
-                'vehicleId' => $vehicle->id,
-                'reviewsData' => $reviewsData,
-            ]),
+            'reviewsData' => $reviewsData,
         ]);
     }
 }

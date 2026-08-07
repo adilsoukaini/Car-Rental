@@ -461,13 +461,21 @@ adaptations, not verbatim copies:
    lifecycle phase) — explicit test coverage proves the boundary (a
    `confirmed`/`checked_out` booking does NOT verify; only `returned`
    does).
-2. **No `LayoutVariantRegistry`/`LayoutSlot` port.** The source plugin
-   renders 9 different per-client-theme review-display components via
-   that registry — a real need there (6+ real client themes). This
-   project has one real client theme; building that whole mechanism now
-   would serve a hypothetical future need, not a real one (see the
-   corrected "Layout Variant Regions" section above for the full finding).
-   `Widgets/VehicleReviews.tsx` is a single tokenized component instead.
+2. **The review display WAS later ported to `LayoutVariantRegistry` — but
+   for admin layout choice, not per-client-theme.** The source plugin
+   renders 9 different per-client-theme review-display components via that
+   registry — a real need there (6+ real client themes). This project
+   deliberately did NOT port that at first (one real client theme; building
+   a per-client-theme mechanism would serve a hypothetical need — see the
+   corrected "Layout Variant Regions" section above for the full finding),
+   so `Widgets/VehicleReviews.tsx` was a single tokenized component. That
+   changed on 2026-08-07 (layout-variants phase): a second real *display
+   arrangement* for reviews arrived — a compact inline list alongside the
+   full card list — so the reviews region became the `reviewDisplay` layout
+   variant (see the "Layout Variant Regions" section), rendering
+   `Widgets/VehicleReviewsCardList` (default) or
+   `Widgets/VehicleReviewsCompact` via `LayoutSlot name="reviewDisplay"` on
+   `Vehicles/Show.tsx`.
 
 **`App\Models\Review`** is a core model (not plugin-owned), same
 precedent as `DriverVerification` — the `reviews` plugin owns the
@@ -478,13 +486,19 @@ constraint on `(vehicle_id, user_id)` — one review per customer per
 vehicle, not per booking (a customer who rents the same car twice still
 reviews it once).
 
-**`vehicle.detailWidgets`** — the first Slot registered into a
-**plugin-owned** page (`fleet-management`'s `Vehicles/Show.tsx`) rather
-than a core one. `account.dashboardWidgets` (the first real slot overall)
-renders into core's `Profile/Edit.tsx`; this proves the same mechanism
-works when the host page itself belongs to another plugin —
-`fleet-management` never references the reviews plugin by name, only the
-named slot, exactly like core never references it.
+**Review display: `reviewDisplay` layout variant, not a SlotRegistry slot.**
+Reviews were originally rendered through a `vehicle.detailWidgets`
+SlotRegistry entry (`Reviews/VehicleReviews`) — the first slot registered
+into a **plugin-owned** page (`fleet-management`'s `Vehicles/Show.tsx`)
+rather than a core one, proving SlotRegistry works when the host page
+belongs to another plugin. That slot is gone as of 2026-08-07: review
+display moved to the core-owned `reviewDisplay` layout variant
+(`LayoutVariantRegistry`, registered in `AppServiceProvider`), so an admin
+can switch between the card-list and compact components. The reviews
+plugin still owns the review *data* (the `vehicle.reviews` filter), the
+store route, and the Filament resource; `fleet-management`'s
+`VehicleController` shares `reviewsData` as a direct page prop and the
+page renders it via `LayoutSlot name="reviewDisplay"`.
 
 **`App\Core\Events\ReviewSubmitted`** carries the `Review` model, not raw
 ids — a deliberate adaptation from the source project's version (which
@@ -657,7 +671,7 @@ Registered via `App\Core\Support\SlotRegistry::register()`, rendered via the `Sl
 
 **`account.dashboardWidgets`** (added 2026-08-04, booking-history phase) — the first real slot in this project. Registered from `AppServiceProvider::boot()` (core-owned, not plugin-owned — matches the source e-commerce project's own `RecentOrders`/`MyWishlist` widgets being core account features, not plugin extensions). Rendered from `ProfileController::edit()` into `Profile/Edit.tsx`, passed `recentBookings` (the current user's last 5 bookings, batch-loaded with `vehicle`/`pickupLocation`/`returnLocation` in one query per rule 8) as props. Current consumer: `Widgets/BookingHistory` (`resources/js/Widgets/BookingHistory.tsx`), listing recent bookings linking to `bookings.show`.
 
-**`vehicle.detailWidgets`** (added 2026-08-05, reviews phase) — see the "Vehicle Reviews" section above for the full mechanism. The first slot registered into a plugin-owned page rather than a core one.
+**`vehicle.detailWidgets`** (added 2026-08-05, reviews phase; **removed 2026-08-07**, layout-variants phase) — was the first slot registered into a plugin-owned page rather than a core one, but is now gone: review display moved to the `reviewDisplay` layout variant (see the "Layout Variant Regions" section and the "Vehicle Reviews" section above).
 
 **Real bug found and fixed while wiring this up — see CLAUDE.md's booking-history section for full detail.** `SlotRegistry`/`FilterRegistry`'s static state was never cleared between `PluginManager::boot()` calls, silently accumulating duplicate entries across every Application boot in the same PHP process (every PHPUnit test method boots a fresh Application in the same process; a persistent-worker deployment like Octane would hit the identical issue in production). This had been masked by luck for `FilterRegistry` — every `booking.*` pipe so far recomputes from immutable input rather than compounding, so duplicate execution produced the same final number — until `SlotRegistry` (which has no such luck; a widget genuinely renders N times) exposed it via an exact-count test assertion. Fixed by adding `flush()` to both registries, called at the top of `PluginManager::boot()`.
 
@@ -703,13 +717,42 @@ search). `LayoutVariantRegistry`/`LayoutSlot` now exist for real:
   `fleet-layout-sidebar` (sticky search/filter sidebar at `md:w-1/4` beside
   the grid at `md:w-3/4`). Both share the same search/filter/sort state and
   client-side logic — only the arrangement differs.
+- **`reviewDisplay`** (registered in `AppServiceProvider::boot()`, added
+  2026-08-07, layout-variants phase) — how reviews render on the vehicle
+  detail page (`Vehicles/Show.tsx`). Replaces the removed
+  `vehicle.detailWidgets` SlotRegistry entry (see the "Vehicle Reviews"
+  section). Rendered via `LayoutSlot name="reviewDisplay"`, mapped to
+  lazily-imported React components in `layoutComponentRegistry.tsx` like
+  `vehicleCard`. Variants: `card-list` →
+  `Widgets/VehicleReviewsCardList` (full cards: author, rating, title,
+  body — the default), `compact` → `Widgets/VehicleReviewsCompact`
+  (inline stars + one-line body, no author/title). Both share the same
+  "leave a review" form, so switching the variant never drops the ability
+  to post a review. The `reviews` plugin slug is metadata for the admin
+  picker; the components themselves are core-owned.
+- **`checkoutStyle`** (registered in `AppServiceProvider::boot()`, added
+  2026-08-07, layout-variants phase) — the booking checkout *page* layout
+  (`Bookings/Checkout.tsx`). Like `fleetLayout`, these variants are NOT
+  mapped in `layoutComponentRegistry.tsx` and are NOT rendered via
+  `LayoutSlot`: `Checkout.tsx` reads the active component name directly
+  from the shared `activeLayoutVariants` prop and switches its render.
+  The checkout form state (`useForm`), submit handler, availability
+  warning, form content, and price summary card are all extracted into
+  shared pieces (`CheckoutForm.tsx`, `CheckoutSummary.tsx`,
+  `checkoutShared.ts`) used by both arrangements. Variants:
+  `sidebar-flow` → `checkout-sidebar` (the original 2-column design: form
+  left, sticky summary right, fixed mobile bottom bar — the default),
+  `vertical-stack` → `checkout-vertical` (single centered `max-w-2xl`
+  column, summary card stacked below the form, no sticky sidebar and no
+  mobile fixed bar).
 
-The admin switches either region on the Layout Variants page
+The admin switches any region on the Layout Variants page
 (`app/Filament/Pages/LayoutSettingsScaffold.php`), which persists the choice
 in `layout_settings` (`slot_name` → `active_variant_id`). With no DB row
 yet, `LayoutVariantRegistry::activeComponentFor()` falls back to the first
 registered variant — `vertical` for `vehicleCard`, `default` for
-`fleetLayout`.
+`fleetLayout`, `card-list` for `reviewDisplay`, `sidebar-flow` for
+`checkoutStyle`.
 
 ## Analytics Dashboard (added 2026-08-05)
 

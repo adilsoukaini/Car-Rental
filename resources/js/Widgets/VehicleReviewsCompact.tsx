@@ -1,13 +1,7 @@
-import { PageProps, Review } from '@/types';
+import { PageProps } from '@/types';
 import { useForm, usePage } from '@inertiajs/react';
 import { FormEventHandler, useState } from 'react';
-
-interface ReviewsData {
-    vehicleId: number;
-    averageRating: number;
-    reviewCount: number;
-    reviews: Review[];
-}
+import { ReviewsData } from '@/Widgets/VehicleReviewsCardList';
 
 function Stars({ rating }: { rating: number }) {
     return (
@@ -18,7 +12,15 @@ function Stars({ rating }: { rating: number }) {
     );
 }
 
-export default function VehicleReviews({ vehicleId, reviewsData }: { vehicleId: number; reviewsData: ReviewsData }) {
+/**
+ * Compact review display (the `compact` `reviewDisplay` layout variant) —
+ * each review is a single inline row: stars + one-line body. No author
+ * names, no titles, no dates — deliberately minimal. The header (average
+ * rating) and the "leave a review" form are shared with the card-list
+ * variant so switching the variant never drops the ability to post a
+ * review.
+ */
+export default function VehicleReviewsCompact({ vehicleId, reviewsData }: { vehicleId: number; reviewsData: ReviewsData }) {
     const user = usePage<PageProps>().props.auth.user;
     const [submitted, setSubmitted] = useState(false);
 
@@ -58,23 +60,14 @@ export default function VehicleReviews({ vehicleId, reviewsData }: { vehicleId: 
             {reviewsData.reviews.length === 0 ? (
                 <p className="text-sm text-textMuted">No reviews yet.</p>
             ) : (
-                <ul className="mb-6 space-y-4 divide-y divide-border">
+                <ul className="mb-6 space-y-2">
                     {reviewsData.reviews.map((review) => (
-                        <li key={review.id} className="pt-4 first:pt-0">
-                            <div className="mb-1 flex items-center justify-between">
-                                <span className="text-sm font-medium text-text">{review.authorName}</span>
-                                <Stars rating={review.rating} />
-                            </div>
-                            {review.title && <p className="mb-1 text-sm font-medium text-text">{review.title}</p>}
-                            <p className="text-sm text-textMuted">{review.body}</p>
-                            <div className="mt-1 flex items-center gap-2 text-xs text-textMuted">
-                                <span>{review.createdAt}</span>
-                                {review.isVerifiedRental && (
-                                    <span className="rounded-pill bg-primary/10 px-2 py-0.5 text-primary">
-                                        Verified rental
-                                    </span>
-                                )}
-                            </div>
+                        <li
+                            key={review.id}
+                            className="flex items-center gap-2 rounded-interactive bg-background px-3 py-2"
+                        >
+                            <Stars rating={review.rating} />
+                            <span className="truncate text-sm text-text">{review.body}</span>
                         </li>
                     ))}
                 </ul>

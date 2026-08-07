@@ -81,9 +81,11 @@ class VehicleControllerTest extends TestCase
     }
 
     /**
-     * Proves SlotRegistry works for a PLUGIN-owned page, not just core's
-     * account.dashboardWidgets — fleet-management never references the
-     * reviews plugin by name, only the named slot.
+     * Proves the approved review data reaches the vehicle detail page as a
+     * direct `reviewsData` prop — the page renders it through the
+     * core-owned `reviewDisplay` layout variant (which swaps between the
+     * card-list and compact review components). fleet-management never
+     * references the reviews plugin by name; it only knows the named filter.
      */
     public function test_the_vehicle_detail_page_renders_the_reviews_slot_with_real_data(): void
     {
@@ -99,9 +101,8 @@ class VehicleControllerTest extends TestCase
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
             ->component('Vehicles/Show')
-            ->has('detailWidgets', 1)
-            ->where('detailWidgets.0.component', 'Reviews/VehicleReviews')
-            ->where('detailWidgets.0.props.reviewsData.reviewCount', 1)
-            ->where('detailWidgets.0.props.reviewsData.averageRating', 4));
+            ->where('reviewsData.vehicleId', $vehicle->id)
+            ->where('reviewsData.reviewCount', 1)
+            ->where('reviewsData.averageRating', 4));
     }
 }

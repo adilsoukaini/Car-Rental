@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Plugins\Reviews;
 
 use App\Core\Support\FilterRegistry;
-use App\Core\Support\SlotRegistry;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -23,12 +22,13 @@ class ReviewsServiceProvider extends ServiceProvider
 
         FilterRegistry::register('vehicle.reviews', GetVehicleReviewsPipe::class);
 
-        // The first real slot registered into a PLUGIN-owned page rather
-        // than a core one (account.dashboardWidgets, the first real slot
-        // overall, renders into core's Profile/Edit.tsx) — proves
-        // SlotRegistry works for fleet-management's Vehicles/Show.tsx too,
-        // without fleet-management ever referencing this plugin directly.
-        SlotRegistry::register('vehicle.detailWidgets', 'Reviews/VehicleReviews');
+        // Review DISPLAY no longer lives here — it moved from a SlotRegistry
+        // entry (vehicle.detailWidgets -> Widgets/VehicleReviews) to the
+        // core-owned `reviewDisplay` layout variant (LayoutVariantRegistry,
+        // registered in AppServiceProvider), so an admin can switch between
+        // the card-list and compact components. This plugin still owns the
+        // review DATA (the vehicle.reviews filter above), the store route,
+        // and the Filament resource.
 
         $this->registerFilamentResource();
     }

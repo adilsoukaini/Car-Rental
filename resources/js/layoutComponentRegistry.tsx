@@ -12,6 +12,10 @@ import { lazy, Suspense } from 'react';
 const registry: Record<string, React.ComponentType<any>> = {
     'Layout/VehicleCard/Vertical': lazy(() => import('@/Layout/VehicleCard/Vertical')),
     'Layout/VehicleCard/HorizontalSplit': lazy(() => import('@/Layout/VehicleCard/HorizontalSplit')),
+    // reviewDisplay variants — resolve via LayoutSlot name="reviewDisplay"
+    // on the vehicle detail page.
+    'Widgets/VehicleReviewsCardList': lazy(() => import('@/Widgets/VehicleReviewsCardList')),
+    'Widgets/VehicleReviewsCompact': lazy(() => import('@/Widgets/VehicleReviewsCompact')),
 };
 
 /**

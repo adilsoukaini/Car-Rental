@@ -1,5 +1,6 @@
 import PublicLayout from '@/Layouts/PublicLayout';
-import { SlotOutlet } from '@/pluginComponentRegistry';
+import { LayoutSlot } from '@/layoutComponentRegistry';
+import { ReviewsData } from '@/Widgets/VehicleReviewsCardList';
 import { Vehicle, VehicleGalleryImage } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import Breadcrumbs from '@/Components/Breadcrumbs';
@@ -8,11 +9,6 @@ import Text from '@/Components/Text';
 import VehiclePlaceholderIcon from '@/Components/VehiclePlaceholderIcon';
 import { Car, Check, Cog, DoorOpen, Gauge, Star, Users, Wind } from 'lucide-react';
 import { FormEventHandler, useState } from 'react';
-
-interface SlotEntry {
-    component: string;
-    props: Record<string, unknown>;
-}
 
 /**
  * Presentational labels for the specs grid + pills. The raw stored values are
@@ -45,11 +41,11 @@ const formatLabel = (value: string): string =>
 export default function Show({
     vehicle,
     galleryImages = [],
-    detailWidgets,
+    reviewsData,
 }: {
     vehicle: Vehicle | null;
     galleryImages: VehicleGalleryImage[];
-    detailWidgets: SlotEntry[];
+    reviewsData: ReviewsData;
 }) {
     const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
     const dayAfter = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
@@ -306,8 +302,12 @@ export default function Show({
                     </div>
                 </div>
 
+                {/* Reviews render through the reviewDisplay layout variant —
+                    LayoutSlot resolves activeLayoutVariants['reviewDisplay'] to
+                    either the card-list (default) or compact component and
+                    passes the shared reviews data through. */}
                 <div className="mt-8">
-                    <SlotOutlet slot={detailWidgets} />
+                    <LayoutSlot name="reviewDisplay" vehicleId={vehicle.id} reviewsData={reviewsData} />
                 </div>
             </div>
         </PublicLayout>
