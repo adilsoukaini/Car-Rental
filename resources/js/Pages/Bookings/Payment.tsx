@@ -1,4 +1,4 @@
-import PublicLayout from '@/Layouts/PublicLayout';
+import CheckoutLayout from '@/Layouts/CheckoutLayout';
 import { Head, router } from '@inertiajs/react';
 import {
     Elements,
@@ -105,7 +105,7 @@ export default function Payment({
     const [stripePromise] = useState(() => loadStripe(stripePublishableKey));
 
     return (
-        <PublicLayout>
+        <CheckoutLayout>
             <Head title="Complete your payment" />
 
             <div className="mx-auto max-w-lg p-8">
@@ -159,6 +159,6 @@ export default function Payment({
                     <PaymentForm bookingId={bookingId} />
                 </Elements>
             </div>
-        </PublicLayout>
+        </CheckoutLayout>
     );
 }
