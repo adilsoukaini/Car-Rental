@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SearchController;
 use App\Models\HomepageContent;
 use App\Models\Vehicle;
 use Illuminate\Support\Facades\Route;
@@ -43,6 +44,12 @@ Route::get('/theme-test', function () {
         'activeTheme' => config('site.active_theme'),
     ]);
 })->name('theme-test');
+
+// Search autocomplete — rate-limited so the debounced suggestions fetch can't
+// be hammered. Returns a JSON array of at most 5 matching available vehicles.
+Route::get('/search/suggestions', [SearchController::class, 'suggestions'])
+    ->name('search.suggestions')
+    ->middleware('throttle:30,1');
 
 // Public booking lookup — registered before bookings/{booking} so "track" is
 // never captured by the route-model-bound show route.

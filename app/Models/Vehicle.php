@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Laravel\Scout\Searchable;
 
 /**
  * Relations registered dynamically by plugins via resolveRelationUsing():
@@ -26,6 +27,28 @@ class Vehicle extends Model
 {
     /** @use HasFactory<VehicleFactory> */
     use HasFactory;
+    use Searchable;
+
+    /**
+     * The attributes the Scout database driver searches over.
+     *
+     * Scout's database engine performs a case-insensitive ILIKE/LIKE match
+     * against exactly these columns (the keys are the real `vehicles` table
+     * columns). Keep this minimal — a suggestion endpoint wants lightweight
+     * matches on the human-facing identity of the car, not every spec field.
+     *
+     * @return array<string, mixed>
+     */
+    public function toSearchableArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'make' => $this->make,
+            'model' => $this->model,
+            'category' => $this->category,
+            'year' => $this->year,
+        ];
+    }
 
     protected function casts(): array
     {
