@@ -3,11 +3,18 @@
 namespace App\Providers;
 
 use App\Core\Events\BookingConfirmed;
+use App\Core\Filters\VehicleCategoryFilter;
+use App\Core\Filters\VehicleTransmissionFilter;
 use App\Core\Listeners\SendBookingConfirmationEmail;
+use App\Core\Sorts\VehicleNameAscending;
+use App\Core\Sorts\VehiclePriceAscending;
+use App\Core\Sorts\VehiclePriceDescending;
 use App\Core\Support\LayoutVariantRegistry;
 use App\Core\Support\PluginManager;
 use App\Core\Support\SlotRegistry;
 use App\Core\Support\ThemeSchemaRegistry;
+use App\Core\Support\VehicleFilterRegistry;
+use App\Core\Support\VehicleSortRegistry;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
@@ -36,6 +43,20 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(BookingConfirmed::class, SendBookingConfirmationEmail::class);
 
         SlotRegistry::register('account.dashboardWidgets', 'Widgets/BookingHistory');
+
+        // Fleet-listing filters — the registry-based filter/sort layer the
+        // storefront's /vehicles page consumes. Registered in core (not the
+        // fleet-management plugin) because the Vehicle model, the registries,
+        // and the VehicleController's orchestration are all core-owned — a
+        // future plugin adds its own filter by registering a provider from
+        // its own ServiceProvider, never by editing this file.
+        VehicleFilterRegistry::register(new VehicleCategoryFilter);
+        VehicleFilterRegistry::register(new VehicleTransmissionFilter);
+
+        // Fleet-listing sorts — same rationale as the filters above.
+        VehicleSortRegistry::register(new VehiclePriceAscending);
+        VehicleSortRegistry::register(new VehiclePriceDescending);
+        VehicleSortRegistry::register(new VehicleNameAscending);
 
         // vehicleCard layout variants — the storefront's vehicle-card region
         // (rendered via LayoutSlot name="vehicleCard" on the homepage, and

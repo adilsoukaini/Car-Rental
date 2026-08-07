@@ -251,6 +251,36 @@ Registered via `App\Core\Support\FilterRegistry::register()`, run via `FilterReg
 | `vehicle.listQuery` | Fleet listing query — filters/sorts applied to the base query | fleet-management plugin (Phase 4) |
 | `vehicle.reviews` | Approved reviews + average rating for a vehicle's detail page | reviews plugin (`GetVehicleReviewsPipe`, added 2026-08-05) |
 
+### Fleet-listing filter/sort registries (`VehicleFilterRegistry` / `VehicleSortRegistry`, added 2026-08-07)
+
+The storefront `/vehicles` page filters and sorts **server-side** through two
+registries (mirrors of the e-commerce project's `ProductFilterRegistry` /
+`ProductSortRegistry`). They live in core (`app/Core/Support/`), registered in
+`AppServiceProvider::boot()`, and orchestrated by
+`Plugins\FleetManagement\Http\Controllers\VehicleController::index()` —
+filtering is applied as WHERE/ORDER BY clauses *before* pagination, so it
+works across the whole fleet, not just the current page.
+
+- **`VehicleFilterRegistry`** — `VehicleFilterProvider` instances, each
+  declaring `id()` (query-string param name), `label()`, `uiType()`
+  (`select`/`range`/`checkbox`), `options()`, and `apply(Builder, value)`.
+  Currently registered: `category` (`VehicleCategoryFilter`) and `transmission`
+  (`VehicleTransmissionFilter`), both case-insensitive.
+- **`VehicleSortRegistry`** — `VehicleSortOption` instances, each declaring
+  `id()`, `label()`, and `apply(Builder)`. Currently registered: `price_asc`,
+  `price_desc`, `name_asc`.
+
+A future plugin registers a new filter or sort from its own
+`ServiceProvider::boot()` (e.g.
+`VehicleFilterRegistry::register(new SeatCountFilter)`) and it appears in the
+frontend FilterBar **with zero frontend changes** — the page renders controls
+generically from the `availableFilters`/`availableSorts` Inertia props. Both
+registries are static and get `flush()`ed at the top of `PluginManager::boot()`
+(same accumulation guard as `FilterRegistry`/`SlotRegistry`).
+
+The controller keeps free-text `search` (make/model `LOWER` LIKE) separate from
+the registry — it's a text search, not a selectable filter.
+
 ### `booking.availabilityCheck` — result convention
 
 Unlike a normal transform-and-pass filter, this one can **short-circuit**.
