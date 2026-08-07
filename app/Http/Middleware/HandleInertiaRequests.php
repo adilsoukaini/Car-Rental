@@ -5,9 +5,11 @@ namespace App\Http\Middleware;
 use App\Core\Support\LayoutVariantRegistry;
 use App\Core\Support\ThemeManager;
 use App\Models\DriverVerification;
+use App\Models\SiteIdentity;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -78,13 +80,14 @@ class HandleInertiaRequests extends Middleware
                 ? $this->activeLayoutVariants()
                 : [],
             // Site identity — drives the storefront SiteLogo component's
-            // name/logo. siteName falls back to config('app.name'); logoUrl
-            // comes from config/site.php (null when not configured, in which
-            // case SiteLogo renders its default icon mark).
-            'siteIdentity' => [
-                'siteName' => config('app.name', 'Car Rental'),
-                'logoUrl' => config('site.logo_url', null),
-            ],
+            // name/logo. Read from the `site_identity` singleton row
+            // (admin-editable via the Site Identity settings page); falls
+            // back to config when the row is absent or the column is null
+            // (in which case SiteLogo renders its default icon mark).
+            // Guarded on the table existing — same "core middleware must not
+            // hard-crash the entire site over one optional feature" lesson as
+            // driverVerificationStatus above.
+            'siteIdentity' => $this->siteIdentity(),
             // Any flash message set on the session ({ message, type } | null)
             // — consumed by the ToastContainer component in the root layout.
             'flash' => fn () => $request->session()->get('flash'),
@@ -102,6 +105,40 @@ class HandleInertiaRequests extends Middleware
         $latest = $user->driverVerifications()->latest('id')->first();
 
         return $latest instanceof DriverVerification ? $latest->status : 'none';
+    }
+
+    /**
+     * Resolve the admin-editable site identity (name + logo) to share with
+     * every page. Fetches the singleton row once (rule 8 — never one query
+     * per value) and degrades to config fallbacks when the table hasn't been
+     * migrated yet or the row is absent.
+     *
+     * @return array{siteName: string, logoUrl: string|null}
+     */
+    private function siteIdentity(): array
+    {
+        if (! Schema::hasTable('site_identity')) {
+            return [
+                'siteName' => config('app.name', 'Car Rental'),
+                'logoUrl' => config('site.logo_url', null),
+            ];
+        }
+
+        $record = SiteIdentity::first();
+
+        if (! $record instanceof SiteIdentity) {
+            return [
+                'siteName' => config('app.name', 'Car Rental'),
+                'logoUrl' => config('site.logo_url', null),
+            ];
+        }
+
+        return [
+            'siteName' => $record->site_name ?: config('app.name', 'Car Rental'),
+            'logoUrl' => $record->logo_path
+                ? Storage::disk('public')->url($record->logo_path)
+                : config('site.logo_url', null),
+        ];
     }
 
     /**
