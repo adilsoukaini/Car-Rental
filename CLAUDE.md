@@ -43,6 +43,16 @@ it governs how every phase gets built and verified, not just what gets built.
 9. **Availability-overlap logic (booking date ranges) gets explicit test
    coverage before being trusted** — a bug here double-books a real vehicle,
    which is a worse failure than almost any other bug class in this project.
+10. **Never declare work "done" without actual verification.** For backend
+    changes: real HTTP requests (curl or Playwright) with real DB data, exact
+    numbers verified, not assumed. For frontend changes: Playwright screenshots
+    with zero console errors, every page loaded and visually checked. Tests
+    passing is necessary but not sufficient — tests proved the ToastContainer
+    outside the Inertia tree was "fine" (220/220) while the real browser
+    crashed on every page load. The build (`npm run build`) must succeed and
+    the dev server must be serving the rebuilt assets before verification
+    begins. If you haven't loaded the page in a browser after the last change,
+    the task is not done.
 
 ## Folder structure
 
