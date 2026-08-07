@@ -68,7 +68,7 @@ class VehicleController extends Controller
         // Only expose what's registered — the frontend renders every entry
         // generically, so a newly-registered filter/sort appears with zero
         // frontend changes.
-        $availableFilters = collect(VehicleFilterRegistry::all())
+        $availableFilters = collect(VehicleFilterRegistry::enabled())
             ->map(fn ($filter) => [
                 'id' => $filter->id(),
                 'label' => $filter->label(),
@@ -88,7 +88,7 @@ class VehicleController extends Controller
 
         // The currently-active values, so the FilterBar and SearchBox can
         // pre-select/reflect what the URL says.
-        $activeFilters = collect(VehicleFilterRegistry::all())
+        $activeFilters = collect(VehicleFilterRegistry::enabled())
             ->mapWithKeys(fn ($filter) => [$filter->id() => $request->string($filter->id())->toString()])
             ->filter(fn (string $value) => $value !== '')
             ->all();

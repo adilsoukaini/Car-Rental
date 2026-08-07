@@ -151,7 +151,7 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                 </div>
 
                 <div className="flex flex-col justify-end text-sm text-onPrimary/80 md:text-right">
-                    © {new Date().getFullYear()} Car Rental. All rights reserved.
+                    © {new Date().getFullYear()} {props.siteIdentity?.siteName ?? 'Car Rental'}. All rights reserved.
                 </div>
             </footer>
         </div>
