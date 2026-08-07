@@ -7,7 +7,7 @@
 > - ❌ **`SearchController::suggestions()` endpoint** — NOT DONE. There is intentionally **no backend search endpoint at all** — the current `SearchBox` component is frontend-only.
 > - ❌ **`useSearchSuggestions` hook (type-parameterized, debounced)** — NOT DONE.
 > - ⚠️ **`SearchBox` component — PARTIAL.** `resources/js/Components/SearchBox.tsx` exists and is a debounced search input (emits `onSearch(query)` 200ms after typing stops, token-styled), but it has no suggestions dropdown, no `type`/`renderResult` props, and no backend fetch — the parent owns the query. The suggestion mechanism this doc specifies is not built.
-> - ⚠️ **Meilisearch dependency** — NOT DONE in this project. The source doc's `Product::search()` relies on a Meilisearch (or similar full-text) integration this project does not have. The registry contract below is unchanged, but the `vehicles` provider's `search()` implementation would need a real search backend (or an Eloquent `LIKE` fallback) built first.
+> - ⚠️ **Meilisearch dependency** — NOT DONE in this project. The source doc's `Product::search()` relies on a Meilisearch (or similar full-text) integration this project does not have. The registry contract below is unchanged, but the `vehicles` provider's `search()` implementation would need a real search backend (or an Eloquent `LIKE` fallback) built first. **The exact procedure for switching Scout from its current `database` engine to Meilisearch once a server is available is documented in [Section 5](#5-switching-the-search-engine-from-database-to-meilisearch-when-a-server-is-available) — nothing in this doc installs or configures anything; it only records the steps.**
 
 **Goal:** the header search box is the first tenant, not the only one. A future
 dedicated `/search` page, a staff booking-lookup box in the admin area, or a plugin
@@ -189,3 +189,123 @@ dropdown, `type` routing, and backend fetch are the missing pieces.)*
    `?type=doesnotexist&q=...` (should return empty/404, not error); confirm no
    component hardcodes the `/search/suggestions` URL directly — everything goes
    through `SearchBox`/the hook
+
+---
+
+## 5. Switching the search engine from `database` to Meilisearch (when a server is available)
+
+> **Current state (as of 2026-08-07):** Scout runs on its `database` engine
+> (`SCOUT_DRIVER=database` in `.env`); `meilisearch/meilisearch-php` is **not**
+> installed, and no Meilisearch server is running in this environment (checked:
+> no Docker container, no `meilisearch` binary, nothing listening on `:7700`).
+> The steps below are the exact switch procedure to run once a real Meilisearch
+> server exists. **Nothing below has been installed or configured by this
+> document** — it records the procedure so the switch is a checklist, not a
+> re-discovery.
+
+### Why switch
+
+The `database` driver issues a LIKE/ILIKE over the columns in
+`Vehicle::toSearchableArray()` per search — correct and zero-infrastructure, but
+it can't rank results, can't do typo tolerance, and doesn't scale. Meilisearch
+is the ranked, typo-tolerant full-text engine the search-suggestion feature
+should ultimately sit on. The switch is invisible to callers: everything already
+goes through `Vehicle::search()`, and Scout swaps the underlying engine.
+
+### The switch, step by step
+
+1. **Install the PHP client** — the only missing package (`laravel/scout` is
+   already installed, see `composer.json`):
+
+   ```bash
+   composer require meilisearch/meilisearch-php
+   ```
+
+2. **Point Scout at Meilisearch** in `.env`:
+
+   ```bash
+   SCOUT_DRIVER=meilisearch
+   MEILISEARCH_HOST=http://localhost:7700
+   MEILISEARCH_KEY=            # the server's master key, if one is set
+   ```
+
+   `config/scout.php` already ships a `meilisearch` block that reads these exact
+   env vars (`host` defaults to `http://localhost:7700`, `key` to `MEILISEARCH_KEY`)
+   — so no `config/scout.php` edit is *required* to switch engines.
+
+3. **Make `toSearchableArray()` Meilisearch-ready.** The `database` driver only
+   needs the columns it LIKE-matches against; Meilisearch needs the same data
+   **plus every attribute you want to filter or constrain on** exposed as a
+   filterable attribute. Today `Vehicle::toSearchableArray()` returns only
+   `id, make, model, category, year` — `SearchController::suggestions()` also
+   calls `->where('status', 'available')`, which under Meilisearch requires
+   `status` to be present and filterable or the search fails. Add what search
+   actually needs, e.g.:
+
+   ```php
+   public function toSearchableArray(): array
+   {
+       return [
+           'id' => $this->id,
+           'make' => $this->make,
+           'model' => $this->model,
+           'category' => $this->category,
+           'year' => $this->year,
+           'status' => $this->status,
+           'daily_rate' => (float) $this->daily_rate,
+       ];
+   }
+   ```
+
+4. **Configure index settings** (recommended) in `config/scout.php`'s
+   `meilisearch.index-settings`, then apply with `php artisan scout:sync-index-settings`:
+
+   ```php
+   'meilisearch' => [
+       'host' => env('MEILISEARCH_HOST', 'http://localhost:7700'),
+       'key' => env('MEILISEARCH_KEY'),
+       'index-settings' => [
+           'vehicles' => [
+               'searchableAttributes' => ['make', 'model', 'category', 'year'],
+               'filterableAttributes' => ['status', 'category', 'daily_rate'],
+           ],
+       ],
+   ],
+   ```
+
+5. **Re-import existing rows.** The `database` engine reads the table live; a
+   Meilisearch index needs an explicit push (new rows are pushed automatically
+   by the `Searchable` trait's model-event hooks once the engine is live):
+
+   ```bash
+   php artisan scout:flush "App\Models\Vehicle"
+   php artisan scout:import "App\Models\Vehicle"
+   ```
+
+6. **Verify against the real server** (not just "the import said done"):
+
+   ```bash
+   curl -s http://localhost:7700/health
+   # {"status":"available"}
+   curl -s 'http://localhost:7700/indexes/vehicles/documents/search' \
+     -H 'Content-Type: application/json' \
+     -H "Authorization: Bearer $MEILISEARCH_KEY" \
+     -d '{"q":"toyo"}'          # ranked hits for Toyota
+   ```
+
+### What changes (and what doesn't) after the switch
+
+- **`SearchController::suggestions()` keeps working unchanged** — it calls
+  `Vehicle::search($query)->where('status', 'available')->take(5)->get()`, and
+  Scout presents the same builder API over Meilisearch. The `status` filter is
+  the one thing that must be made filterable (steps 3–4) or it stops working.
+- **`tests/Feature/SearchControllerTest.php`'s docblock becomes wrong.** It
+  currently documents the `database`-engine behavior (LIKE against the live
+  table, no import needed). A Meilisearch-backed automated suite needs a running
+  server (or a mocked engine) plus an import step — that's a test-harness change
+  to make *at* switch time, not part of this doc.
+- **The fleet listing's `?search=` filter does NOT use Scout at all.** See
+  `VehicleController::index()` — it's a plain `LOWER(make/model) LIKE`, kept out
+  of the filter registry deliberately. The engine switch has zero effect on it.
+- **Scout is only wired to `App\Models\Vehicle`** (the `Searchable` trait).
+  No other model is searchable today; nothing else needs re-importing.

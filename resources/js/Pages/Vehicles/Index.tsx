@@ -12,6 +12,14 @@ import { Car } from 'lucide-react';
 import { AvailableFilter, AvailableSort } from '@/types/filters';
 
 /**
+ * Clean URLs — Option A. The free-text search query is truncated to this length
+ * before it is written into the URL, so a shared/bookmarked fleet link never
+ * carries an arbitrarily long `?search=` value. Other params (category, sort,
+ * transmission, ...) are short enum values and pass through untouched.
+ */
+const MAX_SEARCH_LENGTH = 50;
+
+/**
  * Fleet listing with two page-layout variants, swappable by an admin via the
  * Layout Variants page (fleetLayout slot, registered in AppServiceProvider):
  *
@@ -72,10 +80,15 @@ export default function Index({
     };
 
     const applyParams = (params: Record<string, string>) => {
-        // Drop empty values so the URL stays clean.
+        // Drop empty values so the URL stays clean, and truncate the search
+        // query to MAX_SEARCH_LENGTH before it reaches the URL (Clean URLs,
+        // Option A). This single choke point also truncates a long `search`
+        // already sitting in the address bar — e.g. a hand-crafted bookmarked
+        // link — the moment any filter/sort change rewrites the URL.
         const clean: Record<string, string> = {};
         for (const [key, value] of Object.entries(params)) {
-            if (value !== '') clean[key] = value;
+            if (value === '') continue;
+            clean[key] = key === 'search' ? value.slice(0, MAX_SEARCH_LENGTH) : value;
         }
 
         router.get(route('vehicles.index'), clean, {
