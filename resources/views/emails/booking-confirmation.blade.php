@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Booking confirmed — #{{ $booking->id }}</title>
+<title>Booking confirmed — #{{ $booking->booking_number }}</title>
 <style>
   body { margin: 0; padding: 0; background: #f5f5f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #1a1a1a; }
   .wrap { max-width: 580px; margin: 32px auto; background: #ffffff; border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb; }
@@ -28,7 +28,7 @@
 <div class="wrap">
   <div class="hero">
     <h1>Booking confirmed!</h1>
-    <p>Reference: <strong>#{{ $booking->id }}</strong></p>
+    <p>Reference: <strong>#{{ $booking->booking_number }}</strong></p>
   </div>
 
   <div class="body">

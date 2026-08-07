@@ -73,6 +73,7 @@ export interface Paginated<T> {
 
 export interface Booking {
     id: number;
+    booking_number: string | null;
     status: string;
     pickup_at: string;
     return_at: string;

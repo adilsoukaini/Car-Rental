@@ -139,6 +139,6 @@ class BookingConfirmationEmailTest extends TestCase
 
         $mail = new BookingConfirmation($booking);
 
-        $this->assertSame('Booking confirmed — #'.$booking->id, $mail->envelope()->subject);
+        $this->assertSame('Booking confirmed — #'.$booking->booking_number, $mail->envelope()->subject);
     }
 }

@@ -131,6 +131,9 @@ export default function PublicLayout({ children }: PropsWithChildren) {
 
                 <div className="flex flex-col gap-3">
                     <span className="text-sm font-semibold">Account</span>
+                    <Link href={route('bookings.track')} className="text-sm text-onPrimary/80 transition-colors hover:text-onPrimary">
+                        Track your booking
+                    </Link>
                     {auth.user ? (
                         <Link href={route('profile.edit')} className="text-sm text-onPrimary/80 transition-colors hover:text-onPrimary">
                             My Account
