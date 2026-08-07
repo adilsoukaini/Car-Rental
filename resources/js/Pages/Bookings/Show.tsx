@@ -28,16 +28,19 @@ function formatDateTime(iso: string): string {
 }
 
 export default function Show({ booking }: { booking: Booking }) {
+    // Fall back to the numeric id for pre-booking_number rows (legacy dev data).
+    const reference = booking.booking_number ?? String(booking.id);
+
     return (
         <PublicLayout>
-            <Head title={`Booking #${booking.id}`} />
+            <Head title={`Booking #${reference}`} />
 
             <div className="mx-auto max-w-lg p-8">
-                <Breadcrumbs items={[{ label: `Booking #${booking.id}` }]} className="mb-4" />
+                <Breadcrumbs items={[{ label: `Booking #${reference}` }]} className="mb-4" />
 
                 <div className="mb-6 flex items-center justify-between">
                     <Text variant="h1">
-                        Booking #{booking.id}
+                        Booking #{reference}
                     </Text>
                     <span className="inline-block rounded-pill bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
                         {STATUS_LABELS[booking.status] ?? booking.status}

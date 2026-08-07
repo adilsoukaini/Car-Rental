@@ -92,4 +92,24 @@ class BookingTest extends TestCase
 
         $this->assertNull($booking->fresh()->user_id);
     }
+
+    public function test_booking_number_is_auto_generated_on_creation(): void
+    {
+        $booking = Booking::factory()->create();
+
+        $fresh = $booking->fresh();
+
+        $this->assertNotNull($fresh->booking_number);
+        $this->assertSame(10, strlen($fresh->booking_number));
+        $this->assertSame(strtoupper($fresh->booking_number), $fresh->booking_number);
+        $this->assertMatchesRegularExpression('/^[A-Z0-9]+$/', $fresh->booking_number);
+    }
+
+    public function test_booking_number_is_unique_across_bookings(): void
+    {
+        $numbers = collect(range(1, 20))
+            ->map(fn () => Booking::factory()->create()->fresh()->booking_number);
+
+        $this->assertSame(20, $numbers->unique()->count());
+    }
 }

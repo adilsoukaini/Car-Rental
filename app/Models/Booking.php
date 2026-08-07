@@ -9,11 +9,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 /**
  * @property Carbon $pickup_at
  * @property Carbon $return_at
  * @property string $status
+ * @property string $booking_number random public booking reference — auto-generated on create, never user-supplied (mass-assignment guarded)
  * @property Carbon|null $hold_expires_at
  * @property-read User|null $user null for a guest booking — see guest_name/guest_email/guest_phone
  */
@@ -26,6 +28,15 @@ class Booking extends Model
 {
     /** @use HasFactory<BookingFactory> */
     use HasFactory;
+
+    protected static function booted(): void
+    {
+        static::creating(function (Booking $booking) {
+            if (empty($booking->booking_number)) {
+                $booking->booking_number = strtoupper(Str::random(10));
+            }
+        });
+    }
 
     protected function casts(): array
     {

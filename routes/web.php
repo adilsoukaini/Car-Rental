@@ -29,6 +29,11 @@ Route::get('/theme-test', function () {
     ]);
 })->name('theme-test');
 
+// Public booking lookup — registered before bookings/{booking} so "track" is
+// never captured by the route-model-bound show route.
+Route::get('/bookings/track', [BookingController::class, 'track'])->name('bookings.track');
+Route::post('/bookings/track', [BookingController::class, 'lookup'])->name('bookings.track.lookup')->middleware('throttle:20,1');
+
 Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('bookings.show');
 
 Route::middleware('auth')->group(function () {
