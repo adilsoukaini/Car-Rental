@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Vehicles;
 
 use App\Core\Support\HasMinimumRole;
+use App\Core\Support\VehicleResourceExtension;
 use App\Filament\Resources\Vehicles\Pages\CreateVehicle;
 use App\Filament\Resources\Vehicles\Pages\EditVehicle;
 use App\Filament\Resources\Vehicles\Pages\ListVehicles;
@@ -37,9 +38,7 @@ class VehicleResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            //
-        ];
+        return VehicleResourceExtension::getRelationManagers();
     }
 
     public static function getPages(): array
