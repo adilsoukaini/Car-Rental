@@ -53,6 +53,14 @@ it governs how every phase gets built and verified, not just what gets built.
     the dev server must be serving the rebuilt assets before verification
     begins. If you haven't loaded the page in a browser after the last change,
     the task is not done.
+11. **Every admin→frontend connection must be tested end-to-end.** If a feature
+    has an admin control (theme activation, layout variant switching, plugin
+    toggle, site identity save), the full round-trip must be verified: (1) make
+    the change in the admin panel via Playwright, (2) load the storefront in a
+    separate browser context or navigation and confirm the change took effect,
+    (3) verify zero console errors on both sides. "The admin page loaded without
+    errors" is not sufficient — the point of an admin control is that it changes
+    what visitors see.
 
 ## Folder structure
 
