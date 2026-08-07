@@ -1,4 +1,4 @@
-import PublicLayout from '@/Layouts/PublicLayout';
+import CheckoutLayout from '@/Layouts/CheckoutLayout';
 import { PageProps, Vehicle } from '@/types';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
@@ -59,7 +59,7 @@ export default function Checkout({
     };
 
     return (
-        <PublicLayout>
+        <CheckoutLayout>
             <Head title="Confirm your booking" />
 
             <div className="mx-auto max-w-lg p-8">
@@ -180,6 +180,6 @@ export default function Checkout({
                     </form>
                 )}
             </div>
-        </PublicLayout>
+        </CheckoutLayout>
     );
 }
