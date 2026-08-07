@@ -120,1982 +120,815 @@ after the phase is verified working, per `PROCESS-GUIDE.md` rule 10.)*
 
 ## Phase 2 — Kernel (verified 2026-08-03)
 
-`FilterRegistry`, `SlotRegistry`, `PluginManager` (`app/Core/Support/`),
-the `Role` enum (`app/Enums/Role.php`), and the `Plugin` model were ported
-unchanged from the prior e-commerce build (`/home/adil/Site-ecommerce`) —
-they're fully domain-agnostic. `PluginManager::boot()` is wired into
-`AppServiceProvider::boot()`. `config/plugins.php` starts with an empty
-`registry` array — the first plugin fills it in (Phase 4, fleet-management).
-
-**`HasMinimumRole` was deliberately NOT copied yet.** It's a trait for
-gating Filament Resources/Pages by role, and this project has no Filament
-panel or Resources yet — copying it now would leave dead code that
-Larastan correctly flags as an unanalyzed unused trait. Copy it back in
-from the same source path alongside the first Filament Resource that
-actually needs role-gating (expected: the fleet-management admin screen in
-a later phase). This is `PROCESS-GUIDE.md` rule 6 in the other direction
-from the Phase 1 one-way-rental call: there, front-loading was correct
-because the retrofit was expensive; here, deferring is correct because
-adding the file back is trivial.
-
-Core domain Events (`BookingRequested`, `BookingConfirmed`,
-`BookingCancelled`, `VehicleCheckedOut`, `VehicleReturned`,
-`DamageReported`, `DriverVerified`, `PaymentCaptured`) live in
-`app/Core/Events/` and are documented in `docs/event-registry.md` along
-with the (not-yet-registered) named filters and slots future plugins will
-use.
+- `FilterRegistry`, `SlotRegistry`, `PluginManager` (`app/Core/Support/`), the
+  `Role` enum (`app/Enums/Role.php`), and the `Plugin` model ported unchanged
+  from the prior e-commerce build — fully domain-agnostic. `PluginManager::boot()`
+  is wired into `AppServiceProvider::boot()`. `config/plugins.php` starts with an
+  empty `registry` array — the first plugin fills it in (Phase 4).
+- **`HasMinimumRole` deliberately NOT copied yet** — it's a role-gating trait for
+  Filament Resources/Pages; copying it with no Filament panel would leave dead
+  code Larastan flags as an unanalyzed unused trait. Copy it back alongside the
+  first Filament Resource that actually needs role-gating. (Deferral is cheap
+  here — the file is trivial to add back.)
+- Core domain Events (`BookingRequested`, `BookingConfirmed`, `BookingCancelled`,
+  `VehicleCheckedOut`, `VehicleReturned`, `DamageReported`, `DriverVerified`,
+  `PaymentCaptured`) live in `app/Core/Events/`, documented in
+  `docs/event-registry.md` with the (not-yet-registered) named filters/slots.
 
 ## Phase 3 — Theme engine (verified 2026-08-03)
 
-Three-tier token system ported unchanged from the prior e-commerce build
-(`primitives.ts` → `semantic.ts` → `components.ts` → `tokens.ts`), with one
-domain adaptation: `components.productCard` renamed to `components.vehicleCard`.
-`ThemeProvider` wraps the Inertia `<App>` in `app.tsx`, fed by
-`resources/theme/active.ts`, which picks a client theme based on
-`window.__THEME__` (injected by `app.blade.php` from `config('site.active_theme')`,
-itself from the `ACTIVE_THEME` env var) — swapping is a zero-rebuild runtime
-operation, verified by changing `.env` alone and confirming the same JS
-bundle hash served two different themes.
-
-**`resources/theme/clients/client-swap-proof-DISPOSABLE.ts` is not a real
-client.** It exists only as a second data point to prove the swap mechanism
-actually produces different output — delete it (and its `active.ts` entry)
-once a real second client theme is needed. Don't mistake "Demo Rentals" for
-onboarded client data — this is the same category of thing as the
-e-commerce project's disposable test categories, flagged explicitly up
-front this time instead of needing a later cleanup note.
-
-**Found and fixed during this phase:** `tailwind.config.js`'s content globs
-were a Phase 1 leftover — still `*.jsx` after the TypeScript conversion
-renamed everything to `.tsx`, silently purging almost every utility class
-actually used in the app (confirmed via a missing `text-red-600` in the
-compiled CSS). Fixed to `*.{ts,tsx}` across `resources/js` and
-`plugins/**/resources/js`. Watch for this same class of bug (build-tool
-glob patterns silently drifting from actual file extensions) after any
-future bulk rename/conversion.
-
-A throwaway `/theme-test` route + `Pages/ThemeTest.tsx` page exists purely
-to prove token-driven Tailwind classes (`bg-primary`, `rounded-interactive`,
-etc.) render correctly — remove once a real themed page (fleet listing,
-Phase 4) makes it redundant.
+- Three-tier token system ported unchanged: `primitives.ts` → `semantic.ts` →
+  `components.ts` → `tokens.ts`; one domain adaptation: `components.productCard`
+  renamed `components.vehicleCard`.
+- `ThemeProvider` wraps the Inertia `<App>` in `app.tsx`, fed by
+  `resources/theme/active.ts`, which picks a theme from `window.__THEME__`
+  (injected by `app.blade.php` from `config('site.active_theme')`, itself from the
+  `ACTIVE_THEME` env var). Theme swap is a zero-rebuild runtime operation.
+- **`resources/theme/clients/client-swap-proof-DISPOSABLE.ts` is NOT a real
+  client** — a second data point to prove the swap mechanism; delete it (and its
+  `active.ts` entry) once a real second client theme exists. "Demo Rentals" is
+  not onboarded client data.
+- LESSON: `tailwind.config.js` content globs must match actual file extensions
+  (`*.{ts,tsx}` across `resources/js` and `plugins/**/resources/js`) — stale
+  globs (e.g. leftover `*.jsx`) silently purge utility classes from compiled CSS.
+- A throwaway `/theme-test` route + `Pages/ThemeTest.tsx` proves token-driven
+  Tailwind classes (`bg-primary`, `rounded-interactive`); remove when redundant.
 
 ## Phase 4 — First plugin: fleet/vehicle catalog (verified 2026-08-03)
 
-Proves the full plugin pattern end to end for the first time: `Vehicle` is a
-core model (per the Phase 1 decision), but the public storefront experience
-(listing + detail pages) is a real Composer plugin at
-`plugins/fleet-management/`, wired via a `path` repository in the root
-`composer.json` and `config/plugins.php`'s `registry` array — same split as
-the source project's `catalog` plugin (core owns the model, the plugin owns
-the storefront controller/routes/pages).
-
-**Environment reality: Filament v3 does not support Laravel 13.** The
-source project's `composer.lock` had `filament/filament v3.3.54` alongside
-`laravel/framework v13.20.0`, but a fresh `composer require filament/filament:^3.2`
-fails to resolve against this project's Laravel 13 — v3's `illuminate/auth`
-constraint tops out at `^12.0`. Installed **Filament v4** instead, which
-restructured its API significantly (`Filament\Schemas\Schema` replaces
-`Filament\Forms\Form`; resources now live under
-`App\Filament\Resources\Vehicles\` with separate `Schemas/VehicleForm.php`
-and `Tables/VehiclesTable.php` classes, not one flat resource file). Do not
-copy Filament resource code from the source project verbatim — the shape
-changed. Use `php artisan make:filament-resource` to generate a v4-correct
-stub, then port field-by-field.
-
-`HasMinimumRole` came back out of its Phase 2 deferral exactly as planned —
-`VehicleResource` is the first real consumer, and Larastan confirms the
-trait is no longer flagged as dead code.
-
-**A real Laravel 13 → Filament v4 gap found and closed:** Filament v4's own
-generated `EnsureAdminPanelAccess`-equivalent middleware pattern from the
-source project (`extends Filament\Http\Middleware\Authenticate`, overriding
-the `protected authenticate()` method to redirect instead of abort) doesn't
-translate cleanly to v4's `authenticate()` signature/flow. Rewrote
-`EnsureAdminPanelAccess` as a full `handle()` implementation instead of
-extending the base middleware.
-
-**Genuinely toggleable, proven three ways, not just described:** with
-`fleet-management` disabled in the `plugins` table, `/vehicles` → 404. After
-`PluginManager::activate('fleet-management')` and a fresh request, `/vehicles`
-→ 200 with real DB-backed vehicle data (available vehicles only; a
-`maintenance`-status vehicle correctly 404s on its detail page). After
-`PluginManager::deactivate()`, `/vehicles` → 404 again. Each check used a
-genuinely fresh `php artisan serve` process boot against the persistent dev
-DB — not the same PHP process across checks.
-
-**Found a real automated-testing limitation, documented rather than
-faked:** PHPUnit's `TestCase::setUp()` boots the app (and therefore
-`PluginManager::boot()`) *before* `RefreshDatabase` migrates the in-memory
-test DB, so the `plugins` table never exists at boot time during any test
-run — the provider is never auto-registered inside PHPUnit regardless of
-`activate()`/`deactivate()` calls in a test body. The disable/enable/disable
-toggle above can only be verified via real process-per-request testing (as
-done above), not inside the automated suite. The automated
-`VehicleControllerTest` instead registers the plugin's ServiceProvider
-directly in `setUp()` to cover the actual business logic (available-only
-filtering, 404 on non-available), and uses literal paths (`/vehicles`) rather
-than the `route()` helper — `route()`/`Route::has()` don't reliably see
-routes registered by a provider added after boot in tests, even though real
-HTTP dispatch to the same path works correctly (a `UrlGenerator` caching
-quirk specific to post-boot route registration in tests, not a bug in the
-plugin).
-
-**Repeatable re-verification:** `scripts/verify-plugin-toggle.sh [slug] [path]`
-automates the exact disable→404→enable→200→disable→404 sequence above via
-real `php artisan serve` process boots, and restores the plugin to enabled
-afterward. Run it after any change to `PluginManager`, `AppServiceProvider`,
-or a plugin's route registration — e.g. `scripts/verify-plugin-toggle.sh
-fleet-management /vehicles`. This exists specifically because PHPUnit can't
-cover the real toggle (see above); don't let this become "it worked once
-when I checked it live" — re-run the script, don't just trust memory of a
-past manual check.
+- `Vehicle` is a **core model**; the public storefront (listing + detail) is a
+  real Composer plugin at `plugins/fleet-management/`, wired via a `path`
+  repository in root `composer.json` + `config/plugins.php`'s `registry` array
+  (same split as the source project's `catalog` plugin: core owns the model,
+  the plugin owns storefront controller/routes/pages).
+- **Filament v3 does not support Laravel 13** (`illuminate/auth` tops out at
+  `^12.0`). Installed **Filament v4**, API restructured: `Filament\Schemas\Schema`
+  replaces `Filament\Forms\Form`; resources live under
+  `App\Filament\Resources\{Model}\` with separate `Schemas/{Model}Form.php` +
+  `Tables/{Model}Table.php`. Do NOT copy v3 resource code verbatim — generate a
+  v4 stub with `php artisan make:filament-resource`, then port field-by-field.
+- `EnsureAdminPanelAccess`: write a full `handle()` implementation — v4's
+  `Authenticate` middleware `authenticate()` signature/flow doesn't translate.
+- **Genuinely toggleable** (proven via real process-per-request boots, NOT
+  PHPUnit): disabled in `plugins` table → `/vehicles` 404; `activate()` → 200;
+  `deactivate()` → 404. `scripts/verify-plugin-toggle.sh [slug] [path]` automates
+  disable→404→enable→200→disable→404 and restores enabled afterward. Re-run it
+  after any change to `PluginManager`, `AppServiceProvider`, or plugin routes —
+  don't trust memory of a past manual check.
+- TEST LIMITATION (persistent across the project): PHPUnit boots the app
+  (`PluginManager::boot()`) *before* `RefreshDatabase` migrates, so the `plugins`
+  table never exists at boot — the provider is never auto-registered in tests.
+  Toggle is only testable via real process-per-request testing. Tests instead
+  register the plugin's ServiceProvider directly in `setUp()` and use literal
+  paths (`/vehicles`) — `route()`/`Route::has()` don't see routes registered
+  post-boot (a `UrlGenerator` caching quirk, test-harness-only; real HTTP
+  dispatch works).
 
 ## Phase 5 — Booking/availability engine (verified 2026-08-03)
 
-This is the highest-scrutiny code in the project per rule 9 — a bug here
-double-books a real physical car. Three explicit decisions were confirmed
-before any code was written (see `docs/event-registry.md`'s
-`booking.availabilityCheck` section for the mechanism itself):
+Highest-scrutiny code per rule 9 (a bug double-books a real car). Three
+decisions confirmed before building (mechanism: `booking.availabilityCheck` in
+`docs/event-registry.md`):
 
-1. **Exclusive-end boundary, no turnaround buffer.** A booking ending at
-   10:00 and another starting at 10:00 on the same vehicle do NOT overlap.
-   A buffer is deliberately not built into the core query — it bolts on as
-   a second pipe on `booking.availabilityCheck` later. **This is flagged in
-   `docs/03-DOMAIN-REQUIREMENTS.md` as a must-configure-before-real-launch
-   item, not a someday-maybe feature** — don't let that distinction get
-   lost if this project sits untouched for a while.
+1. **Exclusive-end boundary, no turnaround buffer.** A booking ending at 10:00
+   and another starting at 10:00 on the same vehicle do NOT overlap. A buffer is
+   deliberately NOT in the core query — it bolts on as a second pipe later.
+   **Flagged in `docs/03-DOMAIN-REQUIREMENTS.md` as a must-configure-before-
+   real-launch item**, not a someday-maybe.
 2. **Only `confirmed` and `checked_out` bookings block** (`pending` and
-   `cancelled` do not), per the domain doc's explicit wording. This means
-   two `pending` requests for the same vehicle/dates can coexist — safety
-   at confirm time comes from `BookingCreator`'s lock, not from the
-   overlap query excluding pending rows.
-3. **Strict location matching** — a vehicle is only bookable at its
-   current `location_id`, updated automatically by
-   `RelocateVehicleOnReturn` when `VehicleReturned` fires (this is how a
-   one-way rental's car correctly "belongs" at the drop-off location
-   afterward). No staff-override path exists yet — deliberately deferred
-   as a separate feature (its own authorization/audit-trail scope), not
-   folded into this phase.
+   `cancelled` do not). Two `pending` requests for the same vehicle/dates can
+   coexist — safety at confirm time comes from `BookingCreator`'s lock, not the
+   overlap query. (NOTE: Phase B later revises this — see the deposit-gate
+   section.)
+3. **Strict location matching** — a vehicle is bookable only at its current
+   `location_id`, updated automatically by `RelocateVehicleOnReturn` when
+   `VehicleReturned` fires (how a one-way rental's car "belongs" at the drop-off
+   afterward). No staff-override path exists yet (deferred as its own feature).
 
-**Concurrency — addressed now, not deferred, with an honest limitation
-stated:** `BookingCreator` is the only sanctioned way to create a
-`confirmed` booking. It wraps the availability recheck + insert in a DB
-transaction with `Vehicle::lockForUpdate()`, so two concurrent confirm
-attempts for the same vehicle serialize — the second one's recheck
-correctly sees the first's committed booking and fails. Verified two ways:
-14 automated tests cover every overlap/boundary/status/location case plus
-a **sequential** proof that a second `BookingCreator::create()` call fails
-after the first succeeds; and real `tinker` verification (not just
-`tinker` — full round trip through the actual service) walked through a
-successful booking, a rejected overlap, a rejected location-mismatch, a
-real one-way relocation via `VehicleReturned`, and confirmed the
-relocation's consequence (old location now rejects, new location
-accepts).
-
-**What is NOT proven, stated honestly rather than papered over:** this
-project's dev/test DB is SQLite, which has no true row-level locking (it
-serializes at the whole-database level instead). The lock call is correct
-and portable — Laravel abstracts `lockForUpdate()` — but genuine
-concurrent-connection race protection can only be meaningfully verified
-against a database with real row-level locks (MySQL/Postgres), which
-hasn't been chosen for this project yet. If/when a production DB is
-chosen, add a real concurrent-connection integration test at that point —
-don't treat the sequential test as equivalent proof.
+- `BookingCreator` is the only sanctioned way to create a `confirmed` booking; it
+  wraps availability recheck + insert in a DB transaction with
+  `Vehicle::lockForUpdate()`, so concurrent confirm attempts serialize (second
+  one's recheck sees the first's committed booking and fails). Verified with 14
+  automated tests + real `tinker` round-trips.
+- Honest limitation carried forward: SQLite has no true row-level locking
+  (serializes at DB level). Real concurrent-connection proof deferred until a
+  row-locking DB exists — later closed with Postgres (see DB section).
 
 ## Phase 6 — Pricing engine (verified 2026-08-03)
 
-Scope drawn deliberately narrow: base daily rate × duration + duration
-discount tiers + deposit computation, via `booking.priceCalculation`
-(mechanism documented in `docs/event-registry.md`). Two things explicitly
-NOT built here, on purpose:
-- **Extras** (GPS, child seat, additional driver, insurance tiers) need
-  their own data model (add-ons table, booking-extras pivot) — that's a
-  real second feature, not a line in this filter. Building it now would be
-  inventing structure ahead of a concrete need (rule 6).
-- **Actually charging** the deposit or rental total is the separate
-  Payment/gateway phase (`PaymentGatewayRegistry`, `PaymentCaptured`) —
-  this phase only computes numbers, never moves money.
-
-**Three business-policy decisions confirmed before building** (these are
-tuning knobs in `plugins/booking-engine/config/booking-engine.php`, not
-foundational schema bets like Phase 5's — cheap to change later without
-touching the availability-overlap query):
-1. **Cliff/threshold discounts**, not graduated — hit 7 days, the whole
-   booking gets 10% off; hit 30, the whole booking gets 25% off. Not
-   cumulative across tiers.
-2. **Partial days round up** to the next full day, minimum 1 day.
-3. **Deposit = a flat percentage of the discounted subtotal**
-   (`deposit_percentage_of_subtotal` config, currently 20%) — not
-   per-category. Per-category deposits are a filter change away if needed
-   later, not a schema change, since deposit computation already lives in
-   this same pipeline.
-
-**A Phase 5 correctness gap closed:** `BookingCreator` previously accepted
-`total_price` as a raw caller-supplied value (acceptable in Phase 5, which
-was explicitly scoped to availability only, before pricing existed). Now
-that real pricing logic exists, that was a gap under rule 5's higher bar
-for financial code — `BookingCreator` now computes `total_price` and
-`security_deposit_amount` internally via `booking.priceCalculation` and
-ignores any caller-supplied values for both. Proven, not just asserted: a
-test explicitly passes a bogus `total_price` and confirms the persisted
-value is the correctly computed one instead.
-
-**Verification matches the Phase 5 standard — exact expected numbers, not
-formula descriptions:** 8 automated tests cover both discount tier
-boundaries (6/7/29/30 days) with hand-computed exact totals (e.g. 7 days
-at 100/day → 630.00, not "some discounted amount"), both partial-day
-rounding cases (above and exactly at a day boundary), the deposit
-percentage, and a full `BookingCreator` integration proving the computed
-values are what actually gets persisted. Real `tinker` verification against
-actual fleet data (Vehicle #3, daily_rate 450.00, 10-day booking) matched
-the hand-computed expected total (4050.00) and deposit (810.00) exactly.
+- Scope deliberately narrow: base daily rate × duration + duration discount
+  tiers + deposit computation, via `booking.priceCalculation` (documented in
+  `docs/event-registry.md`). **Explicitly NOT built:** Extras (need their own
+  data model — a real second feature, rule 6) and actually charging money
+  (separate Payment phase — this phase only computes numbers).
+- Business-policy decisions (tuning knobs in
+  `plugins/booking-engine/config/booking-engine.php`, cheap to change):
+  1. **Cliff/threshold discounts**, not graduated — hit 7 days → whole booking
+     10% off; hit 30 → 25% off. Not cumulative across tiers.
+  2. **Partial days round up** to the next full day, minimum 1 day.
+  3. **Deposit = flat percentage of the discounted subtotal**
+     (`deposit_percentage_of_subtotal`, currently 20%), not per-category.
+- `BookingCreator` now computes `total_price` and `security_deposit_amount`
+  internally via `booking.priceCalculation` and **ignores any caller-supplied
+  values** for both (closes a Phase 5 gap; a test passes a bogus `total_price`
+  and confirms the persisted value is the correctly computed one).
+- Verification standard: exact hand-computed totals at boundaries (7 days at
+  100/day → 630.00), not "some discounted amount".
 
 ## Phase 7 — Payments (verified 2026-08-03)
 
-`PaymentGatewayRegistry` and the `PaymentGateway` contract shape live in
-`app/Core/{Support,Contracts}`; `payments-stripe` (Phase 7's only gateway
-plugin) implements it. Full mechanism documented in
-`docs/event-registry.md`'s "Payment Gateways" section — read that first.
+- `PaymentGatewayRegistry` + `PaymentGateway` contract in `app/Core/{Support,Contracts}`;
+  `payments-stripe` implements it. Mechanism in `docs/event-registry.md`'s
+  "Payment Gateways" section.
+- **Interface NOT ported verbatim**: e-commerce's Checkout Sessions capture
+  immediately (no hold-now-decide-later). Here: **PaymentIntents API with
+  `capture_method: manual`**. Interface has authorize/capture/release alongside
+  charge/refund.
+- **CMI deliberately not built** — it has no hold/pre-auth concept (refund
+  unimplemented). Stripe is the priority gateway (business is primarily
+  international-customer-facing).
+- LESSON (serious bug found by running the app): `StripeGateway` must build
+  `StripeClient` **lazily (`??=`) on first use**. Eager construction ran on every
+  request at provider boot, so an empty `STRIPE_SECRET` took down the entire site
+  (even `artisan tinker`), not just payment pages. Same "core/plugin must not
+  hard-crash the whole site over one optional thing" principle recurs (see
+  driver-verification middleware guard).
+- Verified for real against `api.stripe.com` with test-mode keys (`sk_test_`/
+  `pk_test_`, reused from e-commerce `.env`; Mailtrap sandbox mail copied the
+  same way): a real `PaymentIntent` with `capture_method: manual`, confirmed
+  amount 90000, currency `mad`, metadata `booking_id`/`payment_type`; after
+  release, Stripe's record shows `status: canceled`.
+- Event shape changes: `PaymentCaptured` now carries the real `Payment` model
+  (nothing consumed the old shape). Added `PaymentAuthorized`, `PaymentFailed`,
+  `PaymentReleased` — a release cancels a hold with no money moved; a refund
+  reverses money that was captured.
+- `bootstrap/app.php` must keep the CSRF exclusion for `webhooks/*`.
+- Business/legal (not code): Stripe requires the account-holding business to be
+  domiciled somewhere Stripe operates — see `docs/03-DOMAIN-REQUIREMENTS.md`'s
+  Payment section and the `stripe_entity_status` memory. A foreign entity is
+  already in motion; re-confirm at go-live.
 
-**The `PaymentGateway` interface could not be ported verbatim from the
-e-commerce project**, and this was verified by actually reading the source
-code, not assumed: the e-commerce `StripeGateway` uses Checkout Sessions
-(`mode: payment`), which capture immediately — there's no way to represent
-"hold now, decide later" with it. `payments-stripe` uses the **PaymentIntents
-API with `capture_method: manual`** instead, a materially different Stripe
-API surface. The interface itself grew a third operation family (authorize/
-capture/release, alongside charge/refund) that the e-commerce project's
-one-shot-charge shape had no need for.
+## Locations admin CRUD (verified 2026-08-03)
 
-**CMI was deliberately not built.** Reading the actual source `CmiGateway`
-showed it has no hold/pre-auth concept at all (refund is unimplemented) —
-it cannot fulfill this domain's deposit-hold requirement. Combined with the
-business being primarily international-customer-facing (confirmed
-2026-08-03), Stripe is the priority gateway; CMI is deferred, not a
-scope-creep addition.
+- Pattern: schema + availability logic + one-way relocation were real and tested,
+  but **no admin CRUD existed** — every `Location` row was created by factory or
+  `tinker`. Caught by searching for a `LocationResource`/routes/pages and finding
+  nothing. Added `App\Filament\Resources\Locations\LocationResource` (name,
+  address, city, country, lat/lng, `is_active` toggle; same shape as
+  `VehicleResource`).
+- **`Location.is_active` (on the schema since Phase 1) was never wired into
+  anything** — now wired into `CoreAvailabilityCheckPipe`: an inactive location
+  blocks new bookings requesting pickup there. Decision: `is_active` is a
+  soft-disable for **future** bookings only — existing confirmed bookings remain
+  valid (same precedent as `Vehicle.status` not retroactively touching bookings).
+- LESSON (unrelated, not a bug): nested `Model::factory()` references inside a
+  factory's `definition()` are eagerly evaluated and persisted even when the
+  caller overrides that field in `create([...])`. Harmless under `RefreshDatabase`
+  (wiped every test) but produces orphaned rows on the persistent dev DB — clean
+  up after `tinker` verification; don't assume an override prevented the nested
+  factory row.
 
-**A real, serious bug found by actually running the app, not by reading
-the code:** `StripeGateway`'s constructor originally built `StripeClient`
-eagerly. Since `PaymentGatewayRegistry::register(new StripeGateway, ...)`
-runs in `StripeServiceProvider::boot()` — on every request, the instant the
-plugin is enabled — an empty `STRIPE_SECRET` took down the **entire site**
-(`/`, `/vehicles`, even `artisan tinker`), not just payment pages. Confirmed
-broken, then confirmed fixed: `stripe()` now builds the client lazily
-(`??=`) on first actual use. Verified by reproducing the failure (enabled
-the plugin with empty credentials, watched `/` and `/vehicles` both break),
-applying the fix, and confirming the same pages load fine afterward — not
-just reasoning that the fix should work.
+## Bookings admin CRUD (verified 2026-08-03)
 
-**Test coverage, and an honest line about what it does and doesn't prove:**
-- 6 webhook tests exercise the **real** `handleWebhook()` entry point
-  end-to-end, including **real Stripe-Signature HMAC verification** — no
-  mocking of the signature check itself, since it's pure local computation
-  (Stripe's documented algorithm: sign `"{timestamp}.{payload}"` with
-  HMAC-SHA256). Covers idempotency (same event delivered twice is a
-  no-op), the amount cross-check (gateway-reported amount must match our
-  own computed price), and invalid-signature rejection.
-- 6 gateway tests cover the local side effects (`Payment` rows created
-  with the right type/status/amount) of `authorizeDeposit`/`captureDeposit`
-  (full and partial)/`releaseDeposit`/`chargeFinal`/`refund`, using a
-  Mockery double of `StripeClient` so no real network call or API key is
-  needed.
-- At the time Phase 7 was first built, real Stripe test credentials
-  weren't available in this environment — the Mockery doubles verified our
-  code calls the SDK correctly and records the right local state, but
-  could not catch a wrong assumption about Stripe's actual behavior. Real
-  end-to-end verification at that point was done via genuine HTTP requests
-  with a manually-computed valid HMAC signature (using `openssl`, not the
-  test suite) against a real `Payment` row — confirmed an invalid
-  signature gets a real 400 over real HTTP, and a validly-signed request
-  correctly transitions a real DB row from `pending` to `authorized`.
-
-**Gap closed 2026-08-03**, once real Stripe test-mode credentials became
-available (reused from the e-commerce project's `.env` — genuine
-`sk_test_`/`pk_test_` keys, not live ones; Mailtrap sandbox mail
-credentials copied the same way): `authorizeDeposit()` and
-`releaseDeposit()` were called for real against `api.stripe.com`, not
-mocked. A real `PaymentIntent` was created with `capture_method: manual`
-— confirmed via a direct `GET` to Stripe's API that the live object has
-the exact expected `amount` (90000), `currency` (`mad`), and `metadata`
-(`booking_id`, `payment_type`). It was then released, and a second `GET`
-confirmed Stripe's own record shows `status: canceled`. This is real proof
-the manual-capture design actually works against Stripe's real
-infrastructure, not just proof our code calls the SDK the way we think it
-does.
-
-**`PaymentCaptured`'s constructor signature changed** from its Phase 1/2
-placeholder shape (`Booking $booking, string $type, float $amount`) to
-carrying the real `Payment` model — safe, since nothing consumed the old
-shape yet. Three more events added: `PaymentAuthorized`, `PaymentFailed`,
-`PaymentReleased` (distinct from `PaymentRefunded` — a release cancels a
-hold with no money moved, a refund reverses money that was captured).
-
-**Also fixed:** `bootstrap/app.php` was missing the CSRF exclusion for
-`webhooks/*` that the source project's own `bootstrap/app.php` has — added
-before it could become a silent webhook failure in a later phase.
-
-**Business/legal note, not a code decision:** Stripe requires the
-account-holding business to be domiciled somewhere Stripe operates — see
-`docs/03-DOMAIN-REQUIREMENTS.md`'s Payment section and the
-`stripe_entity_status` memory. Confirmed 2026-08-03 that a foreign entity
-is already in motion for this business, so this isn't expected to block
-going live — worth a quick re-confirmation at the actual go-live moment
-regardless, since this is a fact about the business, not the code, and
-business circumstances can change.
-
-## Locations admin CRUD (verified 2026-08-03) — closing a HIGH item 5 gap
-
-After Phase 7, `03-DOMAIN-REQUIREMENTS.md`'s HIGH item 5 (pickup/return
-locations, one-way support) looked done — the schema, the availability
-enforcement, and the one-way relocation logic (Phase 5) were all real and
-tested. **It wasn't actually done.** There was no way for an admin to
-create, edit, or list locations at all — every `Location` row in the
-project existed only because a test factory or a `tinker` call put it
-there. A real business couldn't add a second city without direct DB
-access. Caught by actually searching for a `LocationResource`/routes/pages
-and finding nothing, not by assuming the schema + logic implied a feature.
-
-Added `App\Filament\Resources\Locations\LocationResource` (same shape as
-`VehicleResource`): name, address, city, country, lat/lng, an `is_active`
-toggle.
-
-**`Location.is_active` had existed on the schema since Phase 1 but was
-never wired into anything** — deactivating a location had zero effect
-prior to this. Wired it into `CoreAvailabilityCheckPipe`: an inactive
-location now blocks new bookings requesting pickup there. Decision:
-`is_active` is a soft-disable for **future** bookings only — deactivating
-a location with existing confirmed bookings referencing it is not
-blocked, and those bookings remain valid (same precedent as a `Vehicle`'s
-`status` field not retroactively touching its existing bookings).
-
-Verified with real data, not just tests: deactivated the real Casablanca
-Airport location, confirmed a fresh `BookingCreator::create()` call for a
-vehicle homed there was genuinely rejected, reactivated it, confirmed the
-identical call then succeeded. 18 new/updated automated tests (Location
-CRUD + role-gating, plus the new `is_active` availability case, including
-both boundary directions already covered by the exclusive-end tests).
-
-**Unrelated finding, not a bug, worth remembering:** nested
-`Model::factory()` references inside a factory's `definition()` (e.g.
-`BookingFactory`'s default `pickup_location_id`/`return_location_id` =>
-`Location::factory()`) get eagerly evaluated and persisted even when the
-caller overrides that field in `create([...])` — a known Laravel factory
-behavior, not specific to this codebase. Harmless under `RefreshDatabase`
-in the automated suite (wiped every test), but produces orphaned rows if
-you call `Model::factory()->create([...])` with overrides directly against
-the persistent dev DB via `tinker`, as happened during Phase 7's real
-Stripe verification. Clean up orphaned rows after any such manual
-verification — don't assume an override on a factory `create()` call
-prevented the nested factory row from being created.
-
-## Bookings admin CRUD (verified 2026-08-03) — third instance of the same pattern
-
-Same root cause as `Location.is_active` and the missing `LocationResource`
-itself: `Payment::captureDeposit()`/`releaseDeposit()`/`refund()` (built in
-Phase 7) had **no real caller anywhere in the application** — only tests
-and manual `tinker` verification ever invoked them. Modeled, tested, and
-completely unreachable in production. Found by directly checking: this
-premise ("is there a BookingResource/payments screen") was raised as
-something supposedly already discussed, and there was no record of it
-anywhere in the project — worth naming explicitly, since agreeing to a
-false premise here would have meant building on top of an assumption
-nobody actually verified.
-
-Added `App\Filament\Resources\Bookings\BookingResource` — **deliberately
-no create/edit pages**. A `Booking` must only ever be created through
-`Plugins\BookingEngine\Support\BookingCreator` (enforces the availability
-check, computes price via `booking.priceCalculation`); an admin form that
-could set arbitrary dates/prices would silently reopen the exact
-raw-caller-supplied-price gap Phase 6 closed. List + View only.
-
-**The View page is where `releaseDeposit()`/`captureDeposit()` finally get
-a real caller**: two explicit staff actions, "Release Deposit" (clean
-return) and "Capture Deposit" (damage — staff enters an amount, full or
-partial), both gated on an active `deposit_authorization` `Payment`
-existing. Deliberately manual, not automatic on `VehicleReturned` — same
-reasoning as Phase 7's deferred damage-charging workflow: deciding
-release-vs-capture requires a human inspecting the vehicle, not a pipeline
-step.
-
-Verified three ways: 5 automated tests (visibility gating, and both
-actions calling a mocked `PaymentGateway` with the exact expected
-arguments); Larastan caught two real magic-property/generics gaps in the
-process (`$this->record`'s broad `Model|int|string` type needed a real
-`instanceof` narrowing helper, not a suppression — same for
-`HasMany::first()`'s type erasure on the payments query); and — the
-strongest evidence — the **exact same `releaseDeposit()` call the
-"Release Deposit" button invokes** was run for real against
-`api.stripe.com` via the actual registered `PaymentGatewayRegistry`
-gateway (not a mock), and a follow-up `GET` confirmed Stripe's own record
-shows `status: canceled`. That closes the loop from "the button exists" to
-"the button's underlying call has been proven against real Stripe
-infrastructure."
+- Pattern: `Payment::captureDeposit()`/`releaseDeposit()`/`refund()` (Phase 7)
+  had **no real caller anywhere** — modeled, tested, unreachable in production.
+- Added `App\Filament\Resources\Bookings\BookingResource` — **deliberately no
+  create/edit pages**: a `Booking` must only be created via
+  `Plugins\BookingEngine\Support\BookingCreator` (enforces availability, computes
+  price); an admin form setting arbitrary dates/prices would reopen the
+  raw-caller-supplied-price gap. List + View only.
+- View page gives Release/Capture Deposit their first real callers: staff actions
+  gated on an active `deposit_authorization` `Payment`. Deliberately manual (not
+  automatic on `VehicleReturned`) — deciding release-vs-capture requires a human
+  inspecting the vehicle.
 
 ## Phase 9 — Driver verification (verified 2026-08-04)
 
-**Pre-flight check per `PROCESS-GUIDE.md` rule 13:** searched Phase 1's
-schema for any driver-related fields before writing a line of code —
-genuinely clean, nothing existed (`Vehicle.license_plate` is the car's
-plate, unrelated). No retrofit needed, confirmed rather than assumed.
-
-**Real architectural constraint, not a detail:** `driver-verification` and
-`booking-engine` are separate plugins, and `BookingCreator` (booking-engine)
-needs to check eligibility, which only `driver-verification` can answer.
-Neither plugin may reference the other's classes (Hard Rule 2), so the
-eligibility check is a new core-owned filter —
-`App\Core\Support\DriverEligibilityCheckRequest` lives in core specifically
-so both plugins can depend on it without depending on each other. Full
-mechanism in `docs/event-registry.md`.
-
-**Two real business-model forks resolved before building, not defaulted:**
-1. **Verification is per-User, not per-Booking.** Per-Booking would work
-   for guest bookings too, but requires an async admin-review step to
-   complete *before* a booking can be confirmed — a real architectural
-   change to `BookingCreator`'s current immediate-confirm design (no
-   pending→reviewed→confirmed workflow exists yet). Per-User composes with
-   what's already built.
-2. **Guest bookings are exempt from verification in this phase**,
-   consequence of #1 — enforcing it for guests would mean either forcing
-   account creation (ending true guest checkout for restricted categories)
-   or building the pending-booking workflow. Deferred explicitly, same
-   category as extras/damage-charging in Phases 6–7, not silently decided.
-
-**Age eligibility is evaluated at the booking's `pickup_at` date, not
-"today"** — same reasoning as Phase 6's partial-day rounding: a driver who
-turns 21 the week after booking but before pickup is correctly eligible.
-Tested at the exact boundary (born exactly 21 years before pickup → eligible;
-one day short → rejected), not just "old enough"/"too young" cases.
-
-**A genuinely new cross-plugin-Filament-resource pattern, ported from the
-source e-commerce project after verifying it, not assumed:** `AdminPanelProvider`
-only auto-discovers `app/Filament/Resources`. `driver-verification`'s
-`DriverVerificationResource` lives inside the plugin itself and registers
-itself into `Filament::getDefaultPanel()` from its own `ServiceProvider::boot()`
-— confirmed this exact pattern exists in the source project's `reviews`/
-`promotions` plugins before copying it, rather than inventing a mechanism.
-Core never references the plugin's namespace.
-
-**A real correction caught before it mattered:** the `driver_verifications`
-migration was initially placed in `database/migrations/` (core) — wrong,
-since this is genuinely plugin-owned data, not shared/core (rule 6). Moved
-into `plugins/driver-verification/database/migrations/` with
-`loadMigrationsFrom()` added to the ServiceProvider; confirmed the move was
-safe by checking `migrate:status` still showed it as `Ran` (Laravel tracks
-migrations by filename, not path).
-
-**A new class of test-environment limitation found, the same root cause
-hitting three different tests:** this is the *first* plugin with its own
-migrations, and the *first* plugin-owned Filament resource — both expose
-the same underlying issue from two new angles. `RefreshDatabase` (via
-`parent::setUp()`) migrates only paths known before a test manually
-registers a plugin, so plugin migrations must be run explicitly
-(`$this->artisan('migrate', ['--path' => ...])`) in every test that needs
-them. Separately, the Phase 4-documented `route()`/`UrlGenerator` caching
-quirk (routes registered post-boot aren't visible to the helper, even
-though real HTTP dispatch works) this time hit **Filament's own internal
-rendering** (the List page's row-URL generation, and even its own
-breadcrumbs) and **this project's own controller code** (`redirect()->route(...)`)
-— not just test assertions. Both are genuine test-harness-only artifacts:
-real production registers everything during the app's normal pre-render
-boot, so neither issue exists there. Resolved per-case: the List page test
-asserts the route is genuinely registered (bypassing `UrlGenerator`
-entirely) rather than a full HTTP render; the controller test asserts the
-real business-logic side effects (the DB row, the stored file — both
-happen *before* the failing `redirect()->route()` call) rather than the
-response itself, with the expected exception caught and documented inline.
-
-**Real end-to-end verification, not just tests:** activated the plugin for
-real, then walked through the actual lifecycle against real fleet data —
-a real user with **no verification** rejected from booking an SUV (min age
-21); the same user with a **pending** verification still rejected; approved
-via the exact same DB update the admin action performs (plus firing
-`DriverVerified`); the same booking attempt then succeeded. All three
-states shown with real rejection messages / real booking IDs, not asserted
-in the abstract.
+- **Cross-plugin constraint**: `driver-verification` and `booking-engine` are
+  separate plugins; `BookingCreator` needs an eligibility answer only
+  driver-verification can give. Neither may reference the other (rule 2), so the
+  check is a **core-owned DTO**: `App\Core\Support\DriverEligibilityCheckRequest`
+  — the canonical pattern for "a DTO in core that both plugins depend on without
+  depending on each other."
+- Decisions resolved before building: verification is **per-User** (not
+  per-Booking — per-booking needs an async review step + a pending workflow that
+  doesn't exist); **guest bookings are exempt** (enforcing it would end true
+  guest checkout or require the pending workflow — deferred).
+- **Age eligibility evaluated at the booking's `pickup_at` date, not "today"** —
+  a driver who turns 21 before pickup is eligible. Tested at the exact boundary.
+- Plugin-owned Filament resource pattern: `AdminPanelProvider` only auto-discovers
+  `app/Filament/Resources`; a plugin's `DriverVerificationResource` lives inside
+  the plugin and registers itself into `Filament::getDefaultPanel()` from its own
+  `ServiceProvider::boot()`. Core never references the plugin's namespace.
+- Plugin-owned data goes in the plugin's own migrations
+  (`plugins/{slug}/database/migrations/` + `loadMigrationsFrom()`) — rule 6.
+  Laravel tracks migrations by filename, not path, so moving a ran migration is
+  safe.
+- TEST LIMITATION: `RefreshDatabase` migrates only paths known before a test
+  manually registers a plugin — run plugin migrations explicitly
+  (`$this->artisan('migrate', ['--path' => ...])`). The `route()`/`UrlGenerator`
+  quirk also hits Filament's own internal rendering and `redirect()->route()` in
+  tests (test-harness-only; real production pre-registers everything).
 
 ## Booking confirmation email (verified 2026-08-04)
 
-**Pre-flight caught a fourth instance of "modeled but never consumed"
-(rule 13), and a more serious variant of it.** `App\Core\Events\BookingConfirmed`
-has existed since Phase 2 but was never dispatched anywhere — `BookingCreator`
-set `status: 'confirmed'` directly and returned. Worse than a missing dispatch
-call: `docs/event-registry.md`'s own description of the event ("fires when a
-booking is accepted **and the deposit/payment is captured**") described a
-two-step request → deposit-hold → confirm flow that was never actually built.
-`Payment::authorizeDeposit()` (Phase 7) has zero callers in the booking flow —
-confirmed by grep, not assumed. The documentation was describing a system that
-doesn't exist, not just missing a call site.
+- Pre-flight caught another "modeled but never consumed" case: `BookingConfirmed`
+  existed since Phase 2 but was never dispatched — and `docs/event-registry.md`
+  described a two-step request→hold→confirm flow that was never built.
+  `authorizeDeposit()` had zero callers in the booking flow.
+- Resolved by dispatching reality: `BookingConfirmed::dispatch($booking)` now
+  fires at the end of `BookingCreator::create()` — immediate confirm, no payment
+  gate. Docs corrected to describe the real one-step flow; deposit-gated
+  confirmation named as a real, undesigned future decision.
+- Email is **self-contained** (no public booking-detail page existed yet):
+  vehicle, dates/locations, total, deposit inline, no link. A public
+  `bookings.show` page flagged as its own deferred item (later built — see
+  booking-history section).
+- Mechanism: `App\Core\Listeners\SendBookingConfirmationEmail` — a plain core
+  listener registered via `Event::listen()` in `AppServiceProvider::boot()`
+  (**no dedicated `EventServiceProvider` exists** in this project; plugin
+  listeners register the same way, e.g. `RelocateVehicleOnReturn`). Recipient:
+  `$booking->guest_email ?? $booking->user?->email`, no-op if neither.
+  `App\Mail\BookingConfirmation` is a queued `Mailable` rendering
+  `resources/views/emails/booking-confirmation.blade.php` — **plain inline CSS,
+  not theme tokens** (email clients can't consume CSS custom properties). Both
+  implement `ShouldQueue`; the `jobs` table + `QUEUE_CONNECTION=database` were
+  already in place.
+- Environment gap (not a code defect): this sandbox's PHP CLI has **no `php.ini`
+  loaded** (`php --ini` reports "(none)"), so `openssl.cafile` is unset and
+  Mailtrap TLS fails even though the system CA bundle at
+  `/etc/ssl/certs/ca-certificates.crt` is valid. Fix: run with
+  `-d openssl.cafile=/etc/ssl/certs/ca-certificates.crt`. Worth fixing at the
+  environment level in a later phase.
 
-**Resolved by dispatching reality, not by building the missing system.**
-`BookingConfirmed::dispatch($booking)` now fires at the end of
-`BookingCreator::create()`, exactly where and how the code actually confirms a
-booking today — immediately, with no payment gate. `docs/event-registry.md`
-was corrected to describe the real one-step flow, with deposit-gated
-confirmation named explicitly as a real, undesigned future decision (sync vs.
-async Stripe call inside the transaction, what happens to the booking if the
-hold fails) rather than left implied as already solved. Same reasoning as
-every other scope-boundary call in this project (extras, damage-charging,
-CMI): building the gate is its own phase, not a side effect of wiring up an
-email.
+## Kernel fix: FilterRegistry/SlotRegistry static-state accumulation (verified 2026-08-04)
 
-**Second real fork, resolved narrow:** the source e-commerce project's
-`OrderConfirmation` email links to a real `orders.confirmation` page, with a
-`URL::temporarySignedRoute` for guests. This project has no public
-booking-detail page at all yet. Rather than build one as a side effect of
-this phase, the confirmation email is self-contained — vehicle, pickup/return
-dates and locations, total price, and deposit amount shown inline, no link.
-A public `bookings.show` page (with the same guest-signed-URL split) is
-flagged in `docs/03-DOMAIN-REQUIREMENTS.md`'s MEDIUM section as its own
-deferred item.
-
-**Mechanism, ported from the source project's `OrderPlaced`/
-`SendOrderConfirmationEmail`/`OrderConfirmation` pattern after actually
-reading it (not assumed):** `App\Core\Listeners\SendBookingConfirmationEmail`
-(a plain core listener, registered via `Event::listen()` in
-`AppServiceProvider::boot()` — no dedicated `EventServiceProvider` exists in
-this project, matching the existing pattern `RelocateVehicleOnReturn` already
-established for plugin-registered listeners) resolves the recipient as
-`$booking->guest_email ?? $booking->user?->email` and no-ops if neither
-exists. `App\Mail\BookingConfirmation` is a queued `Mailable` rendering
-`resources/views/emails/booking-confirmation.blade.php` — plain inline CSS,
-not theme tokens, matching the source project's own emails (email clients
-can't consume CSS custom properties). Both the listener and the Mailable
-implement `ShouldQueue`; no new migration needed, since the `jobs` table and
-`QUEUE_CONNECTION=database` were already in place.
-
-**Verified three ways:** 5 automated tests (event dispatch, guest-email
-recipient resolution, user-email fallback, no-recipient no-op, Mailable
-subject) plus the full 109-test suite, Pint, and Larastan all still passing.
-Real `tinker` verification created a genuine booking through
-`BookingCreator::create()`, confirmed exactly one job (the listener) was
-queued, ran it for real via `php artisan queue:work --once`, and confirmed it
-correctly re-queued `App\Mail\BookingConfirmation` (expected — the Mailable
-also implements `ShouldQueue`). Processing that second job against the real
-Mailtrap sandbox failed with a TLS certificate verification error — traced
-to this sandbox's PHP CLI having no `php.ini` loaded at all (`php --ini`
-reports "(none)"), so `openssl.cafile` is unset even though the system CA
-bundle at `/etc/ssl/certs/ca-certificates.crt` is present and valid (a raw
-`openssl s_client -starttls smtp` to Mailtrap from the same shell verifies
-cleanly). **This is an environment gap, not a code defect** — confirmed by
-re-running the exact same `Mail::to(...)->send(new BookingConfirmation(...))`
-call with `-d openssl.cafile=/etc/ssl/certs/ca-certificates.crt` explicitly
-set, which succeeded against the real Mailtrap sandbox with no exception.
-Test data (the tinker-created booking, vehicle, and location) and the
-`failed_jobs` row were cleaned up afterward. If this sandbox's PHP CLI is
-still missing a loaded `php.ini` in a later phase, worth fixing at the
-environment level rather than re-discovering this each time — not done here
-since it's a persistent system change outside this phase's actual scope.
-
-## Kernel fix: `FilterRegistry`/`SlotRegistry` static-state accumulation (verified 2026-08-04)
-
-Found while building the booking-history phase (below), and treated as its
-own separate, focused fix rather than folded into that phase — this is a
-change to shared kernel infrastructure every `booking.*` filter has
-depended on since Phase 5, and per this project's own discipline, kernel
-changes get isolated scrutiny.
-
-**A meaningfully different class of bug than every prior "modeled but never
-consumed" catch.** Those were all *missing* wiring (an event never
-dispatched, a method never called). This was *present* wiring with a latent
-correctness bug, silently masked by luck rather than by anything actually
-being correct — "all tests pass" gave zero signal anything was wrong.
-
-**Root cause:** `FilterRegistry::$pipes` and `SlotRegistry::$slots` are
-`static` arrays, and Laravel's test suite boots a brand-new `Application`
-for every single test method within the same PHP process — re-running every
-ServiceProvider's `boot()`, including `AppServiceProvider::boot()` (which,
-as of the booking-history phase, unconditionally calls
-`SlotRegistry::register('account.dashboardWidgets', ...)` on every boot).
-Nothing ever cleared the static arrays between boots, so they accumulated
-without bound across an entire test run — confirmed empirically with a
-throwaway diagnostic test: `FilterRegistry::pipesFor('booking.priceCalculation')`
-measured 2 → 4 → 6 entries across three consecutive test methods that each
-register `BookingEngineServiceProvider`.
-
-**Why this hadn't broken anything before now:** `CoreDurationDiscountPipe`
-and `CoreDepositPipe` (the only `booking.priceCalculation` pipes) both
-recompute their result from scratch from the immutable
-`$breakdown->request` every time, rather than compounding on the previous
-pass's output — so running the same pipe 2, 4, or 6 times in a row still
-produces the identical final number, and `PriceCalculationTest`'s exact
-hand-computed totals kept passing by coincidence.
-`booking.availabilityCheck`/`booking.driverEligibilityCheck` are boolean
-short-circuit checks, equally immune by accident. This was fragile, not
-safe — the first future pipe that isn't purely re-derivative (e.g. a
-promo-code pipe decrementing a usage counter) would have been silently
-double- or triple-applied with nothing distinguishing "ran once correctly"
-from "ran three times and happened to land on the same number." Booking
-history's `SlotRegistry` usage has no such luck — a widget genuinely
-renders N times — which is what actually exposed this.
-
-**Scope of real-world risk, checked rather than assumed:** this project
-does not run Laravel Octane (confirmed via `composer.json`), so in real
-deployment each PHP-FPM request is a fresh process and this never
-accumulates there today. This was a test-environment-only symptom right
-now — but the underlying design gap (registries assuming `boot()` runs
-exactly once per process, with no reset path) would resurface immediately,
-silently, in production the moment a persistent-worker deployment model is
-ever adopted.
-
-**Fix:** `flush()` added to both `FilterRegistry` and `SlotRegistry`
-(clears the static array), called at the top of `PluginManager::boot()` —
-so every boot cycle starts from a genuinely clean registry state before
-re-registering. No public API changed for any existing pipe/slot
-registration call site.
-
-**Verified three ways, not just "tests pass":** (1) the same diagnostic
-approach that caught the bug, re-run after the fix — pipe/slot counts now
-stay at a constant 2/1 across three consecutive test methods, instead of
-growing; (2) the fix was temporarily reverted and the new
-`RegistryFlushTest` regression test was confirmed to actually fail without
-it (2 of 3 methods failed with counts of 4 and 6, matching the diagnostic
-exactly) before being restored — proving the regression test is a real
-guard, not a tautology; (3) the full 121-test suite, Pint, and Larastan all
-still pass after the fix, plus `tsc --noEmit --strict`.
-
-**General instinct worth keeping, not just this one fix:** this is the
-second time in this project a mechanism nobody was actively exercising
-turned out to be structurally fragile the moment a real first consumer
-arrived (`HasMinimumRole` waiting for its trigger was a deliberate
-deferral; this was an accidental one — the fragility was already latent,
-just unobserved). Any shared static/kernel state deserves an explicit "does
-this actually reset correctly across the process lifecycles that matter"
-check the first time something real depends on it, not only after a bug
-happens to surface it.
+- Root cause: `FilterRegistry::$pipes` and `SlotRegistry::$slots` are `static`
+  arrays; Laravel boots a new `Application` per test method, re-running every
+  provider `boot()`, and nothing ever cleared the statics — entries accumulated
+  across a test run (measured `pipesFor('booking.priceCalculation')`: 2→4→6).
+- Why masked: existing pipes recompute their result from scratch from the
+  immutable `$breakdown->request`, so running the same pipe 2/4/6 times produced
+  identical numbers by coincidence; boolean availability/eligibility pipes were
+  equally immune by accident. **Fragile, not safe** — the first non-re-derivative
+  pipe (e.g. a promo pipe decrementing a counter) would silently double-apply.
+- Not a production bug today (no Octane; each PHP-FPM request is a fresh process)
+  but would resurface silently under any persistent-worker model.
+- Fix: `flush()` added to both registries (clears the static array), called at
+  the top of `PluginManager::boot()` — every boot starts from a clean registry.
+  No public API change.
+- LESSON: any shared static/kernel state deserves an explicit "does this reset
+  across the process lifecycles that matter" check the first time something real
+  depends on it.
 
 ## Booking history + the deferred confirmation-page gap (verified 2026-08-04)
 
-Closes the public-booking-page gap deliberately deferred in the
-booking-confirmation-email phase, and is the first real consumer of
-`SlotRegistry` (see the kernel fix above, found while building this).
-
-**Pre-flight found the actual source pattern was different from what the
-domain doc's wording ("reuse RecentOrders-equivalent pattern") implied on
-its own.** Reading the real source code (not assuming from the name) showed
-`RecentOrders` isn't a dedicated history page/route — it's a Dashboard-slot
-widget (`SlotRegistry::register('account.dashboardWidgets', ...)`)
-rendered from `ProfileController::edit()` into `Profile/Edit.tsx`, linking
-to the *same* `orders.confirmation` page used for the guest email link. Two
-follow-on corrections during the same pre-flight, both caught by tracing
-the actual mechanism rather than trusting a name already agreed to:
-`Dashboard.tsx` was assumed to be the host page in an earlier exchange —
-wrong; the source project's own `Dashboard.tsx` is *also* an untouched
-Breeze stub, and the real widget host is `Profile/Edit.tsx`. Corrected
-before any code was written on top of the wrong assumption, not after.
-
-**Built:** `resources/js/pluginComponentRegistry.tsx` (the `SlotOutlet`
-mechanism — didn't exist in this project before now, ported from source),
-`Widgets/BookingHistory.tsx` (the widget), `SlotRegistry::register()` call
-in `AppServiceProvider::boot()`, `ProfileController::edit()` now batch-loads
-the user's last 5 bookings (`vehicle`/`pickupLocation`/`returnLocation` in
-one query, rule 8) and renders the slot. `App\Http\Controllers\BookingController`
-(core-owned, mirrors `OrderConfirmationController`'s `isOwner || hasValidSignature`
-gate exactly) + `bookings.show` route + `Bookings/Show.tsx` close the public
-booking-detail-page gap; `SendBookingConfirmationEmail` now computes a real
-`confirmationUrl` (signed for guests, plain route for owners) and the email
-template's previously-omitted CTA link is restored.
-
-**Theming scope, deliberately bounded:** `AuthenticatedLayout.tsx` and
-`Profile/Edit.tsx`'s own wrapper markup were retokenized as part of this
-phase (justified — the new widget renders inside them, and a tokenized
-widget inside an untokenized shell would be visibly inconsistent). **Not
-touched, flagged instead of silently fixed or silently ignored:**
-`resources/js/Components/{NavLink,Dropdown,ResponsiveNavLink}.tsx` (shared
-Breeze components, also used by Login/Register, still have hardcoded
-indigo/gray Tailwind classes) and `Profile/Edit.tsx`'s three Partials
-(`UpdateProfileInformationForm`, `UpdatePasswordForm`, `DeleteUserForm`,
-same hardcoded-color state). Both are real, pre-existing rule-3 violations,
-out of this phase's agreed scope — left as a named, deliberate deferral for
-a future theming sweep rather than expanded into or silently left
-unmentioned.
-
-**Verified end-to-end with real HTTP requests, not just the automated
-suite (121 tests, Pint, Larastan, `tsc --noEmit --strict` all pass):** a
-real `php artisan serve` process (with `APP_URL` temporarily pointed at the
-serve address, then reverted — signed URLs bind the full host into the
-HMAC, so generating one via `tinker`'s CLI context and validating it
-against a mismatched real-request host is a guaranteed false-negative, not
-a bug; caught and fixed mid-verification, not silently worked around) was
-used to: create two real bookings (one guest, one registered user) through
-`BookingCreator`, confirm both queued jobs, process them for real against
-Mailtrap (`-d openssl.cafile=...`, same environment gap as the prior
-phase — one transient failure was a genuine Mailtrap sandbox rate limit
-from this session's send volume, resolved by `queue:retry`, not a code
-defect); extract the actual signed URL and hit it with **no session
-cookie** — 200, with the exact real booking data (Ford Focus, E2E Airport,
-750.00/150.00 deposit) in the Inertia props; hit the same URL with no
-signature (403) and a tampered signature (403); log in for real over HTTP
-(cookie-jar + `X-XSRF-TOKEN`, Laravel's stateful-SPA CSRF flow) as the
-booking's real owner and hit `/bookings/{id}` via the plain route — 200,
-correct data (Kia Sportage, 1600.00/320.00 deposit); log in as a
-*different* real user and confirm the same URL — 403; and hit `/profile`
-as the owner, confirming `dashboardWidgets` contains exactly one
-`Widgets/BookingHistory` entry with `recentBookings` correctly scoped to
-only that user's own booking, not the guest's or the other user's. All test
-data (bookings, vehicles, the shared location, both users, queued/failed
-jobs, sessions) cleaned up afterward; `.env` and the dev server reverted to
-their original state.
+- Pre-flight (reading real source, not assuming): the source project's
+  `RecentOrders` is a **Dashboard-slot widget** (`SlotRegistry::register(
+  'account.dashboardWidgets', ...)`) rendered from `ProfileController::edit()`
+  into `Profile/Edit.tsx` — NOT a dedicated history page, and NOT hosted in
+  `Dashboard.tsx` (which is an untouched Breeze stub). It links to the same
+  `orders.confirmation` page the guest email uses.
+- Built: `resources/js/pluginComponentRegistry.tsx` (the `SlotOutlet` mechanism —
+  didn't exist here before, ported from source), `Widgets/BookingHistory.tsx`,
+  the `SlotRegistry::register()` call in `AppServiceProvider::boot()`,
+  `ProfileController::edit()` batch-loads the user's last 5 bookings
+  (`vehicle`/`pickupLocation`/`returnLocation` in one query, rule 8).
+  `App\Http\Controllers\BookingController` (core-owned, mirrors
+  `OrderConfirmationController`'s `isOwner || hasValidSignature` gate) +
+  `bookings.show` route + `Bookings/Show.tsx` close the public booking-detail
+  gap. `SendBookingConfirmationEmail` now computes a real `confirmationUrl`
+  (signed for guests, plain route for owners).
+- Theming scope: `AuthenticatedLayout.tsx` + `Profile/Edit.tsx` wrapper markup
+  retokenized. **Known pre-existing rule-3 violations left flagged, not fixed:**
+  `resources/js/Components/{NavLink,Dropdown,ResponsiveNavLink}.tsx` and
+  `Profile/Edit.tsx`'s three Partials (`UpdateProfileInformationForm`,
+  `UpdatePasswordForm`, `DeleteUserForm`) still have hardcoded indigo/gray
+  Tailwind classes — a named deferral for a future theming sweep.
+- Verification note: signed URLs bind the full host into the HMAC — generate and
+  validate them with a matching `APP_URL`/real-request host, or every check is a
+  guaranteed false negative.
 
 ## Status-only booking cancellation (verified 2026-08-04)
 
-**Pre-flight rule-13 check, as predicted, found exactly what was
-expected — `BookingCancelled` had zero real dispatch sites, same shape as
-`BookingConfirmed`'s pre-fix gap.** What wasn't predicted, and reshaped the
-paired damage-reporting phase into its own separate prerequisite: `VehicleCheckedOut`/
-`VehicleReturned` *also* have zero real dispatch sites anywhere in
-application code — not a missing call on top of a working lifecycle, but no
-real checkout/return lifecycle at all. `RelocateVehicleOnReturn`'s only-ever
-invocation was a manual `VehicleReturned::dispatch()` in `tinker` during
-Phase 5's own verification (confirmed by re-reading that section — it says
-so directly). `BookingsTable`'s status badge colors and filter dropdown for
-`checked_out`/`returned` are decoration for a lifecycle that doesn't exist
-in code. Damage-reporting (explicitly "at pickup and return" per the domain
-doc) was correctly pulled out to wait on that lifecycle being built for
-real, as its own phase — not designed against events that never fire.
-
-**A second, independent dependency found specifically for cancellation:**
-the domain doc's "cancellation policy" is refund logic
-(`booking.cancellationPolicy`, refund percentage by proximity to pickup),
-not just a status flip. Checked whether there's real money to apply that to
-— there isn't. `authorizeDeposit()` has zero callers in the real booking
-flow (already known and deferred in the booking-confirmation-email phase),
-and tracing that same gap forward found a second, previously-unstated
-consequence: `ViewBooking`'s Release/Capture Deposit actions are
-permanently invisible for every real booking today, since their visibility
-gate needs an `authorized` `deposit_authorization` `Payment` row that
-nothing in the live flow ever creates. Three separate discoveries — refund
-policy, deposit-release visibility, deposit-capture visibility — all
-rooting back to the same one undesigned deposit-gate decision, now a strong
-signal that decision is the natural next dedicated phase.
-
-**Scoped deliberately narrow, matching the resolved fork:** cancellation
-ships as status-only. `ViewBooking`'s new "Cancel Booking" action (visible
-only when `status === 'confirmed'`) sets `status = 'cancelled'` and
-dispatches `BookingCancelled` for real — the first real dispatch site this
-event has ever had. No refund computation, no cancellation email (that's a
-real, separate future addition, same shape as the booking-confirmation
-email but not built here — named explicitly in `docs/event-registry.md`
-rather than left implied). Freeing the vehicle needed zero new logic:
-`CoreAvailabilityCheckPipe`'s blocking statuses (`confirmed`,
-`checked_out`) already correctly excluded `cancelled` since Phase 5.
-
-**Verified to the same standard as the booking-history phase — real HTTP,
-not just the automated suite (125 tests, Pint, Larastan all pass):** a real
-guest booking was created through `BookingCreator` against a real dev-DB
-vehicle/location; a second booking attempt for the identical vehicle and
-dates was confirmed **genuinely rejected** (`VehicleNotAvailableException`)
-*before* cancellation — proving the block was real, not assumed; the
-booking was then cancelled via the exact same code the Filament button
-runs; the identical second-booking attempt was retried and **succeeded**
-this time (`status: confirmed`, a real new booking ID) — real proof a
-cancelled booking's vehicle becomes bookable again for the same dates, not
-inferred from reading `CoreAvailabilityCheckPipe`'s status list. Separately,
-logged in as a real staff user over real HTTP (`X-XSRF-TOKEN` cookie-jar
-flow) and confirmed `/admin/bookings` renders both booking rows with the
-correct status. All test data (bookings, vehicle, location, staff user,
-sessions) cleaned up afterward; the dev server stopped.
-
-**Automated coverage:** 4 new tests in `BookingResourceTest` — the action
-visible on a `confirmed` booking, hidden once already `cancelled`, sets
-status and dispatches `BookingCancelled` with the correct booking state,
-and a full `BookingCreator`-round-trip test proving the same-dates-rebookable
-claim inside the automated suite (independent of the manual `tinker`/HTTP
-walkthrough above — both prove it, neither substitutes for the other).
+- Pre-flight: `BookingCancelled` had zero dispatch sites. **Also found:
+  `VehicleCheckedOut`/`VehicleReturned` have zero dispatch sites** — no real
+  checkout/return lifecycle exists at all (damage-reporting correctly pulled out
+  to wait on that lifecycle).
+- Cancellation policy is refund logic, but there's no real money to apply it to:
+  `authorizeDeposit()` has no callers, so no `authorized` deposit `Payment` row
+  is ever created and Release/Capture Deposit are permanently invisible. Three
+  discoveries (refund math, deposit-release visibility, deposit-capture
+  visibility) all root back to the one undesigned deposit-gate decision.
+- **Ships status-only**: `ViewBooking`'s "Cancel Booking" action (visible when
+  `status === 'confirmed'`) sets `status = 'cancelled'` and dispatches
+  `BookingCancelled` — first real dispatch site. No refund computation, no
+  cancellation email (both future additions, named in `docs/event-registry.md`).
+  Freeing the vehicle needed zero new logic: `CoreAvailabilityCheckPipe`'s
+  blocking statuses (`confirmed`, `checked_out`) already excluded `cancelled`.
+- Verified: a real booking cancelled via the exact action code, then the same
+  vehicle/dates genuinely became bookable again.
 
 ## The real booking-creation flow (verified 2026-08-04)
 
-**The single most significant finding in this project so far — not for
-complexity, but because "modeled but never consumed" finally applied to
-the literal core purpose of the business, not a supporting mechanism.**
-Sent as the pre-flight for what was framed as "the deposit-gate decision"
-(deferred twice already, under the framing "sync vs async Stripe call
-inside the transaction"). Tracing that framing all the way down found it
-was subtly wrong in two compounding ways:
-
-1. **A real deposit hold structurally requires a client-side step.**
-   `authorizeDeposit()` only creates a Stripe `PaymentIntent`
-   server-side (`requires_payment_method` in Stripe's own lifecycle); the
-   local `Payment` row starts `'pending'` and only becomes `'authorized'`
-   via the `payment_intent.amount_capturable_updated` webhook, which Stripe
-   only fires after a customer confirms the PaymentIntent client-side
-   (Stripe Elements/Payment Element, possibly 3DS). "Sync vs async
-   backend call" was never the real question — there's no backend-only way
-   to place a hold at all.
-2. **There was no real booking-creation flow to gate in the first place.**
-   Grepped every real caller of `BookingCreator` across the entire
-   codebase: none, anywhere, outside `tinker` and tests. `Vehicles/Show.tsx`'s
-   "Book this vehicle" button had no `onClick`/`href` — a dead Phase 4
-   placeholder. Nine-plus phases of genuinely rigorous, well-tested work
-   (availability, pricing, payments infrastructure, driver verification,
-   booking history, cancellation) were all built and verified against a
-   booking-creation path that only ever existed in `tinker`.
-
-**Split into two phases rather than designing payment collection against a
-UI that didn't exist:** Phase A (this one) builds the real public checkout
-flow with zero change to `BookingCreator`'s actual behavior — still
-immediate-confirm, no gate. Phase B (Stripe Elements + the real hold, and
-finally resolving cancellation's deferred refund math and the invisible
-admin deposit buttons) is deferred until Phase A is proven working, so it
-adds a gate to something real instead of guessing at where a gate belongs.
-
-**Built:** `Plugins\BookingEngine\Http\Controllers\BookingCheckoutController`
-(`GET/POST /vehicles/{vehicle}/book`, registered from
-`BookingEngineServiceProvider` — not core, since it must call
-`BookingCreator`), `Bookings/Checkout.tsx` (price preview + guest/owner
-contact form), and a real date-picker form replacing the dead button on
-`Vehicles/Show.tsx`. Full details, including the route/page shape and
-scope boundaries (no one-way return-location picker yet — the service
-layer has supported it since Phase 5, the UI doesn't expose it), in
-`docs/event-registry.md`'s new "Public Booking Checkout" section.
-
-**A real bug found by real end-to-end verification, not by re-reading the
-code:** the initial `store()` redirected every booking to a plain
-`route('bookings.show', $booking)` URL — for a guest booking, neither
-owner-authenticated nor signed, so the guest who just booked got a genuine
-`403` clicking through their own confirmation redirect. Caught by actually
-following the real HTTP `Location` header during verification. Fixed by
-checking the source e-commerce project's own
-`CheckoutController::confirmationUrl()`, which signs the post-checkout
-redirect for guests — `store()` now does the same signed-vs-plain split
-`SendBookingConfirmationEmail` already uses. Re-verified after the fix:
-the identical guest curl session that previously 403'd got a real 200 with
-correct data.
-
-**Verified end-to-end with real HTTP, matching the standard used for
-booking history and cancellation (132 tests, Pint, Larastan, `tsc --strict`
-all pass):** a real vehicle/location seeded in the dev DB; a real
-`GET /vehicles/{id}` page load confirming real vehicle data; a real
-`GET .../book?pickup_at=...&return_at=...` price preview confirming exact
-numbers (2 days × 350 → 700 total, 140 deposit); a real guest `POST`
-creating booking #21 for real, redirecting to a signed URL that genuinely
-loaded (`200`, correct vehicle/total/deposit); the confirmation email
-genuinely queued and then sent through Mailtrap; a second real `POST` for
-the identical vehicle/dates confirmed **not** to create a second booking
-(DB still showed exactly one row for that vehicle) — proving the
-availability block holds through the real public entry point, not just
-`BookingCreator` called directly. All test data (booking, vehicle,
-location, jobs, sessions) cleaned up afterward; dev server stopped.
-
-**Automated coverage:** 7 tests in `BookingCheckoutTest` — price preview
-accuracy, unavailable-dates preview, a full guest booking through real HTTP
-(including asserting the redirect URL is genuinely signed and genuinely
-loads), guest-contact-fields-required validation, authenticated users
-skipping guest fields, double-booking rejection via the real controller
-(not `BookingCreator` directly), and a 404 for a non-available vehicle.
+- **The most significant "modeled but never consumed" finding**: `BookingCreator`
+  had **zero real callers** anywhere outside `tinker`/tests. `Vehicles/Show.tsx`'s
+  "Book this vehicle" button had no `onClick`/`href` — a dead Phase 4 placeholder.
+  Nine-plus phases were verified against a booking path that only existed in
+  `tinker`.
+- Also corrected the deposit-gate framing: a real hold structurally requires a
+  **client-side step** (`payment_intent.amount_capturable_updated` only fires
+  after the customer confirms via Stripe Elements, possibly 3DS) — "sync vs async
+  backend call" was never the real question.
+- Split: **Phase A** (this) builds the real public checkout with zero change to
+  `BookingCreator`'s behavior (still immediate-confirm, no gate). **Phase B**
+  (Stripe Elements + real hold + cancellation refund math + invisible admin
+  deposit buttons) deferred until A is proven.
+- Built: `Plugins\BookingEngine\Http\Controllers\BookingCheckoutController`
+  (`GET/POST /vehicles/{vehicle}/book`, registered from `BookingEngineServiceProvider`
+  — not core, since it must call `BookingCreator`), `Bookings/Checkout.tsx`
+  (price preview + guest/owner contact form), real date-picker form on
+  `Vehicles/Show.tsx`. Scope: no one-way return-location picker yet (service layer
+  supports it since Phase 5; UI doesn't expose it).
+- LESSON (real bug found via real HTTP `Location` header): a guest post-checkout
+  redirect to a plain `route('bookings.show', $booking)` 403'd for guests — the
+  redirect must use the **signed-vs-plain split** (signed for guests) that
+  `SendBookingConfirmationEmail` already uses.
 
 ## Phase B — the real deposit-gate (verified 2026-08-04)
 
-**The pre-flight overturned its own framing from two prior deferrals, and
-then found a real collision with an already-shipped, already-verified
-rule-9 decision.** "Sync vs async Stripe call inside the transaction" —
-the question this had been deferred under twice — was never the real
-question: a real deposit hold structurally requires a client-side step
-(Stripe's `payment_intent.amount_capturable_updated` webhook only fires
-after the customer confirms via Stripe Elements, possibly through 3D
-Secure); there is no backend-only way to place a hold at all. That
-correction then surfaced the real design problem: Phase 5's
-`CoreAvailabilityCheckPipe` explicitly decided `pending` bookings don't
-block availability, because at the time `pending`→`confirmed` happened in
-one atomic call with no real time gap. A real hold introduces the first
-genuine gap in that transition — and the moment that gap exists, the
-original decision stops being a neutral default and becomes an actual
-race: two customers could both pass availability, both get a real card
-hold placed by Stripe, and only one could ever reach `confirmed` — leaving
-the loser with money held for a car they can never get.
-
-**Resolved by revising the Phase 5 decision explicitly, not by building a
-race-resolution mechanism.** `pending` now blocks availability while its
-hold is still live (`hold_expires_at` in the future) —
-`CoreAvailabilityCheckPipe`'s docblock documents the full reasoning for
-the revision inline, not just the new behavior. This makes the double-hold
-race structurally impossible: a second checkout attempt for the same
-vehicle/dates is rejected by the ordinary availability check inside
-`BookingCreator::createPending()` itself, before it ever reaches
-`PaymentGatewayRegistry::get()` or `authorizeDeposit()` — there's no
-"who wins" question to resolve, because there's only ever one live hold
-attempt per vehicle/dates. A null `hold_expires_at` (the shape `create()`'s
-immediate-confirm path would produce if it ever persisted a pending row,
-which it doesn't) is deliberately excluded from blocking — a null expiry
-has no defined "is this hold still live" answer, and the pipe never
-guesses.
-
-**A genuinely new mechanism, held to the same "first real consumer"
-standard as `SlotRegistry`/`HasMinimumRole`:** the hold needs a real
-expiry path, or an abandoned checkout (customer closes the tab mid-payment)
-would lock the vehicle forever now that `pending` blocks. This project had
-no scheduler configured anywhere before this — `bootstrap/app.php` gained
-its first `withSchedule()` call, running `bookings:release-expired-holds`
-(`Plugins\BookingEngine\Console\Commands\ReleaseExpiredBookingHolds`)
-every minute. Verified as a real mechanism, not just "the code compiles":
-`schedule:list` shows the real cron entry registered; a dedicated test
-(`ReleaseExpiredBookingHoldsTest`) proves the command is genuinely
-registered via `Artisan::all()`, and a real before/after availability
-check (same standard as the cancellation phase's proof) confirms a
-still-live hold blocks, then genuinely stops blocking once expired and the
-command runs — not inferred from reading the pipe's logic.
-
-**Migration approved and applied before any code was written** (rule 7):
-`bookings.hold_expires_at` (nullable timestamp) plus a composite index on
-`(status, hold_expires_at)`, added specifically because the reviewer asked
-whether the expiry job's exact query shape (`WHERE status = 'pending' AND
-hold_expires_at < now()`) would benefit from one before real booking
-volume existed — confirmed yes and added in the same migration rather than
-retrofitted later.
-
-**`BookingCreator` gained `createPending()`/`confirmPending()` alongside
-the unchanged `create()`** — `create()` still exists for callers that
-genuinely don't need a payment gate (tests, `tinker`, any future
-admin-initiated booking); the real checkout flow uses the new pair
-instead. `confirmPending()` re-runs the availability check as
-defense-in-depth even though nothing else could have raced past a live
-hold by construction — this project's standing discipline is to re-verify
-rather than assume (rule 9) — and is idempotent (a second call on an
-already-confirmed booking is a safe no-op, guarding against a retried
-`bookings.confirm` request double-firing the confirmation email).
-
-**`PaymentGateway::syncAuthorizationStatus()`** (new interface method,
-implemented in `StripeGateway`) closes a real timing gap: the client-side
-confirmation can complete before the async webhook has actually been
-delivered. Calling this once, synchronously, right after client-side
-confirmation succeeds doesn't weaken the webhook path at all — both share
-the exact same amount-cross-check and target-status logic
-(`StripeGateway::applyIntentState()`), so whichever arrives first resolves
-the row and the second is a safe no-op via the existing idempotency guard.
-
-**Built:** `BookingCheckoutController::store()` now calls
-`createPending()` + `authorizeDeposit()` and renders `Bookings/Payment.tsx`
-(Stripe Elements via `@stripe/react-stripe-js`, `redirect: 'if_required'` —
-Stripe's own recommended pattern, stays on-page for the common non-3DS
-case) with a real `client_secret`; a new `confirm()` action + `bookings.confirm`
-route synchronously verifies the hold via `syncAuthorizationStatus()` and
-calls `confirmPending()`. If hold authorization itself fails, the pending
-booking row is deleted rather than left orphaned.
-
-**Verified end-to-end against real Stripe test-mode infrastructure, not
-mocked (153 tests, Pint, Larastan, `tsc --strict` all pass):** a real
-booking (#22) was created through the real checkout flow, producing a real
-Stripe `PaymentIntent` (`capture_method: manual`); confirmed via a direct
-API call with a real Stripe test payment method (`pm_card_visa`), after
-which Stripe's own record showed `requires_capture`; `bookings.confirm`
-was then hit for real, `syncAuthorizationStatus()` genuinely called
-Stripe's API and updated the local row to `authorized`, and the booking
-genuinely transitioned to `confirmed` with `hold_expires_at` cleared.
-Separately, the double-hold race was proven impossible against real
-infrastructure (not just the mocked test): a first real checkout for a
-vehicle/dates created a genuinely live hold (booking #23); a second real
-checkout attempt for the identical vehicle/dates was rejected with no
-booking row created and no second Stripe call made — confirmed by
-inspecting the DB directly, not by reading the code. Booking #23's hold
-was then expired and released via the real scheduled command, and a
-direct Stripe API retrieval confirmed the real `PaymentIntent`'s status is
-`canceled` on Stripe's own servers. All test data (bookings, vehicle,
-location, Stripe PaymentIntents, jobs, sessions) cleaned up afterward; dev
-server stopped.
+- **Revises a Phase 5 decision explicitly**: `pending` bookings now block
+  availability while their hold is still live (`hold_expires_at` in the future).
+  A real hold introduced the first genuine gap in the pending→confirmed
+  transition; without blocking, two customers could both pass availability and
+  get real holds, with only one reaching `confirmed` (loser stuck with money held
+  for a car they can't get). Blocking makes the double-hold race structurally
+  impossible — the second checkout is rejected inside `BookingCreator::createPending()`
+  before any Stripe call. A null `hold_expires_at` deliberately never blocks (no
+  defined "is this hold still live" answer; the pipe never guesses).
+- New mechanism: the hold needs a real expiry path or an abandoned checkout locks
+  the vehicle forever. `bootstrap/app.php` gained its first `withSchedule()` call,
+  running `bookings:release-expired-holds`
+  (`Plugins\BookingEngine\Console\Commands\ReleaseExpiredBookingHolds`) every
+  minute. This was the project's first scheduler configuration.
+- Migration (approved before writing code, rule 7): `bookings.hold_expires_at`
+  (nullable timestamp) + composite index on `(status, hold_expires_at)`.
+- `BookingCreator` gained `createPending()`/`confirmPending()` alongside unchanged
+  `create()` (which still exists for callers that don't need a gate: tests,
+  `tinker`, future admin-initiated bookings). `confirmPending()` re-runs the
+  availability check (defense-in-depth, rule 9) and is idempotent (safe no-op on
+  an already-confirmed booking — guards a retried confirm request double-firing
+  the email).
+- `PaymentGateway::syncAuthorizationStatus()` (new interface method, implemented
+  in `StripeGateway`) closes the timing gap where client-side confirmation
+  completes before the async webhook arrives. It shares the exact amount-cross-
+  check + target-status logic with the webhook path (`applyIntentState()`), so
+  whichever arrives first resolves the row and the second is a safe idempotent
+  no-op.
+- Built: `store()` calls `createPending()` + `authorizeDeposit()` and renders
+  `Bookings/Payment.tsx` (Stripe Elements via `@stripe/react-stripe-js`,
+  `redirect: 'if_required'` — stays on-page for the common non-3DS case) with a
+  real `client_secret`; a `confirm()` action + `bookings.confirm` route
+  synchronously verifies the hold via `syncAuthorizationStatus()` then calls
+  `confirmPending()`. If hold authorization fails, the pending booking row is
+  deleted (not left orphaned).
+- Verified against real Stripe test infrastructure: real PaymentIntent
+  (`capture_method: manual`) confirmed with `pm_card_visa` → `requires_capture`;
+  `bookings.confirm` → local row `authorized`, booking `confirmed`,
+  `hold_expires_at` cleared. Double-hold race proven impossible (second checkout
+  rejected, no second Stripe call); expired hold released via the real scheduled
+  command, PaymentIntent genuinely `canceled` on Stripe's servers.
 
 ## Cancellation refund policy (verified 2026-08-05)
 
-**Pre-flight found a stale docblock, a live production gap Phase B
-silently introduced, and a conceptual mislabeling of the whole feature —
-all before writing a line of code for the thing it was actually asked to
-build.**
-
-`ViewBooking.php`'s own docblock still said "no real captured deposit to
-compute a refund against until the deposit-gate decision is made" — no
-longer true since Phase B. Separately, and more seriously: `activeAuthorization()`
-(gating the Release/Capture Deposit buttons) checks only `Payment.type`/`status`,
-with no booking-status check at all — since Phase B's checkout flow
-authorizes a real deposit hold *before* a booking is even confirmed for
-pickup, a just-confirmed booking already showed Cancel Booking, Release
-Deposit, and Capture Deposit all together in production, with nothing
-stopping staff from releasing/capturing a deposit for a booking that
-hadn't reached pickup at all. Found by actually re-reading the visibility
-gate before building on top of it, not assumed fine because it predated
-this phase.
-
-**A third finding reframed the feature itself.** `PaymentGateway::chargeFinal()`
-(the actual rental-total charge) has zero real callers anywhere — the only
-real money movement at booking time is the deposit hold. So
-`booking.cancellationPolicy`'s "how much refund" was never really about
-reversing a captured payment; it's about how much of a still-*held*,
-never-captured deposit to release vs. forfeit as a cancellation fee. A
-narrower, more accurate framing than the domain doc's generic wording,
-and it directly determined the mechanism: `captureDeposit()` already
-supported a partial amount (existing test coverage proved it), and
-Stripe's own partial-capture behavior on a manual-capture PaymentIntent
-automatically releases the uncaptured remainder in that same call — no
-new gateway operation needed. **Verified this claim before relying on
-it**, not just inferred from existing tests: confirmed against Stripe's
-own documentation ("A partial capture automatically releases the
-remaining amount") and a real test-mode API call (authorize 100.00,
-partially capture 40.00, `amount_received: 40.00`, `amount_capturable: 0`
-— the other 60.00 genuinely released in the same call, confirmed by
-re-retrieving the PaymentIntent independently).
-
-**The visibility-gate fix hit a second real conflict mid-implementation:**
-the natural fix ("gate Release/Capture to `checked_out`/`returned`
-statuses") would have made them permanently invisible again for every
-ordinary clean-return booking, since that checkout/return lifecycle still
-has zero real dispatch sites anywhere (the same gap found in the
-deposit-gate phase's pre-flight, now hit a second time as a live
-consequence rather than a noted gap). Resolved with an explicitly-named
-interim proxy — `pickup_at->isPast()` — a real, always-available signal
-standing in for the real lifecycle, to be replaced once
-`VehicleCheckedOut`/`VehicleReturned` actually get dispatched from real
-staff-facing actions. **This is the second time the missing checkout/return
-lifecycle has actively distorted how another feature has to be built** —
-it's no longer just a deferred nice-to-have.
-
-**Built:** `Plugins\BookingEngine\Support\CancellationPolicyRequest` +
-`CoreCancellationPolicyPipe`, registered as the new `booking.cancellationPolicy`
-filter — cliff/threshold refund tiers
-(`config('booking-engine.cancellation_refund_tiers')`, explicitly flagged
-as placeholder business numbers, same pattern as `duration_discount_tiers`
-before real numbers existed for it either). `ViewBooking`'s Cancel Booking
-action now resolves the deposit automatically as part of cancelling
-(proximity-to-pickup is a deterministic function of time, not a judgment
-call like damage inspection, so no separate manual step is needed) —
-100% refund releases; anything less captures the forfeited amount. The
-confirmation modal shows the live computed refund/forfeit amounts before
-staff confirms, matching this project's standing care around financial
-actions.
-
-**Verified end-to-end against real Stripe test-mode infrastructure, not
-mocked (166 tests, Pint, Larastan, `tsc --strict` all pass):** a real
-booking (#24) was created and authorized for a real deposit hold (240.00,
-pickup 3 days out — the 50%-refund tier); confirmed via a real Stripe test
-payment method exactly as Phase B's flow does; cancelled through the same
-logic `ViewBooking`'s action runs, computing `refundPercent: 50` and a
-forfeit of exactly 120.00; a direct, independent Stripe API retrieval
-afterward confirmed the real `PaymentIntent` shows `status: succeeded`,
-`amount_received: 12000` (120.00 MAD), `amount_capturable: 0` — the
-remaining 120.00 genuinely auto-released by Stripe itself, not just
-recorded locally. All test data cleaned up afterward.
-
-**Automated coverage:** 7 exact-boundary tests for the refund tiers
-(matching `PriceCalculationTest`'s standard — hand-computed expected
-percentages at 7-day/2-day boundaries, same-day, and after-pickup cases),
-plus 6 new/updated `BookingResourceTest` cases covering the visibility-gate
-fix (hidden before pickup even with a live hold; visible once pickup has
-passed) and the three real refund-wiring paths (full release, partial
-capture, full forfeit) via Mockery expectations on which gateway method
-gets called with which exact amount.
+- Pre-flight findings: `ViewBooking.php`'s docblock was stale; `activeAuthorization()`
+  (gating Release/Capture) checked only `Payment.type`/`status` with **no
+  booking-status check** — since Phase B authorizes a hold before a booking is
+  confirmed for pickup, a just-confirmed booking wrongly showed Cancel/Release/
+  Capture together.
+- Reframing: `chargeFinal()` has zero real callers — the only real money movement
+  is the deposit hold. So "refund" is really "how much of a still-held, never-
+  captured deposit to release vs. forfeit as a cancellation fee." Mechanism: a
+  **partial `captureDeposit()` on a manual-capture PaymentIntent automatically
+  releases the uncaptured remainder in the same call** (verified against Stripe's
+  docs and a real test-mode call — no new gateway operation needed).
+- The visibility-gate fix hit a real conflict: gating Release/Capture to
+  `checked_out`/`returned` would have made them permanently invisible (that
+  lifecycle still had no dispatch sites). Interim proxy: `pickup_at->isPast()`,
+  later retired by the checkout/return lifecycle phase.
+- Built: `Plugins\BookingEngine\Support\CancellationPolicyRequest` +
+  `CoreCancellationPolicyPipe` on `booking.cancellationPolicy` — cliff/threshold
+  refund tiers (`config('booking-engine.cancellation_refund_tiers')`, placeholder
+  business numbers). `ViewBooking`'s Cancel Booking resolves the deposit
+  automatically (100% → release; less → capture forfeit); the confirmation modal
+  shows live computed refund/forfeit amounts before staff confirms.
 
 ## Checkout/return lifecycle (verified 2026-08-05)
 
-**The escalation this project's discipline predicted actually played out.**
-`VehicleCheckedOut`/`VehicleReturned` were first found unused during the
-deposit-gate phase's pre-flight (a side discovery, not the point of that
-phase), then surfaced again as a live consequence during the cancellation
-phase (forced an interim `pickup_at->isPast()` proxy onto the Release/
-Capture visibility gate rather than a real status check). Two separate
-features distorted by the same missing lifecycle was the signal this
-phase had earned the same priority the deposit-gate decision got once it
-was shown to be blocking three things at once — the same escalating-
-priority pattern, tracked deliberately rather than treating every deferred
-item as equally low-priority indefinitely.
-
-**Real findings from tracing the actual code before building on top of
-it, same discipline as every prior phase:**
-- `Vehicle.status` has a third real value (`rented`, alongside `available`/
-  `maintenance`, all present in `VehicleForm.php`'s Filament select) that
-  nothing had ever set — 100% staff-manual and disconnected from booking
-  state before this phase.
-- `CoreAvailabilityCheckPipe` needed zero changes — `BLOCKING_STATUSES =
-  ['confirmed', 'checked_out']` already treated `checked_out` as blocking
-  and never blocked `returned`. It was forward-designed correctly for a
-  lifecycle that didn't exist yet, confirmed rather than assumed.
-
-**Two real forks resolved deliberately, not defaulted:**
-1. **`Vehicle.status` now syncs automatically** (Check Out → `rented`,
-   Mark Returned → `available`) rather than staying staff-manual. Since
-   `VehicleController`'s public fleet listing filters purely on this
-   field with no date/booking awareness at all, leaving it manual would
-   have meant building a real lifecycle and still requiring a human to
-   remember a second update to keep the public listing honest — exactly
-   the class of gap this phase exists to close, reintroduced in a
-   different spot. The "send to `maintenance` if damage found" branch on
-   return is deferred until damage-reporting exists; a clean return
-   always goes back to `available`.
-2. **No time gate on Check Out/Mark Returned** — visible purely on the
-   prior status (`confirmed`→checked out, `checked_out`→returned), same
-   as every other staff action already on this page (Cancel, Release,
-   Capture are all gated on status/data, never on whether a scheduled
-   time has arrived). A staff member handing over keys to a customer
-   standing in front of them shouldn't be blocked by the clock not having
-   struck the scheduled hour yet.
-
-**Retired last phase's interim proxy instead of leaving it running
-alongside the real thing it was standing in for:** `ViewBooking`'s
-Release/Capture Deposit visibility now checks `status === 'returned'`
-directly, replacing `pickup_at->isPast()`.
-
-**Verified end-to-end with the same rigor as every other lifecycle-
-defining phase (172 tests, Pint, Larastan, `tsc --strict` all pass):** a
-real one-way booking (pickup Fes, return Meknes) was confirmed, then
-checked out through the exact real action code — booking genuinely
-`checked_out`, vehicle genuinely `rented`, and confirmed via real HTTP
-that the vehicle correctly disappeared from the public fleet listing.
-Marked returned through the same real path — booking genuinely `returned`,
-vehicle genuinely `available` again, and `RelocateVehicleOnReturn`
-genuinely relocated the vehicle to its real return location (confirmed via
-the vehicle's own `location` relation) — the first time this listener has
-ever fired from real application code, not a manual `tinker` dispatch as
-in Phase 5. Confirmed via real HTTP afterward that the vehicle correctly
-reappeared in the public listing at its new location. All test data
-cleaned up afterward; dev server stopped.
-
-**Automated coverage:** 6 new `BookingResourceTest` cases — Check Out
-visible only on `confirmed`, Mark Returned visible only on `checked_out`,
-both real actions setting status/dispatching/syncing `Vehicle.status`
-correctly, and a dedicated one-way relocation test proving
-`RelocateVehicleOnReturn` fires correctly through this real path.
+- `VehicleCheckedOut`/`VehicleReturned` finally get real dispatch sites. Findings:
+  `Vehicle.status` has a third real value (`rented`) nothing ever set;
+  `CoreAvailabilityCheckPipe` needed zero changes (`BLOCKING_STATUSES =
+  ['confirmed','checked_out']` — forward-designed correctly).
+- Decisions: **`Vehicle.status` syncs automatically** (Check Out → `rented`,
+  Mark Returned → `available`) — the public fleet listing filters purely on this
+  field, so manual updates would require a human to remember a second update. The
+  "send to `maintenance` if damage found" branch is deferred until damage-
+  reporting exists; a clean return always goes to `available`. **No time gate** on
+  Check Out/Mark Returned — gated purely on prior status (`confirmed`→checked out,
+  `checked_out`→returned), same as every other staff action on the page.
+- **Retired the interim proxy**: Release/Capture Deposit visibility now checks
+  `status === 'returned'` directly, replacing `pickup_at->isPast()`.
 
 ## Vehicle reviews (verified 2026-08-05)
 
-Deliberately chosen as a contained, mostly-mechanical win right after two
-phases (deposit-gate, checkout/return lifecycle) that each escalated well
-past their initial framing — and it mostly stayed that size, with one
-real exception found by explicitly checking rather than assuming a
-"mechanical port" was exempt from this project's most common bug class.
+- **`VerifiedRentalChecker` requires a genuine `returned` `Booking`** for that
+  vehicle+user — re-derived, not copied from the source's `VerifiedPurchaseChecker`
+  (which only needs `payment_status === 'paid'`). Only possible because `returned`
+  became reachable in the prior phase. Boundary-tested against all other statuses.
+- **`LayoutVariantRegistry`/`LayoutSlot` was documented-but-never-created** — the
+  docs asserted kernel infrastructure existed that was never written (6th instance
+  of the dormant-bug class, but in the docs themselves). Corrected in
+  `docs/event-registry.md` to "planned, not implemented" and why (this project has
+  one real theme; the mechanism would serve a hypothetical need).
+- **`Review` is a core model (`App\Models`)**, not plugin-owned — otherwise the
+  core `ReviewSubmitted` event would import a plugin class (rule 1). Precedent:
+  plugin owns the migration/logic/Filament resource, core owns the model (same as
+  `DriverVerification`, `DamageReport`).
+- **`vehicle.detailWidgets` is the first Slot registered into a plugin-owned page**
+  (`fleet-management`'s `Vehicles/Show.tsx`) rather than a core one — proves the
+  slot mechanism works when the host page belongs to another plugin (the host
+  references only the named slot, never the plugin).
 
-**Explicit check #1 (requested): verified-rental eligibility, re-derived
-not copied.** The source e-commerce project's `VerifiedPurchaseChecker`
-requires only `Order.payment_status === 'paid'` — payment succeeded,
-delivery not required. A car-rental review is about the actual rental
-experience, which is only assessable once the rental has concluded, so
-`VerifiedRentalChecker` requires a genuine `returned` `Booking` for that
-vehicle+user — not `confirmed`/`checked_out`, which a quick copy-paste of
-"paid" as "the closest-sounding status" would have defaulted to. Only
-possible now, not just copied, because `returned` became a real reachable
-status in the immediately preceding phase. Verified with the same
-boundary rigor as every other eligibility gate in this project: a
-dedicated test proves `returned` verifies and `pending`/`confirmed`/
-`checked_out`/`cancelled` all correctly don't, plus cross-vehicle and
-cross-user isolation.
+## Kernel fix: ViewBooking importing a plugin directly (verified 2026-08-05)
 
-**Explicit check #2 (requested): searched for "modeled but never
-consumed" in what's being ported, found something real.** `docs/event-registry.md`
-had documented `App\Core\Support\LayoutVariantRegistry`/a `LayoutSlot`
-React component as an established core mechanism since Phase 2 — but
-`grep -rn "LayoutVariantRegistry" app/` returns nothing. The class was
-never created. This is a sharper-edged sixth instance of this project's
-recurring bug class: every prior instance (`Location.is_active`, the
-payment lifecycle methods, `BookingConfirmed`, `SlotRegistry` sitting
-idle, `checked_out`/`returned` in the UI) was real code or a real column
-that existed and had no caller. This one is the documentation itself
-asserting kernel infrastructure exists and describing how to use it, when
-it was simply never written — a false statement about the architecture
-sitting in the project's own source of truth, not a dormant feature.
-Corrected in `docs/event-registry.md` to state plainly: planned, not
-implemented, and why (the source project's version serves 6+ real client
-themes needing genuinely different review layouts; this project has one
-real theme, so building the mechanism now would serve a hypothetical
-need — the same reasoning already applied once to
-`client-swap-proof-DISPOSABLE.ts`).
-
-**A real model-placement mistake caught before it compounded, not after:**
-first drafted `Review` as a plugin-owned model (`Plugins\Reviews\Models\Review`),
-which would have made the core `ReviewSubmitted` event import a plugin
-class — a genuine Hard Rule 1 violation. Caught while writing the event
-itself, before any test ran against it. Fixed by moving `Review` to
-`App\Models`, the exact same precedent already established for
-`DriverVerification` — plugin owns the migration/logic/Filament resource,
-core owns the model.
-
-**A genuinely new architectural proof, not just a new feature:**
-`vehicle.detailWidgets` is the first Slot ever registered into a
-**plugin-owned** page (`fleet-management`'s `Vehicles/Show.tsx`) rather
-than a core one. `account.dashboardWidgets` (the first real slot overall)
-renders into core's `Profile/Edit.tsx`; this proves the identical
-mechanism works when the host page itself belongs to another plugin —
-`fleet-management` never references the reviews plugin by name, only the
-named slot, the same as core never referencing any plugin.
-
-**Verified end-to-end with real HTTP (195 tests, Pint, Larastan,
-`tsc --strict` all pass):** two real users, two real vehicles — one with
-no returned booking, one with a real `returned` booking created first.
-Both submitted real reviews over real HTTP; confirmed via direct DB
-inspection that only the second was marked `is_verified_rental`. Confirmed
-the public vehicle page correctly hid both while unapproved (`reviewCount: 0`
-in the real Inertia props), approved the verified one via the exact real
-Filament action code, and confirmed via a second real HTTP request that
-it then appeared publicly with the correct author, rating, title, and
-`isVerifiedRental: true`. All test data cleaned up afterward; dev server
-stopped.
-
-**Automated coverage:** 8 `VerifiedRentalCheckerTest` boundary cases, 6
-`ReviewControllerTest` cases (auth required, verified-flag correctness in
-both directions, unique-constraint rejection, rating validation), 4
-`GetVehicleReviewsPipeTest` cases (approval filtering, average-rating
-computation, cross-vehicle isolation, zeroed defaults), 4 `ReviewResourceTest`
-cases (staff-only access, Approve action), and a dedicated
-`VehicleControllerTest` case proving the real Slot renders on the real
-page with real review data.
-
-## Kernel fix: `ViewBooking` importing a plugin directly (verified 2026-08-05)
-
-**Found while pre-flighting damage-reporting, before adding anything new
-to the same file.** `app/Filament/Resources/Bookings/Pages/ViewBooking.php`
-— a core Filament resource, living in `/app` — had a direct
-`use Plugins\BookingEngine\Support\CancellationPolicyRequest;` import,
-added during the cancellation-refund-policy phase. A real, live Hard Rule
-1 violation ("Core never imports a plugin") that slipped through
-unnoticed for one full phase.
-
-**Fixed the same way `DriverEligibilityCheckRequest` was placed in Phase
-9** — `CancellationPolicyRequest` is consumed by both a core class
-(`ViewBooking`) and a plugin's filter pipe (`CoreCancellationPolicyPipe`),
-the exact shape that DTO already existed to solve. Moved from
-`Plugins\BookingEngine\Support` to `App\Core\Support`; no behavior change,
-just the namespace/location. Updated all three real consumers (`ViewBooking`,
-`CoreCancellationPolicyPipe`, `CancellationPolicyTest`).
-
-**Swept the rest of `/app` for the same class of mistake before moving
-on** — `grep -rln "use Plugins\\\\" app/` returns nothing else. This was
-an isolated slip, not a pattern repeated elsewhere.
-
-Verified: 195 tests, Pint, and Larastan all still pass after the move.
+- `app/Filament/Resources/Bookings/Pages/ViewBooking.php` had
+  `use Plugins\BookingEngine\Support\CancellationPolicyRequest;` — a real, live
+  Hard Rule 1 violation that slipped through for a full phase.
+- Fixed the same way `DriverEligibilityCheckRequest` was placed in Phase 9:
+  `CancellationPolicyRequest` is consumed by both a core class and a plugin pipe,
+  so it moved to `App\Core\Support` (no behavior change; updated all three real
+  consumers). Swept `/app`: `grep -rln "use Plugins\\\\" app/` returns nothing
+  else.
 
 ## Damage/condition reporting (verified 2026-08-05)
 
-**A pre-flight that surfaced a real, live kernel violation before the
-feature itself was designed.** Checking `ViewBooking.php` (this phase's
-natural attachment point) before adding anything to it found
-`CancellationPolicyRequest` imported directly from the plugin namespace —
-fixed as its own dedicated commit first (see the kernel-fix section
-above) before any damage-reporting code was written on top of the same
-file.
-
-**Two real scope forks, both resolved toward the smaller, already-proven
-option:** free-text description + photos (matching `DamageReported`'s
-existing shape exactly) over a genuinely new structured-checklist
-comparison model; and an optional "Report Condition" follow-up action
-over making condition-logging mandatory before Check Out/Mark Returned
-complete — the mandatory option would have meant a real behavioral
-change to actions verified end-to-end just one phase ago, not a natural
-extension of them.
-
-**`App\Models\DamageReport`** is a core model per the same
-`Review`/`DriverVerification` precedent — the new `damage-reporting`
-plugin owns only the migration (`DamageReportingServiceProvider` is
-deliberately minimal, just `loadMigrationsFrom()`); the "Report Condition"
-action itself lives entirely on core's `ViewBooking`, using only core
-classes. `DamageReported` gets its first real dispatch site here, with no
-listener — deliberate, documented explicitly so it isn't miscategorized
-as another "modeled but never consumed" gap later.
-
-**A real display bug found by actually reading the rendered HTML, not by
-reading the code and assuming it worked:** `BookingInfolist`'s new
-"Photos" column used `formatStateUsing()`, which Filament silently skips
-for a state it considers "empty" — a report with zero photos rendered
-completely blank instead of "0 attached", the exact case most likely to
-occur in practice (most condition reports won't have photos attached).
-Fixed by switching to `getStateUsing()`, which fully overrides state
-resolution rather than being subject to the same empty-state skip. A
-tangent while chasing this via real `curl` requests, corrected before it
-became a false finding: an initial context-based `grep` search looked
-immediately after the "Photos" label's closing tag and found nothing,
-which looked like a genuine curl-vs-browser Livewire hydration gap —
-re-checking with a full-file search (Filament's actual HTML nests the
-label and value in separate, non-adjacent div structures) showed the
-content was there all along. Worth naming as an example of catching one's
-own verification mistake before reporting it as a real gap, the same
-rigor applied to any other finding.
-
-**Verified end-to-end with real HTTP (199 tests, Pint, Larastan both
-pass):** a real booking, checked out, with a real "Report Condition"
-report logged against it (description + zero photos, matching the exact
-action code) via real DB state; confirmed via real staff login and a real
-`GET` to the booking's actual admin page that both the description text
-and the correctly-computed "0 attached" photo count render in the real
-HTML. Separately, the photo-upload path itself (`Storage::fake('local')`,
-a real `UploadedFile::fake()->image()`) is covered by an automated test
-asserting the file genuinely exists on disk at the stored path. All test
-data cleaned up afterward; dev server stopped.
-
-**Automated coverage:** 4 new `BookingResourceTest` cases — the action
-hidden before checkout, visible once `checked_out`/`returned`, a real
-report created with the correct `reported_by` and dispatched event, and
-the real photo-upload-and-storage path.
+- Scope forks resolved toward the smaller option: free-text description + photos
+  (matching `DamageReported`'s shape) over a structured checklist; optional
+  "Report Condition" follow-up over making condition-logging mandatory before
+  Check Out/Mark Returned (which would have changed actions verified one phase
+  ago).
+- `App\Models\DamageReport` is a core model; the `damage-reporting` plugin owns
+  only the migration (`DamageReportingServiceProvider` is minimal — just
+  `loadMigrationsFrom()`). The "Report Condition" action lives entirely on core's
+  `ViewBooking` using core classes. `DamageReported` gets its first real dispatch
+  site with no listener (deliberate, documented).
+- LESSON (Filament v4): `formatStateUsing()` silently skips a state it considers
+  "empty" — a zero-photo report rendered blank instead of "0 attached". Use
+  `getStateUsing()` to fully override state resolution.
 
 ## Analytics dashboard (verified 2026-08-05)
 
-**The explicit check you asked for found nothing dormant in this
-project's own code, but did find Filament's own native infrastructure
-sitting configured-but-empty since Phase 4.** `AdminPanelProvider` has had
-`->discoverWidgets(in: app_path('Filament/Widgets'), ...)` wired since the
-very first Filament setup, with only the two Breeze/Filament default stub
-widgets ever registered — the exact same "mechanism exists, first real
-consumer never arrived" shape as `SlotRegistry` before booking-history,
-just Filament's own scaffolding default rather than something a prior
-phase of this project built.
-
-**The real finding: "Revenue" would have been mechanically ported but
-substantively false.** The source project's `StatsOverviewTemplate` sums
-`Order.total_cents` where `payment_status === 'paid'` — real money
-collected. In this project, `PaymentGateway::chargeFinal()` (the only
-place a booking's `total_price` would ever actually be charged) has zero
-real callers anywhere — the only real money movement is the deposit hold.
-Labeled the metric "Total Booking Value" instead of "Revenue" — the same
-correction already made once for reviews' verified-rental check, applied
-to money instead of eligibility.
-
-**Skipped porting the source project's full custom widget-builder system**
-(`DashboardWidgetRegistry`, a `DashboardWidgetTemplate` contract, a
-persisted `DashboardWidgetInstance` model, a real add/configure/rearrange
-builder UI) — real, load-bearing infrastructure *there*, because multiple
-independent plugins compete for dashboard space in that project. This
-project has no such need yet; a handful of fixed widgets is the actual
-requirement, and Filament already ships `StatsOverviewWidget`/`ChartWidget`/
-plain `Widget` base classes, auto-discovered via the mechanism found
-sitting ready above. Same reasoning as skipping `LayoutVariantRegistry` —
-don't build a second extensibility layer for a need that doesn't exist.
-
-**Two deliberately different status filters across the three widgets,
-named explicitly rather than left as a silent inconsistency:**
-`BookingStatsOverview` ("Total Booking Value") counts only
-`confirmed`/`checked_out`/`returned` — what's currently, validly on the
-books. `BookingVolumeChart` also counts `cancelled` — it answers "how
-many bookings did we actually get, regardless of later cancellation," a
-genuinely different question. Both exclude `pending`/`expired` — those
-never completed the checkout flow at all, an abandoned mid-payment
-attempt isn't a booking that happened.
-
-**A real bug caught by an exact-number test, not eyeballed:**
-`VehicleUtilizationTable`'s window was silently 30.5 days instead of 30 —
-`windowStart` was snapped to `startOfDay()` but `windowEnd` (`now()`)
-wasn't, so the window's actual length depended on what time of day the
-widget happened to run. Caught because the test asserted an exact
-percentage (20.0%) rather than "roughly 20%" — the same standard this
-project has held every numeric claim to since `PriceCalculationTest`.
-Fixed by computing both ends from the same instant with no day-snapping
-on either side.
-
-**Rule 8 (never one query per item) verified with a real query count, not
-just code review:** a dedicated test creates 10 vehicles with bookings and
-asserts exactly 2 queries execute regardless of vehicle count — one for
-all vehicles, one for all overlapping bookings across every vehicle at
-once, with the per-vehicle day-clamping done in PHP.
-
-**A real curl-vs-Livewire verification boundary, stated honestly rather
-than glossed over:** Filament widgets default to `$isLazy = true` —
-real content renders via a follow-up child-Livewire-component request
-that neither a plain `curl` GET nor `Livewire::test()` against the
-*parent* Dashboard page ever triggers (confirmed by testing both and
-finding neither shows the real numbers). The correct, authoritative test
-target is each widget's own Livewire component directly — exactly what
-`BookingStatsOverviewTest`/`BookingVolumeChartTest`/`VehicleUtilizationTableTest`
-already do, with real exact-number assertions. Real HTTP + `tinker`
-confirmed the surrounding mechanism instead: `Filament::getWidgets()`
-genuinely lists all three new classes alongside the two defaults, and a
-real staff login + real `GET /admin` returns a genuine `200` — the
-container a real browser would fully hydrate.
-
-**Verified end-to-end (213 tests, Pint, Larastan both pass):** real
-vehicles and bookings seeded in the dev DB (one confirmed, one returned,
-one cancelled, exact expected Total Booking Value of 800.00 MAD
-hand-verified against the seeded data); confirmed via `tinker` that all
-three widgets are genuinely panel-registered; confirmed via real HTTP
-login + dashboard request that the page loads correctly. All test data
-cleaned up afterward; dev server stopped.
-
-**Automated coverage:** 14 new tests across three widget classes —
-`BookingStatsOverviewTest` (4, exact Total Booking Value/average/distinct-
-customer counts with the correct status filter), `BookingVolumeChartTest`
-(5, the cancelled-vs-pending/expired status distinction, correct day
-bucketing, window exclusion), `VehicleUtilizationTableTest` (5, exact
-percentage at a hand-computed boundary, window-clamping for a booking
-starting before the window, the query-count proof for rule 8).
+- `AdminPanelProvider` had `->discoverWidgets(...)` configured-but-empty since
+  Phase 4 (Filament's own scaffolding, no consumer).
+- **"Revenue" would have been substantively false**: `chargeFinal()` (the only
+  place a total is ever charged) has zero real callers; the only real money
+  movement is the deposit hold. Labeled the metric **"Total Booking Value"**.
+- Skipped the source project's custom widget-builder system (`DashboardWidgetRegistry`,
+  persisted instances, builder UI) — load-bearing *there* (multiple plugins
+  compete for dashboard space), not needed here; use Filament's built-in widget
+  classes. Same "don't build a second extensibility layer for a hypothetical
+  need" reasoning as `LayoutVariantRegistry`.
+- Deliberately different status filters (named, not a silent inconsistency):
+  `BookingStatsOverview` counts `confirmed`/`checked_out`/`returned`;
+  `BookingVolumeChart` also counts `cancelled` (different question — bookings
+  actually received). Both exclude `pending`/`expired` (never completed checkout).
+- LESSON: exact-number tests catch real bugs — the utilization window was silently
+  30.5 days because `windowEnd` (`now()`) wasn't snapped to day while `windowStart`
+  was. Fix: compute both ends from the same instant, no day-snapping on either.
+- Rule 8 proven with a query count: 10 vehicles with bookings → exactly 2 queries.
+- TEST BOUNDARY: Filament widgets default `$isLazy = true` — plain `curl` or
+  `Livewire::test()` against the parent Dashboard never shows real numbers. Test
+  each widget's own Livewire component directly.
 
 ## Dev database: SQLite → Postgres, and closing the Phase 5 concurrency gap (verified 2026-08-05)
 
-A deliberately small, self-contained task, explicitly scoped as *not* the
-full production-readiness phase — real credentials, deployment, and the
-`php.ini`/PATH-shim environment quirks all remain separately deferred. Just
-moving the dev `.env` off SQLite onto a real local Postgres instance
-already running on this machine, into its own new `car_rental_dev`/
-`car_rental_test` databases (owned by a new `car_rental` user, deliberately
-isolated from the e-commerce project's `store` database and the unrelated
-`car_data` database on the same server).
+- Dev `.env` now points at a real local Postgres (`car_rental_dev`/`car_rental_test`,
+  owned by a `car_rental` user, isolated from the e-commerce `store` DB). `phpunit.xml`
+  stays SQLite `:memory:` as the permanent day-to-day test default (only
+  *temporarily* pointed at Postgres once to run the concurrency proof + full suite,
+  then reverted).
+- Real SQLite-vs-Postgres behavioral difference: Postgres aborts the entire
+  transaction block on any failed statement (SQLSTATE 25P02) until `ROLLBACK`;
+  SQLite doesn't. `ReviewController::store()` now **pre-checks for an existing
+  review before inserting** (keeping the try/catch only as a defensive fallback) —
+  a strictly better pattern regardless of engine, not a Postgres-specific patch.
+- **Closed the Phase 5 concurrency gap** with the strongest proof in the project:
+  a genuine two-process test — one process takes `Vehicle::lockForUpdate()` and
+  sleeps 3s; a separate process (own DB connection) starts ~21ms later; the second
+  process **genuinely blocked 2.987s**, then saw the just-created booking as an
+  overlap and rejected it. Real row-level blocking across two simultaneous
+  connections, measured.
 
-**A real SQLite-vs-Postgres behavioral difference found, not just a
-config change.** Postgres aborts the *entire* current transaction block on
-any failed statement within it (SQLSTATE 25P02) until an explicit
-`ROLLBACK` — SQLite doesn't. `ReviewControllerTest`'s duplicate-review test
-broke under `RefreshDatabase`'s ambient per-test transaction: the
-controller's second `Review::create()` correctly failed and was correctly
-caught, but the test's own follow-up verification query then hit the
-poisoned transaction. Confirmed this was a test-harness-only artifact (a
-`tinker` replay of the identical sequence outside any wrapping transaction
-worked cleanly), then fixed with a genuine production-code improvement
-rather than a test workaround: `ReviewController::store()` now pre-checks
-for an existing review before attempting the insert, keeping the original
-`try/catch` only as a defensive fallback for the rare, low-stakes race
-between the check and the insert. This is a strictly better pattern
-regardless of database engine — not a Postgres-specific patch — since it
-stops relying on catching a unique-constraint exception as primary control
-flow.
+## Loyalty/repeat-customer discounts (verified 2026-08-05)
 
-**Closed the one honest limitation carried forward since Phase 5 — with
-the strongest form of proof this project has produced for any claim.**
-Phase 5's `BookingCreator` concurrency section stated plainly that SQLite
-has no true row-level locking, so `lockForUpdate()`'s correctness under
-genuine concurrent connections could only be proven once a real
-row-locking database was available — until now, only a *sequential*
-same-process test existed as a weaker stand-in. With real Postgres in
-place, built a genuine **two-process** proof: one PHP process opens a
-transaction, takes `Vehicle::lockForUpdate()`, and sleeps 3 seconds while
-holding it; a fully separate PHP process (its own DB connection) starts
-~21ms later and attempts the same lock. Result: the second process
-**genuinely blocked for 2.987 seconds** — a real wait, not an immediate
-"database locked" error — until the first committed, then correctly saw
-the just-created booking as an overlap and rejected it. This is concrete,
-measured evidence of real row-level blocking across two truly simultaneous
-connections, not "the logic looks right" — the strongest verification
-standard this project has applied to anything, fittingly used on its
-single highest-stakes correctness question. Test data cleaned up
-afterward.
+- Resolved ledger-vs-tiered toward the smaller option: a tiered discount reusing
+  the proven `booking.priceCalculation` pipe pattern (a points ledger would be
+  real new infrastructure — same "don't build a second mechanism for a
+  hypothetical need" reasoning as extras/CMI/widget-registry).
+- Decisions: guest bookings exempt (no persistent identity); only prior `returned`
+  bookings count toward a tier (same reasoning as `VerifiedRentalChecker`).
+- **Highest-single-discount-wins, not additive stacking** — guarantees the max
+  discount on any booking is exactly one tier that was actually defined and
+  reasoned about (additive could reach an uncapped number nobody decided on, e.g.
+  25% + 15% = 40%).
+- `CoreLoyaltyDiscountPipe` registered on `booking.priceCalculation` at priority 15
+  (between duration's 10 and deposit's 20 — needs `dailyRate`/`days` set, and may
+  replace the discount the deposit pipe must see in the subtotal).
+  `PriceCalculationRequest` gained an optional `userId` (threaded from
+  `BookingCreator::validateAndPrice()` and the checkout price preview). Placeholder
+  tiers (`3 rentals → 5%`, `10 rentals → 15%`).
+- Note: `RegistryFlushTest` hardcodes the expected `booking.priceCalculation` pipe
+  count — update it when pipes are added/removed.
 
-**Scope discipline on the switch itself:** `phpunit.xml` was only
-*temporarily* pointed at Postgres to run this proof and the full suite
-once against it (213/213 passed); it was then reverted back to SQLite
-`:memory:` as the permanent day-to-day test default (confirmed 213/213
-still pass after reverting). Only `.env`'s dev database is permanently
-Postgres now — fast tests stay fast, and the one thing that actually
-needed real Postgres semantics got them without paying that cost on every
-routine test run. A SQLite-specific-SQL compatibility sweep (raw `DATE()`
-calls, case-sensitivity-dependent lookups) found nothing else to fix.
+## Frontend Foundation Task 3 — admin-driven theme system (verified 2026-08-05)
 
-## Loyalty/repeat-customer discounts (verified 2026-08-05) — closing the last LOW item
+- Ported the centralized admin-driven theme layer on top of Phase 3's file-based
+  one (mechanism in `docs/event-registry.md`'s "Theme System" section). Domain-
+  agnostic copy. `ThemeResource` rebuilt for Filament v4 (`Schema`/`Schemas\ThemeForm`/
+  `Tables\ThemesTable` split), not copied from the v3 source.
+- Fonts (Task 4b): **Space Grotesk (display) / Inter (body) / JetBrains Mono
+  (mono)**. Only the seeded "Default" theme's font tokens changed; the disposable
+  "Demo Rentals" theme untouched (still Poppins). The `primitives.ts` key is `mono`
+  (not `jetbrainsMono`) — added `spaceGrotesk` alongside `poppins`/`inter`/`mono`.
+- Migration (rule 7): `themes` table (`name`, `slug` unique, `data` json,
+  `is_active` bool); `database/seeders/ThemeSeeder.php` ran immediately after the
+  migration, before `HandleInertiaRequests` was wired to depend on the table
+  having rows.
+- Regression: `HandleInertiaRequests::share()` now queries the `themes` table
+  every request — the untouched Breeze `ExampleTest.php` (no `RefreshDatabase`)
+  broke. Fix the test (add `RefreshDatabase`), not the middleware —
+  `ThemeManager::resolveActive()` already degrades to `defaultData()` against an
+  empty table.
+- Zero-rebuild verified with real Playwright screenshots: uploaded a theme JSON
+  through the real `FileUpload` (async upload still mid-progress when Create
+  clicked — completed, no lost data), activated it (real `ContrastChecker` ran),
+  and the same `GET /vehicles` rendered the new palette **with no `npm run build`
+  in between**.
 
-**Pre-flight resolved a real ledger-vs-tiered-discount fork before
-building, correctly toward the smaller option.** The domain doc's LOW
-item was a one-liner with no mechanism spec, and `docs/02-DESIGN-SYSTEM.md`'s
-only mention of "loyalty" was an illustrative example of the token-
-extension pattern (`components.loyaltyBadge`), not a commitment to a
-points ledger. A points-accrual/redemption system would be real new
-infrastructure (a ledger model, accrual on completion, a redemption step
-at checkout, expiry rules) — the same "don't build a second mechanism for
-a hypothetical need" reasoning already applied to extras, CMI, and the
-custom widget registry. Built a tiered discount instead, reusing the
-exact `booking.priceCalculation` pipe pattern already proven twice
-(`CoreDurationDiscountPipe`, `CoreCancellationPolicyPipe`). A dormant-state
-sweep (`grep -rn -i loyalt` across `app`/`plugins`/`database`/`resources`/
-`docs`) confirmed a genuinely clean slate before writing anything.
+## Frontend Foundation Task 4 — real storefront navigation + homepage (verified 2026-08-05)
 
-**Two decisions reused established precedent directly, no new reasoning
-needed:** guest bookings are exempt (a guest has no persistent identity
-across bookings to count history against — same shape as driver
-verification's guest exemption), and only prior `returned` bookings count
-toward a customer's tier, never the booking currently being priced —
-same reasoning as the reviews plugin's `VerifiedRentalChecker`: a repeat
-customer is someone who has actually completed prior rentals, not someone
-with one merely in flight.
-
-**The one genuinely new decision: highest-single-discount-wins, not
-additive stacking**, when both the duration and loyalty tiers would apply
-to the same booking. Beyond matching the cliff/threshold style used
-everywhere else in this project, this is the substantive reason: additive
-stacking would let a long-duration rental from a loyal repeat customer
-reach a materially different, uncapped discount that neither tier was
-ever individually designed to represent (e.g. 25% + 15% = 40%, a number
-nobody explicitly decided on). Highest-wins guarantees the maximum
-discount on any booking is always exactly one tier that was actually
-defined and reasoned about.
-
-**Built:** `CoreLoyaltyDiscountPipe`, registered on `booking.priceCalculation`
-at priority 15 (between `CoreDurationDiscountPipe`'s 10 and `CoreDepositPipe`'s
-20 — it needs `dailyRate`/`days` already set, and may replace the discount
-already applied, which the deposit pipe must see reflected in the final
-subtotal). `PriceCalculationRequest` gained an optional `userId`, threaded
-through from both real construction sites (`BookingCreator::validateAndPrice()`,
-`BookingCheckoutController::show()`'s price preview). Placeholder tiers in
-`booking-engine.php` (`3 rentals → 5%`, `10 rentals → 15%`), same
-"real numbers not yet confirmed with the business" status as
-`cancellation_refund_tiers`.
-
-**Verified to the same standard as every other pricing-engine claim —
-exact hand-computed totals at real boundaries, not "a discount applied":**
-7 automated tests (`LoyaltyDiscountTest`) covering guest exemption, the
-tier boundary at exactly 2 vs. exactly 3 and exactly 10 prior rentals,
-non-`returned` statuses never counting, and — the two tests directly
-proving the highest-wins rule — a 30-day booking with 3 prior rentals
-(duration's 25% correctly beats loyalty's 5%) and a 7-day booking with 10
-prior rentals (loyalty's 15% correctly beats duration's 10%), both
-asserting the exact resulting subtotal, not just which percent number won.
-A stale hardcoded pipe count in `RegistryFlushTest` (asserting exactly 2
-real `booking.priceCalculation` pipes) was updated to 3 — caught
-immediately by the full suite, not a silent gap. Real `tinker` verification
-through the actual `BookingCreator::create()` entry point (not the
-isolated pipe test) confirmed a real booking for a user with 10 prior
-`returned` bookings priced at exactly 510.00 (200/day × 3 days × 0.85), and
-a separate real booking for a user with both 10 prior rentals and a
-30-day duration priced at exactly 2250.00 — the real 25% duration tier,
-not the loyalty tier's 15% and not a stacked 40%. 220 tests, Pint, and
-Larastan all pass.
-
-## Frontend Foundation Phase, Task 3 — admin-driven theme system (verified 2026-08-05)
-
-Ported the e-commerce project's centralized, admin-driven theme layer on
-top of Phase 3's file-based one — full mechanism documented in
-`docs/event-registry.md`'s new "Theme System" section, read that first.
-A one-time, fully domain-agnostic copy (colors/fonts/radius/shadow tokens
-don't know or care whether they're theming cars or products), with one
-real port decision: the source project's `ThemeResource` was written
-against Filament v3 (`Filament\Forms\Form`, `Filament\Tables\Actions\Action`);
-this project is on v4, so it was rebuilt using the same
-`Schema`/`Schemas\ThemeForm`/`Tables\ThemesTable` split already
-established by `LocationResource`/`BookingResource`, not copied verbatim
-— same "do not copy Filament resource code verbatim" lesson from Phase 4.
-
-**Font choice (Task 4b): Space Grotesk (display) / Inter (body) /
-JetBrains Mono (mono).** Only the seeded "Default" theme's font tokens
-changed — the disposable "Demo Rentals" swap-proof theme was left exactly
-as it already existed (still Poppins), since it's explicitly not a real
-client and this phase's font decision only applies to the real default.
-One deviation from the phase doc, flagged rather than silently
-reconciled: the doc's example used a `jetbrainsMono` primitive key, but
-both this project's and the source project's actual `primitives.ts`
-already use `mono` for the identical value — added `spaceGrotesk`
-alongside the existing `poppins`/`inter`/`mono` keys rather than
-introducing a second, divergently-named key for the same font.
-
-**A real regression found and fixed, not glossed over:**
-`HandleInertiaRequests::share()` now unconditionally queries the `themes`
-table on every request (to resolve `themeData`) — `tests/Feature/ExampleTest.php`,
-the original untouched Breeze stub test, never used `RefreshDatabase`
-because it never previously needed a database at all, and broke with
-`SQLSTATE[HY000]: ... no such table: themes`. Fixed the test (added
-`RefreshDatabase`), not the middleware — `ThemeManager::resolveActive()`
-already degrades correctly to `defaultData()` against an empty table, so
-the fix is "give this specific test a migrated DB," not "make the
-middleware more defensive."
-
-**The "zero rebuild" claim wasn't taken on faith — verified with real
-Playwright screenshots**, per this project's own evidence standard
-applied to something visual for the first time: (1) a real HTTP
-`GET /vehicles`, background pale-blue, Space Grotesk heading; (2) logged
-in as a real (temporary) Admin user, confirmed both seeded rows
-("Default" active, "Demo Rentals" inactive) render with genuinely
-different live swatch/font previews, not static images; (3) uploaded a
-real JSON file (bold red/yellow palette) through the actual `FileUpload`
-field — Filament's async upload was still mid-progress (53%) when
-"Create" was clicked, and it still completed correctly, no lost data;
-(4) activated it — the real `ContrastChecker` ran and the confirmation
-modal genuinely said "All contrast checks pass" (computed from the
-uploaded data, not a canned string); (5) the exact same `GET /vehicles`
-request, **with zero `npm run build` run in between**, now rendered with
-the new red/yellow palette. All temporary data (the "Verification Red"
-theme row, the temporary Admin user) cleaned up afterward, "Default"
-re-activated.
-
-**Migration approved before running** (rule 7): the `themes` table
-(`name`, `slug` unique, `data` json, `is_active` bool) — purely additive,
-same shape as the e-commerce project's own `themes` table.
-`database/seeders/ThemeSeeder.php` ran immediately after the migration,
-before `HandleInertiaRequests` was wired to depend on the table having
-rows — sequencing flagged explicitly by the reviewer before it happened,
-avoiding a window where the app expected a DB-backed active theme that
-didn't exist yet.
-
-220 tests, Pint, Larastan, and `tsc --noEmit --strict` all pass.
-
-## Frontend Foundation Phase, Task 4 — real storefront navigation + homepage (verified 2026-08-05)
-
-Closes the three HIGH-priority reachability-audit findings directly: no
-shared header/nav/footer anywhere on the storefront, the fleet listing
-unreachable from any real navigation, and `/` showing Laravel's default
-Welcome scaffold.
-
-**Used Stitch properly, per the phase doc's own instruction — downloaded
-the real HTML export, not just a canvas screenshot, and confirmed the
-relevant screens actually exist before assuming so.** Found a real,
-car-rental-specific Stitch project ("Premium Mobility Design System") with
-a genuine homepage screen ("Accueil - Project Atlas") and fleet-listing
-screens — but confirmed there is no standalone "Header" or "Footer" screen
-(normal — they live embedded in every full-page screen's HTML, not as
-separate assets). Downloaded and read the homepage's and a fleet-listing
-screen's real HTML to confirm the header/footer markup is genuinely
-identical across both before treating it as the shared design source —
-not assumed from one screenshot. **Also confirmed there is no Stitch
-screen at all for booking confirmation or driver verification** — those
-two pages' layouts were designed fresh, using the same token system, not
-adapted from a Stitch export that doesn't exist for them.
-
-**`PublicLayout.tsx`** — one real, fixed layout (not a `LayoutVariantRegistry`
-region, which doesn't exist in this project — see the "Layout Variant
-Regions" section). Visual structure (sticky blurred header, dark
-multi-column footer) follows the real Stitch HTML; every color/spacing
-value goes through this project's own theme tokens, and every nav item
-links to a real page — Stitch's marketing-site nav items (Services/À
-propos/FAQ) were deliberately not copied, since no such pages exist here.
-Wired onto all six storefront pages named in the reachability audit:
-`Vehicles/Index`, `Vehicles/Show`, `Bookings/Checkout`, `Bookings/Payment`,
-`Bookings/Show`, `DriverVerification/Show` — each confirmed individually
-with a real screenshot, not assumed consistent from a couple of checks.
-
-**The header's conditional "Driver Verification" link closes reachability-
-audit finding #4 for real** — previously zero inbound links existed
-anywhere. `HandleInertiaRequests` now shares `driverVerificationStatus`
-(`'none'|'pending'|'approved'|'rejected'|null`) computed from the user's
-latest `DriverVerification` row — no Hard Rule 1 concern, since
-`DriverVerification` is a core model (Phase 9 precedent). Also added a
-direct link to it on `Bookings/Checkout`'s error state, closing the
-reactive half of the same finding (a blocked booking previously showed a
-plain-text error with no path forward).
-
-**A real, wider regression than the Task 3 one, found and fixed correctly
-rather than patched around:** unconditionally querying `driver_verifications`
-from core middleware broke 21 tests across `Auth`, `Profile`,
-`BookingController`, `BookingCheckout`, and `Reviews` — because, unlike
-`themes` (a core migration, always present under `RefreshDatabase`),
-`driver_verifications` is a **plugin-owned** migration most tests never
-load. This is a real production risk, not just a test artifact: if the
-driver-verification plugin were ever disabled, or its migration hadn't
-run, every single authenticated page load would 500. Fixed by guarding
-with `Schema::hasTable('driver_verifications')` in the middleware itself
-(degrading to `null`) — the same "core middleware must not hard-crash the
-whole site over one optional feature" lesson as `StripeGateway`'s lazy-
-client fix in Phase 7 — rather than adding `RefreshDatabase`/migration
-calls to 21 unrelated test files, which would have masked the real risk
-instead of fixing it.
-
-**Homepage:** built a real `Home.tsx` (hero + a real "Featured vehicles"
-grid — the 4 most recently added available vehicles, one query, rule 8),
-informed by the Stitch homepage screen's structure but scoped to what
-this app has real data for today — no invented "Services"/testimonial
-sections. `Welcome.tsx` deleted outright (not just unrouted) — confirmed
-via grep that nothing else referenced it, so keeping it around would have
-been pure dead code, unlike `ThemeTest.tsx`/the disposable swap-proof
-theme, which still serve a real proof purpose.
-
-**Verified with real Playwright screenshots of a genuine click-through,
-not direct route hits** — `/` → click "Browse our fleet" → fleet listing
-→ click a real vehicle card → vehicle detail → submit dates → checkout →
-log in via a real header click → dashboard → profile (via the profile
-dropdown, confirming the booking-history widget shows the real seeded
-booking) → click into it → `Bookings/Show` → back to the fleet listing
-while authenticated (confirming the header's logged-in state) → click
-"Driver Verification" from the header. A separate, genuinely logged-out
-browser context completed a real guest checkout through to the real
-Stripe Elements Payment page. All ten screenshots show byte-for-byte the
-same header/footer structure, correctly reflecting guest vs. authenticated
-state at each step. All test data (bookings, vehicle, location, user)
-cleaned up afterward.
-
-220 tests, Pint, Larastan, and `tsc --noEmit --strict` all pass.
+- Closes the reachability audit: no shared header/nav/footer, fleet unreachable
+  from navigation, `/` was Laravel's Welcome scaffold.
+- **Stitch used properly**: downloaded the real HTML export (not just canvas
+  screenshots); confirmed a car-rental-specific Stitch project exists
+  ("Premium Mobility Design System") with a homepage + fleet screens; header/footer
+  live embedded in full-page screens (no standalone screens); **no Stitch screen
+  exists for booking confirmation or driver verification** — those were designed
+  fresh from the token system.
+- `PublicLayout.tsx` — one fixed layout (sticky blurred header, dark multi-column
+  footer) following the real Stitch HTML; every color/spacing value via theme
+  tokens; every nav item links to a real page (Stitch's marketing nav items not
+  copied — no such pages exist). Wired onto all six storefront pages:
+  `Vehicles/Index`, `Vehicles/Show`, `Bookings/Checkout`, `Bookings/Payment`,
+  `Bookings/Show`, `DriverVerification/Show`.
+- Header's conditional "Driver Verification" link: `HandleInertiaRequests` shares
+  `driverVerificationStatus` (`'none'|'pending'|'approved'|'rejected'|null`) from
+  the user's latest `DriverVerification` row (`DriverVerification` is a core
+  model, Phase 9 precedent). Also added a direct link on `Bookings/Checkout`'s
+  error state.
+- Regression (real production risk, fixed correctly): core middleware
+  unconditionally querying the plugin-owned `driver_verifications` table broke 21
+  tests — and would 500 every authenticated page if the plugin were disabled. Fix:
+  guard with `Schema::hasTable('driver_verifications')` in the middleware
+  (degrade to `null`), not by adding `RefreshDatabase` to 21 test files. Same
+  "core must not hard-crash over one optional feature" lesson as `StripeGateway`'s
+  lazy client.
+- Homepage: `Home.tsx` (hero + "Featured vehicles" grid — 4 most recent available
+  vehicles, one query, rule 8), scoped to real data (no invented Services/
+  testimonials). `Welcome.tsx` deleted outright (confirmed via grep nothing else
+  referenced it). `/theme-test`/`ThemeTest.tsx` and the swap-proof theme stay —
+  they still serve a proof purpose.
 
 ## Frontend Improvement Phase — admin controls + layout variants + server-side filtering (verified 2026-08-07)
 
-This phase established several reusable frontend/admin patterns in one sweep:
-a real layout-variant system (fulfilling the `LayoutVariantRegistry` deferred
-since the vehicle-reviews phase), server-side filtering/sorting registries for
-the fleet listing, a plugin relation-manager extension hook, two singleton
-admin settings pages, public booking tracking, and a plugin enable/disable
-admin control. Hard Rules 10 and 11 were added this session and every pattern
-below was proven against them — browser-verified screenshots with zero console
-errors for frontend work, and a full admin→frontend round-trip for anything
-with an admin control.
+Established reusable frontend/admin patterns in one sweep. Hard Rules 10 and 11
+were added this session; every pattern below was proven browser-verified with
+zero console errors, and admin→frontend round-trips per rule 11.
 
 ### Layout variant system
-
-`App\Core\Support\LayoutVariantRegistry` — the deferred registry from the
-vehicle-reviews phase is now real, with the API shape `register()` /
-`availableFor()` / `activeComponentFor()` / `allRegisteredSlots()`.
-`availableFor()`/`activeComponentFor()` resolve the active variant for a
-region (falling back to a default when no admin selection exists);
-`allRegisteredSlots()` lets a host page enumerate every slot that registered
-into it. Persistence is a `LayoutSetting` model over a `layout_settings`
-table — one row per region (`region` + `active_variant`), editable from a
-`LayoutSettings` Filament page. On the frontend,
-`resources/js/layoutComponentRegistry.tsx` maps variant names to React
-components, and the `LayoutSlot` component (`registerLayoutSlot(name)`) is the
-per-region render point: a host region calls `registerLayoutSlot('vehicleCard')`
-once, then loops `allRegisteredSlots()` and renders the active component for
-each. Five regions are registered: `vehicleCard`, `fleetLayout`,
-`reviewDisplay`, `checkoutStyle`, `vehicle-gallery` — each with a default
-variant plus at least one alternative. The earlier "don't build a second
-extensibility layer for a hypothetical need" call in the vehicle-reviews
-section was the correct deferral *then*; the mechanism is only justified once
-real regions with real alternatives exist, which is what this phase provides.
+- `App\Core\Support\LayoutVariantRegistry` — the deferred registry is now real,
+  API: `register()` / `availableFor()` / `activeComponentFor()` /
+  `allRegisteredSlots()`. `availableFor()`/`activeComponentFor()` resolve the
+  active variant per region (default fallback when no admin selection);
+  `allRegisteredSlots()` lets a host page enumerate every slot registered into it.
+- Persistence: `LayoutSetting` model over `layout_settings` table — one row per
+  region (`region` + `active_variant`), editable from a `LayoutSettings` Filament
+  page. Frontend: `resources/js/layoutComponentRegistry.tsx` maps variant names to
+  React components; the `LayoutSlot` component (`registerLayoutSlot(name)`) is the
+  per-region render point — a host calls `registerLayoutSlot('vehicleCard')` once,
+  loops `allRegisteredSlots()`, renders the active component for each.
+- Five regions registered: `vehicleCard`, `fleetLayout`, `reviewDisplay`,
+  `checkoutStyle`, `vehicle-gallery` — each with a default variant plus at least
+  one alternative. The earlier "don't build a second extensibility layer" call was
+  the correct deferral *then*; the mechanism is justified once real regions with
+  real alternatives exist.
 
 ### VehicleFilterRegistry + VehicleSortRegistry
-
-`VehicleFilterRegistry` and `VehicleSortRegistry` (`app/Core/Support/`) are the
-server-side filtering/sorting backbone for the fleet listing, with contracts
-`VehicleFilterProvider` and `VehicleSortOption`. A filter provider exposes
-`label` + available options + `apply($query, $value)`; a sort option carries
-`label` + `apply($query, $direction)`. Both registries are flushed at the top
-of `PluginManager::boot()` alongside `FilterRegistry`/`SlotRegistry` — the
-same static-state-reset discipline as the earlier kernel fix, so repeated
-boots (the test suite's per-test `Application` boots, or any future
-persistent-worker model) never accumulate entries. Core registers the default
-filters (Category, Transmission) and default sorts (`price_asc`, `price_desc`,
-`name_asc`); plugins add their own providers the same way. `VehicleController::index()`
-orchestrates it all: it reads the incoming `filter`/`sort` query params, asks
-the registries which are valid, applies them to the `Vehicle` query in one
-pass, and shares the applied + available filter/sort state to the Inertia page
-so the UI can render active-state and option lists correctly. This is
-server-side filtering, not client-side — the fleet URL stays shareable and
-refresherable.
+- `VehicleFilterRegistry`/`VehicleSortRegistry` (`app/Core/Support/`) — server-side
+  filtering/sorting backbone for the fleet listing, with contracts
+  `VehicleFilterProvider` (label + options + `apply($query, $value)`) and
+  `VehicleSortOption` (label + `apply($query, $direction)`). Both flushed at the
+  top of `PluginManager::boot()` (same static-state-reset discipline as the
+  registry kernel fix).
+- Core registers default filters (Category, Transmission) and sorts (`price_asc`,
+  `price_desc`, `name_asc`); plugins add their own providers the same way.
+  `VehicleController::index()` reads `filter`/`sort` query params, asks the
+  registries which are valid, applies them to the `Vehicle` query in one pass, and
+  shares applied + available state to the Inertia page. Server-side — the fleet URL
+  stays shareable/refresherable.
 
 ### VehicleResourceExtension
-
-`App\Core\Support\VehicleResourceExtension` is the plugin relation-manager hook
-on the Filament `VehicleResource`, ported from the e-commerce project's
-`ProductResourceExtension` after reading the source (not assumed). A plugin
-registers a closure from its own `ServiceProvider::boot()` that receives the
-vehicle resource class and calls `pushRelationManagers([...])` on it — core
-never references the plugin; the plugin calls into the core hook.
-`vehicle-media` uses this exact hook to register
-`VehicleImagesRelationManager` onto the vehicle admin page, so vehicle image
-management lives with the media plugin while the resource itself stays
-core-owned.
+- `App\Core\Support\VehicleResourceExtension` — plugin relation-manager hook on the
+  Filament `VehicleResource` (ported from e-commerce's `ProductResourceExtension`).
+  A plugin registers a closure from its own `ServiceProvider::boot()` that receives
+  the resource class and calls `pushRelationManagers([...])` — core never
+  references the plugin; the plugin calls into the core hook. `vehicle-media` uses
+  it to register `VehicleImagesRelationManager` onto the vehicle admin page.
 
 ### HomepageContent
-
-`App\Models\HomepageContent` is a singleton-content model (a single-row table
-guarded by a migration) with an admin `HomepageContentSettings` Filament page
-for editing hero/headline/copy and the featured-vehicle selection. The row is
-resolved and passed to `Home.tsx` as Inertia props with fallback defaults when
-no row exists yet — so `/` renders correctly before an admin has ever saved
-content. Same singleton + fallback-default shape as `SiteIdentitySettings`
-below. Storefront-facing content that isn't theme token data lives in a single
-DB-backed row rather than being hardcoded in the page.
+- `App\Models\HomepageContent` — singleton-content model (single-row table) with an
+  admin `HomepageContentSettings` Filament page for hero/headline/copy + featured-
+  vehicle selection. Row resolved and passed to `Home.tsx` as Inertia props with
+  fallback defaults (so `/` renders before any save). Same singleton + fallback
+  shape as `SiteIdentitySettings`.
 
 ### Booking tracking
-
-`booking_number` is auto-generated in the `Booking` model's `creating` hook —
-a human-friendly public reference distinct from the internal numeric id. A
-public `/bookings/track` lookup page lets a customer enter the number plus a
-contact detail to find their booking; the POST lookup is throttled (`throttle`
-middleware) to prevent enumeration. For guests, the result redirect is a
-signed URL — the same signed-vs-plain split already used by the checkout
-redirect and the confirmation email — so a guest can view their own booking
-detail without an account.
+- `booking_number` auto-generated in the `Booking` model's `creating` hook — a
+  human-friendly public reference distinct from the internal id. Public
+  `/bookings/track` lookup page (customer enters number + contact detail); the POST
+  is throttled to prevent enumeration. Guest result redirect is a signed URL — the
+  same signed-vs-plain split used by the checkout redirect and confirmation email.
 
 ### SiteIdentitySettings
-
-`SiteIdentitySettings` is a singleton admin settings page (site name, logo,
-favicon) backed by a single-row settings model — the same singleton pattern as
-`HomepageContent`. The values are shared to every Inertia page via
-`HandleInertiaRequests` as a `siteIdentity` prop, and the `SiteLogo` React
-component renders the configured logo (falling back to the site name text when
-no logo is uploaded) in the `PublicLayout` header/footer. Hard Rule 11 applies
-directly here: saving the identity in the admin panel must change what the
-storefront header actually renders, verified as a real round-trip.
+- Singleton admin settings page (site name, logo, favicon) backed by a single-row
+  settings model. Values shared to every Inertia page as a `siteIdentity` prop;
+  `SiteLogo` React component renders the configured logo (falling back to site-name
+  text) in `PublicLayout` header/footer. Rule 11 applies directly — saving identity
+  must change what the storefront header renders (verified as a real round-trip).
 
 ### PluginResource
-
-`PluginResource` is the admin control that makes a plugin's enable/disable
-state manageable from the admin panel, using a Filament `ToggleColumn` bound to
-`is_active`. Combined with `PluginManager::boot()`'s per-request flush +
-re-registration, toggling a row in the panel genuinely re-runs registration on
-the next request — the same disable→404/enable→200 toggle the Phase 4
-`verify-plugin-toggle.sh` script proved over real HTTP, now surfaced as a real
-UI. Hard Rule 11's round-trip (toggle in admin, load the storefront, confirm
-the change, zero console errors on both sides) is the verification standard.
+- Admin control making plugin enable/disable manageable from the panel via a
+  Filament `ToggleColumn` bound to `is_active`. Combined with
+  `PluginManager::boot()`'s per-request flush + re-registration, toggling a row
+  genuinely re-runs registration next request — the Phase 4 disable→404/enable→200
+  toggle, now a real UI. Rule 11's round-trip is the verification standard.
 
 ### Admin panel navigation
-
-Filament v4 pages here customize navigation via getter methods (`public static
-function getNavigationLabel(): string`, etc.) rather than typed static
-properties, because the parent `Page` class declares those properties with
-union types that don't narrow cleanly to the string literals these pages need —
-the getter-method form is the v4-correct way to set navigation label/icon/sort
-on these pages.
+- Filament v4 pages customize navigation via getter methods (`getNavigationLabel()`,
+  etc.) rather than typed static properties, because the parent `Page` class
+  declares those properties with union types that don't narrow to the string
+  literals these pages need — the getter form is the v4-correct way.
 
 ## Feature Expansion Phase — Scout search, i18n, bulk import, one-way rental, booking export + calendar (verified 2026-08-07)
 
 ### Laravel Scout search (storefront autocomplete)
-
-`App\Http\Controllers\SearchController::suggestions()` powers the storefront
-SearchBox dropdown. The `Vehicle` model uses Laravel Scout's **`database`
-driver** (`Searchable` trait, `toSearchableArray()` limited to public catalog
-fields — id/make/model/category/year — plus a `->where('status', 'available')`
-guard so a suggestion always lands on a 200 page, never a 404 detail page).
-`/search/suggestions` is **throttled (`30,1`)**, returns a plain JSON array of
-at most 5 vehicles, and batch-loads the primary image in one query only when
-the vehicle-media plugin has registered the dynamic `primaryImage` relation
-(rule 8; core checks the relation-resolver registry, never the plugin's
-namespace). Two patterns worth keeping:
-
-- **No search provider credentials live in `.env`** — the `database` driver is
-  a deliberate local-first default, so there is no Algolia/Meilisearch secret
-  to leak, and the endpoint stays fully offline-capable.
-- **The suggestions endpoint is a genuine data-exposure boundary.** It was
-  checked (and re-checked during the security audit) to return only public
-  vehicle data — never booking/customer data — and the frontend renders it as
-  escaped React text inside a proper ARIA `listbox`/`option` structure, so an
-  XSS-shaped query string renders harmlessly. The security audit's XSS probe
-  (`<img src=x onerror=alert(1)>`) returned `[]` and produced zero console
-  errors.
+- `App\Http\Controllers\SearchController::suggestions()` powers the SearchBox
+  dropdown. `Vehicle` uses Scout's **`database` driver** (`Searchable` trait,
+  `toSearchableArray()` limited to public catalog fields — id/make/model/category/
+  year — plus a `->where('status', 'available')` guard so a suggestion always
+  lands on a 200 page, never a 404 detail page). `/search/suggestions` is throttled
+  (`30,1`), returns ≤5 vehicles as a plain JSON array, and batch-loads the primary
+  image in one query only when `vehicle-media` has registered the dynamic
+  `primaryImage` relation (rule 8; core checks the relation-resolver registry,
+  never the plugin's namespace).
+- **No search provider credentials in `.env`** — the `database` driver is a
+  deliberate local-first default (no Algolia/Meilisearch secret to leak, fully
+  offline-capable).
+- The suggestions endpoint is a **genuine data-exposure boundary**: checked to
+  return only public vehicle data (never booking/customer data); frontend renders
+  escaped React text inside a proper ARIA `listbox`/`option`, so an XSS-shaped
+  query renders harmlessly (audit probe returned `[]`, zero console errors).
 
 ### FR/EN i18n
-
-Client-side translation layer, deliberately framework-light: `lang/en.json` +
-`lang/fr.json` (keys are canonical English UI strings; `en.json` is the
-identity mapping, `fr.json` holds the French translations), a `useTranslation()`
-hook (`resources/js/hooks/useTranslation.ts`) that reads the locale from the
-Inertia props and resolves against the imported JSON objects, and a locale
-switcher in `PublicLayout`'s header that navigates to `?lang=en|fr`, preserving
-any existing query params (search, filters, pagination).
-
-**The `?lang=` param is strictly whitelisted** in
-`HandleInertiaRequests::share()` — `in_array($locale, ['en', 'fr'], true)`,
-else default to `fr` — so a hand-typed `?lang=../../etc/passwd` degrades
-cleanly to French instead of attempting to load an arbitrary file (no LFI
-vector). **The admin panel stays English-only** — the storefront `app()->setLocale()`
-is scoped to storefront requests; Filament's own locale is untouched. The
-default storefront locale is French (`'fr'`), the business's current language.
+- Client-side, framework-light: `lang/en.json` + `lang/fr.json` (keys are
+  canonical English UI strings; `en.json` is the identity mapping, `fr.json` holds
+  French), a `useTranslation()` hook (`resources/js/hooks/useTranslation.ts`)
+  reading the locale from Inertia props, and a locale switcher in `PublicLayout`
+  navigating to `?lang=en|fr` while preserving existing query params.
+- **The `?lang=` param is strictly whitelisted** in `HandleInertiaRequests::share()`
+  (`in_array($locale, ['en','fr'], true)`, else `fr`) — a hand-typed
+  `?lang=../../etc/passwd` degrades cleanly (no LFI vector). **Admin panel stays
+  English-only** (storefront `setLocale()` scoped to storefront requests).
+  Default storefront locale is French (`'fr'`).
 
 ### Bulk vehicle CSV import
-
-Admin-only bulk import via **Maatwebsite Excel**: `App\Imports\VehiclesImport`
-owns the CSV column contract and per-row validation (invalid rows are skipped
-with per-row reasons), and `App\Filament\Pages\BulkVehicleImport` is the shell —
-a pure Blade view (not a Filament form) with a three-step flow: upload → live
-preview of the first 5 parsed rows → Import → inline success/failure summary
-plus a Filament notification.
-
-Two security-relevant details worth recording:
-- **The template download is gated inside the controller, not by the route.**
-  The route `GET /admin/vehicle-import-template` lives in `routes/web.php`
-  with only `['web', 'auth']` middleware (it must be reachable before Filament
-  boot and is not a panel route), and `BulkVehicleImport::downloadTemplate()`
-  does the real `abort_unless(hasAtLeast(Role::Admin))` check. This is a
-  deliberate second layer rather than a `Route::middleware(['can:...'])` — a
-  Filament Page can't easily be referenced in a route middleware closure, and
-  the check is trivially visible at the top of the method it protects.
-- The upload is validated (`mimes:csv,txt`, `max:2048`) and parsed via
-  `(new VehiclesImport)->toArray(...)`, so a malformed file surfaces as a
-  caught preview error rather than a crash.
+- Admin-only bulk import via **Maatwebsite Excel**: `App\Imports\VehiclesImport`
+  owns the CSV column contract + per-row validation (invalid rows skipped with
+  per-row reasons); `App\Filament\Pages\BulkVehicleImport` is the shell — a pure
+  Blade view (not a Filament form) with a three-step flow: upload → live preview of
+  the first 5 parsed rows → Import → inline success/failure summary + Filament
+  notification.
+- Security detail: the **template download is gated inside the controller, not by
+  the route** — `GET /admin/vehicle-import-template` lives in `routes/web.php` with
+  only `['web','auth']` (it must be reachable before Filament boot and isn't a
+  panel route), and `BulkVehicleImport::downloadTemplate()` does the real
+  `abort_unless(hasAtLeast(Role::Admin))`. A deliberate second layer (a Filament
+  Page can't easily be referenced in route middleware, and the check is visible at
+  the top of the method it protects). Upload validated (`mimes:csv,txt`,
+  `max:2048`) and parsed via `toArray(...)` so a malformed file surfaces as a
+  caught preview error.
 
 ### One-way rental UI
-
-`Bookings/CheckoutForm.tsx` now exposes **distinct pickup/return location
-selectors** ("Lieu de prise en charge" / "Lieu de restitution"), and the
-service layer has supported one-way since Phase 5 — `BookingCreator` accepts
-separate `pickup_location_id`/`return_location_id`. `BookingCheckoutController::store()`
-validates both ids against the `locations` table (`exists:locations,id`) and
-defaults each to the vehicle's current location when absent, so a bogus id can
-never be persisted as a broken FK. `RelocateVehicleOnReturn` (Phase 5) already
-relocates the vehicle to the return location on `VehicleReturned`, which is how
-a one-way car "belongs" at its drop-off afterward.
+- `Bookings/CheckoutForm.tsx` exposes **distinct pickup/return location selectors**.
+  The service layer has supported one-way since Phase 5 — `BookingCreator` accepts
+  separate `pickup_location_id`/`return_location_id`.
+  `BookingCheckoutController::store()` validates both against the `locations`
+  table (`exists:locations,id`) and defaults each to the vehicle's current location
+  when absent (a bogus id can never be persisted as a broken FK).
+  `RelocateVehicleOnReturn` (Phase 5) already relocates on `VehicleReturned`.
 
 ### Booking CSV export
-
-`App\Http\Controllers\Admin\BookingExportController` streams the currently-
-filtered Bookings list as a CSV. It is registered as a **Filament panel
-authenticated route** (`AdminPanelProvider::authenticatedRoutes()` →
-`GET /admin/bookings/export`), so it inherits the panel's auth middleware and
-is never reachable by storefront users — the security audit confirmed a logged-
-in customer is redirected away and a non-admin cannot call it. It mirrors the
-Bookings table's `status` SelectFilter and global search exactly (id,
-booking_number, guest/user name, license plate), and all filters are plain
-query-builder `where`/`like` bindings — parameterized, no SQL injection (the
-audit's `' OR 1=1--` probes returned 200 with unchanged data).
+- `App\Http\Controllers\Admin\BookingExportController` streams the currently-
+  filtered Bookings list as CSV. Registered as a **Filament panel authenticated
+  route** (`AdminPanelProvider::authenticatedRoutes()` → `GET /admin/bookings/export`)
+  so it inherits panel auth and is never reachable by storefront users (audit
+  confirmed a logged-in customer is redirected away, a non-admin can't call it).
+  Mirrors the Bookings table's status SelectFilter + global search; all filters are
+  parameterized query-builder `where`/`like` bindings — no SQL injection (the
+  audit's `' OR 1=1--` probes returned 200 with unchanged data).
 
 ### Booking calendar widget
-
-`App\Filament\Widgets\BookingCalendarWidget` is a **deliberately-not-FullCalendar**
-visual month grid: a single self-contained Blade view
-(`resources/views/filament/widgets/booking-calendar.blade.php`) with pickup days
-(green), return days (red), and the active rental period (blue) as colored dots,
-hover popovers, and previous/next/current month navigation. Month navigation is
-plain Livewire state (`$month`/`$year`), no query strings or extra routes. The
-status filter matches the project's established "real booking" definition
-(`confirmed`/`checked_out`/`returned` — `pending` holds and `cancelled`/`expired`
-excluded, named explicitly). Rule 8: all overlapping bookings for the month are
-loaded in one query (vehicles eager-loaded in a second) and the per-day
-classification is done in PHP. `isLazy()` is `false` — the calendar is the
-point of the widget, there's no expensive render to defer.
+- `App\Filament\Widgets\BookingCalendarWidget` — deliberately NOT FullCalendar: a
+  single self-contained Blade view (`resources/views/filament/widgets/booking-calendar.blade.php`)
+  with pickup days (green), return days (red), active rental period (blue) as
+  colored dots, hover popovers, prev/next/current month nav. Month navigation is
+  plain Livewire state (`$month`/`$year`) — no query strings or extra routes. Status
+  filter matches the established "real booking" definition (`confirmed`/
+  `checked_out`/`returned`; `pending` holds and `cancelled`/`expired` excluded,
+  named explicitly). Rule 8: all overlapping bookings for the month load in one
+  query (vehicles eager-loaded in a second); per-day classification in PHP.
+  `isLazy()` is `false` — the calendar is the point of the widget.
 
 ### Plugin scaffolding command — NOT PRESENT (documented-as-planned only)
-
-The expected `make:carrental-plugin` Artisan command **does not exist in the
-codebase** — verified during the security audit by file search across
-`app/`/`plugins/`/`docs/`, by `php artisan list`, and against composer.json.
-The `add-plugin` skill (`.claude/skills/add-plugin/SKILL.md` and
-`docs/SKILL-add-plugin.md`) documents the package-scaffolding *process* for
-building a new plugin by hand, but no Artisan generator was ever written to
-automate it. This is recorded in the same "documented, not implemented"
-category as `LayoutVariantRegistry` (see the vehicle-reviews section) rather
-than silently omitted or falsely claimed — if a generator is wanted later, the
-skill's documented structure is the specification it should automate.
+- The expected `make:carrental-plugin` Artisan command **does not exist** — verified
+  during the security audit (file search, `php artisan list`, composer.json). The
+  `add-plugin` skill documents the manual package-scaffolding process, but no
+  generator was ever written. Recorded in the same "documented, not implemented"
+  category as `LayoutVariantRegistry` was, rather than falsely claimed.
 
 ### Layout props contracts
-
-`resources/js/layout-contracts/` is the home for the shared, server-agnostic
-TypeScript prop shapes passed to layout-variant components —
-`VehicleCardProps.ts`, `VehicleGalleryProps.ts`, `ReviewDisplayProps.ts` — and
-`pluginComponentRegistry.tsx`'s `SlotOutlet` is the generic `LayoutSlot`
-renderer that merges server props with client-only `extraProps` (static PHP
-props win on collision). The contracts directory exists so a component's props
-are typed once in a place both `fleet-management`'s host page and the
-plugin-owned variant components can import, without either importing the other
-(Hard Rule 2 — the shared type is the boundary, same shape as core-owned DTOs
-for cross-plugin data).
+- `resources/js/layout-contracts/` holds shared, server-agnostic TS prop shapes for
+  layout-variant components (`VehicleCardProps.ts`, `VehicleGalleryProps.ts`,
+  `ReviewDisplayProps.ts`); `pluginComponentRegistry.tsx`'s `SlotOutlet` is the
+  generic `LayoutSlot` renderer that merges server props with client-only
+  `extraProps` (static PHP props win on collision). The contracts dir lets both
+  `fleet-management`'s host page and plugin-owned variant components type props in
+  one place without importing each other (rule 2 — the shared type is the
+  boundary, same shape as core-owned DTOs for cross-plugin data).
 
 ## Production Readiness Phase — security, CI/CD, accessibility, Meilisearch (verified 2026-08-08)
 
 ### Security hardening
-
-**SecurityHeaders middleware** (`app/Http/Middleware/SecurityHeaders.php`):
-`X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection`,
-`Referrer-Policy`, `Permissions-Policy`, with HSTS in production only.
-
-**Rate limiting** on all public POST endpoints:
-- `POST /vehicles/{id}/book` → `throttle:10,1` (prevents hold-flood DoS)
-- `POST /vehicles/{id}/reviews` → `throttle:20,1`
-- `POST /account/driver-verification` → `throttle:20,1`
-- `POST /bookings/track` → `throttle:20,1`
-- `POST /login` → 5-attempt lockout (Breeze default)
-
-**CSRF hardening**: `GET /bookings/{id}/confirm` changed to POST. A
-non-mutating GET interstitial handles the Stripe 3DS redirect-back case.
+- **SecurityHeaders middleware** (`app/Http/Middleware/SecurityHeaders.php`):
+  `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection`,
+  `Referrer-Policy`, `Permissions-Policy`, HSTS in production only.
+- **Rate limiting** on public POSTs: `/vehicles/{id}/book` → `throttle:10,1`
+  (prevents hold-flood DoS); `/vehicles/{id}/reviews` → `20,1`;
+  `/account/driver-verification` → `20,1`; `/bookings/track` → `20,1`; `/login` →
+  5-attempt lockout (Breeze default).
+- **CSRF**: `GET /bookings/{id}/confirm` changed to POST; a non-mutating GET
+  interstitial handles the Stripe 3DS redirect-back case.
 
 ### Meilisearch search
-
-Meilisearch v1.10 runs in Docker on `:7700` with `MEILI_MASTER_KEY`.
-`SCOUT_DRIVER=meilisearch`, `meilisearch/meilisearch-php` installed. The
-`Vehicle` model uses `Laravel\Scout\Searchable` — `toSearchableArray()`
-returns `id, make, model, category, year`. The `SearchController::suggestions()`
-endpoint queries Meilisearch with `->where('status', 'available')` (requires
-`status` to be filterable when switching from database driver). A full
-migration guide from `database` to `meilisearch` driver is in
-`docs/17-SEARCH-SUGGESTIONS.md`.
+- Meilisearch v1.10 in Docker on `:7700` with `MEILI_MASTER_KEY`;
+  `SCOUT_DRIVER=meilisearch`, `meilisearch/meilisearch-php` installed.
+  `toSearchableArray()` returns `id, make, model, category, year`; the suggestions
+  endpoint queries with `->where('status', 'available')` (**`status` must be
+  filterable when switching from the database driver**). Migration guide in
+  `docs/17-SEARCH-SUGGESTIONS.md`.
 
 ### CI/CD (GitHub Actions)
-
-`.github/workflows/test.yml`: PHP 8.4 + Postgres 16 + Node 20. Steps:
-composer install, npm ci, npm build, Pint, Larastan, TSC strict, php artisan
-test. Triggers on push to `master`/`main`/`feat/*` and PRs to `master`/`main`.
+- `.github/workflows/test.yml`: PHP 8.4 + Postgres 16 + Node 20; composer install,
+  npm ci, npm build, Pint, Larastan, TSC strict, php artisan test. Triggers on
+  push to `master`/`main`/`feat/*` and PRs to `master`/`main`.
 
 ### Production infrastructure
-
-**Docker Compose** (`docker-compose.yml`): app (PHP 8.4), postgres:16, redis:7,
-meilisearch:v1.10 — one-command dev setup with `docker compose up`.
-
-**Error pages**: Inertia-rendered 404 (`Errors/NotFound.tsx`) and 500
-(`Errors/ServerError.tsx`), wired in `bootstrap/app.php` via
-`$exceptions->respond()`. PublicLayout is auth-safe (destructures `auth` with
-default) for unmatched-route 404s where `HandleInertiaRequests` never runs.
-
-**SEO**: OG meta tags + Twitter card in `app.blade.php`, per-page override via
-`seo` Inertia prop. Vehicle detail page sets dynamic og:title.
-
-**Sitemap**: `GET /sitemap.xml` returns homepage + fleet + all available vehicles.
-
-**Cookie consent**: `CookieBanner.tsx` — fixed-bottom, localStorage persistence,
-FR/EN translations.
-
-**Image optimization**: `docs/18-IMAGE-OPTIMIZATION.md` documents the strategy
-(upload-time responsive sizes + WebP via intervention/image, delivery via
-`<picture>` + srcset, CDN caching). Gallery images use `loading="lazy"`.
+- **Docker Compose** (`docker-compose.yml`): app (PHP 8.4), postgres:16, redis:7,
+  meilisearch:v1.10 — one-command dev setup (`docker compose up`).
+- **Error pages**: Inertia-rendered 404 (`Errors/NotFound.tsx`) and 500
+  (`Errors/ServerError.tsx`), wired in `bootstrap/app.php` via
+  `$exceptions->respond()`. PublicLayout is auth-safe (destructures `auth` with a
+  default) for unmatched-route 404s where `HandleInertiaRequests` never runs.
+- **SEO**: OG meta tags + Twitter card in `app.blade.php`, per-page override via a
+  `seo` Inertia prop; vehicle detail sets dynamic og:title.
+- **Sitemap**: `GET /sitemap.xml` returns homepage + fleet + all available vehicles.
+- **Cookie consent**: `CookieBanner.tsx` — fixed-bottom, localStorage persistence,
+  FR/EN translations.
+- **Image optimization**: `docs/18-IMAGE-OPTIMIZATION.md` documents the strategy
+  (upload-time responsive sizes + WebP via intervention/image, delivery via
+  `<picture>` + srcset, CDN caching); gallery images use `loading="lazy"`.
 
 ### Accessibility (WCAG 2.1)
-
 - Skip-to-content link in PublicLayout + CheckoutLayout
 - Color contrast: warning `#B45309` (4.78:1), success `#15803D` (4.77:1)
 - Visible focus indicators on all interactive elements (`focus:ring-focusRing`)
