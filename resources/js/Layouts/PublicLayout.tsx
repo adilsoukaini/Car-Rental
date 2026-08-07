@@ -18,7 +18,9 @@ import { PropsWithChildren, useState } from 'react';
  * (Services/À propos/FAQ have no corresponding real page in this app).
  */
 export default function PublicLayout({ children }: PropsWithChildren) {
-    const { auth, driverVerificationStatus } = usePage<PageProps>().props;
+    const { auth, driverVerificationStatus, siteIdentity } = usePage<
+        PageProps & { siteIdentity?: { siteName?: string } }
+    >().props;
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     const needsDriverVerification =
@@ -151,7 +153,7 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                 </div>
 
                 <div className="flex flex-col justify-end text-sm text-onPrimary/80 md:text-right">
-                    © {new Date().getFullYear()} {props.siteIdentity?.siteName ?? 'Car Rental'}. All rights reserved.
+                    © {new Date().getFullYear()} {siteIdentity?.siteName ?? 'Car Rental'}. All rights reserved.
                 </div>
             </footer>
         </div>
