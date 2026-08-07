@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  app:
+    image: php:8.4-cli
+    working_dir: /var/www
+    volumes:
+      - .:/var/www
+    ports:
+      - "8099:8000"
+    command: php artisan serve --host=0.0.0.0 --port=8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=car_rental_dev
+      - DB_USERNAME=car_rental
+      - DB_PASSWORD=password
+    networks:
+      - carrental
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: car_rental_dev
+      POSTGRES_USER: car_rental
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U car_rental -d car_rental_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - carrental
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - carrental
+
+volumes:
+  pgdata:
+
+networks:
+  carrental:
+    driver: bridge

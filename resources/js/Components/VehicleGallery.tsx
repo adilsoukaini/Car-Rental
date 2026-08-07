@@ -28,6 +28,7 @@ export default function VehicleGallery({ images }: { images: VehicleGalleryImage
                     <img
                         src={currentImage.url}
                         alt={currentImage.altText ?? 'Photo du véhicule'}
+                        loading="lazy"
                         className="aspect-video w-full object-cover"
                     />
                 ) : (
