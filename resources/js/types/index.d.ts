@@ -10,6 +10,7 @@ export interface PageProps {
         user: User | null;
     };
     driverVerificationStatus: 'none' | 'pending' | 'approved' | 'rejected' | null;
+    activeLayoutVariants: Record<string, string>;
     [key: string]: unknown;
 }
 
@@ -35,6 +36,15 @@ export interface Vehicle {
     mileage: number;
     status: string;
     location: Location | null;
+    /** Batch-loaded via vehicle.listQuery's EagerLoadPrimaryImagePipe — never null-checked per-card (rule 8: one query for the whole page). */
+    primary_image?: VehicleImage | null;
+}
+
+export interface VehicleImage {
+    id: number;
+    url: string;
+    alt_text: string | null;
+    is_primary: boolean;
 }
 
 export interface PaginationLink {

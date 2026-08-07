@@ -2,6 +2,10 @@ import PublicLayout from '@/Layouts/PublicLayout';
 import { SlotOutlet } from '@/pluginComponentRegistry';
 import { Vehicle } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
+import Breadcrumbs from '@/Components/Breadcrumbs';
+import EmptyState from '@/Components/EmptyState';
+import Text from '@/Components/Text';
+import { Car } from 'lucide-react';
 import { FormEventHandler, useState } from 'react';
 
 interface SlotEntry {
@@ -9,12 +13,41 @@ interface SlotEntry {
     props: Record<string, unknown>;
 }
 
-export default function Show({ vehicle, detailWidgets }: { vehicle: Vehicle; detailWidgets: SlotEntry[] }) {
+export default function Show({ vehicle, detailWidgets }: { vehicle: Vehicle | null; detailWidgets: SlotEntry[] }) {
     const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
     const dayAfter = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
 
     const [pickupAt, setPickupAt] = useState(tomorrow);
     const [returnAt, setReturnAt] = useState(dayAfter);
+
+    if (!vehicle) {
+        return (
+            <PublicLayout>
+                <Head title="Vehicle not found" />
+
+                <div className="mx-auto max-w-lg p-8">
+                    <Breadcrumbs
+                        items={[{ label: 'Our Fleet', href: route('vehicles.index') }]}
+                        className="mb-4"
+                    />
+
+                    <EmptyState
+                        icon={<Car className="h-10 w-10" />}
+                        title="Vehicle not found"
+                        description="This vehicle may no longer be available."
+                        action={
+                            <Link
+                                href={route('vehicles.index')}
+                                className="text-sm font-medium text-primary hover:text-primaryHover"
+                            >
+                                Browse our fleet
+                            </Link>
+                        }
+                    />
+                </div>
+            </PublicLayout>
+        );
+    }
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
@@ -30,14 +63,22 @@ export default function Show({ vehicle, detailWidgets }: { vehicle: Vehicle; det
             <Head title={`${vehicle.make} ${vehicle.model}`} />
 
             <div className="mx-auto max-w-lg p-8">
+            <Breadcrumbs
+                items={[
+                    { label: 'Our Fleet', href: route('vehicles.index') },
+                    { label: `${vehicle.make} ${vehicle.model}` },
+                ]}
+                className="mb-4"
+            />
+
             <Link href={route('vehicles.index')} className="mb-6 inline-block text-sm text-primary">
                 &larr; Back to fleet
             </Link>
 
             <div className="rounded-container border border-border bg-surface p-8 shadow-resting">
-                <h1 className="mb-2 font-display text-2xl font-bold text-text">
+                <Text variant="h1" className="mb-2">
                     {vehicle.make} {vehicle.model} ({vehicle.year})
-                </h1>
+                </Text>
 
                 <p className="mb-4 text-sm text-textMuted">
                     {vehicle.category} · {vehicle.seat_count} seats · {vehicle.transmission_type} ·{' '}
@@ -50,9 +91,9 @@ export default function Show({ vehicle, detailWidgets }: { vehicle: Vehicle; det
                     </p>
                 )}
 
-                <p className="mb-6 font-mono text-2xl font-semibold text-text">
+                <Text variant="mono-price" className="mb-6">
                     {vehicle.daily_rate} MAD / day
-                </p>
+                </Text>
 
                 <form onSubmit={submit} className="space-y-4">
                     <div>
