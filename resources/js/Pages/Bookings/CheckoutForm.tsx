@@ -1,7 +1,7 @@
 import { PageProps, User, Vehicle } from '@/types';
 import { Link } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
-import { Calendar, MapPin, User as UserIcon } from 'lucide-react';
+import { Calendar, MapPin, Tag, User as UserIcon } from 'lucide-react';
 import {
     formatDateTime,
     inputClass,
@@ -18,6 +18,7 @@ export interface CheckoutFormData {
     guest_phone: string;
     pickup_at: string;
     return_at: string;
+    promo_code: string;
 }
 
 /**
@@ -41,6 +42,9 @@ interface CheckoutFormProps {
     pickupAt: string;
     returnAt: string;
     onSubmit: FormEventHandler;
+    promoError: string | null;
+    promoApplied: boolean;
+    onApplyPromo: () => void;
 }
 
 export default function CheckoutForm({
@@ -57,6 +61,9 @@ export default function CheckoutForm({
     pickupAt,
     returnAt,
     onSubmit,
+    promoError,
+    promoApplied,
+    onApplyPromo,
 }: CheckoutFormProps) {
     return (
         <form id="main-checkout-form" onSubmit={onSubmit}>
@@ -222,6 +229,39 @@ export default function CheckoutForm({
                         </div>
                     </div>
                 </div>
+            </section>
+
+            {/* Promo code card — optional discount code, applied via a
+                server-side re-preview (router.get with preserveState) so the
+                price summary reflects the discount before payment. */}
+            <section className="mt-6 rounded-container bg-surface p-6 shadow-resting">
+                <h2 className="mb-4 flex items-center gap-2 font-display text-lg font-semibold text-text">
+                    <Tag className="h-5 w-5 text-textMuted" aria-hidden="true" />
+                    Code promo
+                </h2>
+                <div className="flex gap-2">
+                    <input
+                        id="promo_code"
+                        type="text"
+                        value={data.promo_code}
+                        onChange={(e) => onDataChange('promo_code', e.target.value)}
+                        className={inputClass}
+                        placeholder="Ex : WELCOME10 (optionnel)"
+                    />
+                    <button
+                        type="button"
+                        onClick={onApplyPromo}
+                        className="shrink-0 rounded-interactive bg-secondary px-4 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                    >
+                        Appliquer
+                    </button>
+                </div>
+                {promoError && (
+                    <p className="mt-2 text-sm text-danger">{promoError}</p>
+                )}
+                {promoApplied && !promoError && (
+                    <p className="mt-2 text-sm text-success">Code promo appliqué</p>
+                )}
             </section>
         </form>
     );

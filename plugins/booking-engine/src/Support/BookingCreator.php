@@ -71,7 +71,7 @@ class BookingCreator
             [, $breakdown] = $this->validateAndPrice($attributes);
 
             $booking = Booking::create([
-                ...$attributes,
+                ...$this->persistableAttributes($attributes, $breakdown),
                 'status' => 'confirmed',
                 'total_price' => $breakdown->totalPrice(),
                 'security_deposit_amount' => $breakdown->depositAmount,
@@ -103,7 +103,7 @@ class BookingCreator
             [, $breakdown] = $this->validateAndPrice($attributes);
 
             return Booking::create([
-                ...$attributes,
+                ...$this->persistableAttributes($attributes, $breakdown),
                 'status' => 'pending',
                 'hold_expires_at' => now()->addMinutes((int) config('booking-engine.hold_ttl_minutes', 15)),
                 'total_price' => $breakdown->totalPrice(),
@@ -223,6 +223,9 @@ class BookingCreator
             pickupAt: $pickupAt,
             returnAt: $returnAt,
             userId: $userId !== null ? (int) $userId : null,
+            promoCode: isset($attributes['promo_code']) && $attributes['promo_code'] !== ''
+                ? (string) $attributes['promo_code']
+                : null,
         );
 
         /** @var PriceBreakdown $breakdown */
@@ -232,5 +235,35 @@ class BookingCreator
         );
 
         return [$vehicle, $breakdown];
+    }
+
+    /**
+     * Builds the Booking::create()-compatible attribute array.
+     *
+     * `promo_code` is a pricing-time input consumed by the promotions
+     * plugin's PromoCodePipe — it is NOT a column on `bookings`, so it must
+     * be stripped before create(). When the code was genuinely applied
+     * ($breakdown->promoApplied), it is recorded on the booking's metadata
+     * so the promotions plugin's BookingConfirmed listener can increment the
+     * code's uses_count once, at confirm time — never during a read-only
+     * price preview.
+     *
+     * @param  array<string, mixed>  $attributes
+     * @return array<string, mixed>
+     */
+    private function persistableAttributes(array $attributes, PriceBreakdown $breakdown): array
+    {
+        $persistable = $attributes;
+        $promoCode = $persistable['promo_code'] ?? null;
+        unset($persistable['promo_code']);
+
+        if ($promoCode !== null && $promoCode !== '' && $breakdown->promoApplied) {
+            $persistable['metadata'] = array_merge(
+                $persistable['metadata'] ?? [],
+                ['promo_code' => trim((string) $promoCode)],
+            );
+        }
+
+        return $persistable;
     }
 }
