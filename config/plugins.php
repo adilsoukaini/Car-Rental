@@ -5,7 +5,10 @@ use Plugins\DamageReporting\DamageReportingServiceProvider;
 use Plugins\DriverVerification\DriverVerificationServiceProvider;
 use Plugins\FleetManagement\FleetManagementServiceProvider;
 use Plugins\PaymentsStripe\StripeServiceProvider;
+use Plugins\Promotions\PromotionsServiceProvider;
+use Plugins\Recommendations\RecommendationsServiceProvider;
 use Plugins\Reviews\ReviewsServiceProvider;
+use Plugins\VehicleAttributes\VehicleAttributesServiceProvider;
 use Plugins\VehicleMedia\VehicleMediaServiceProvider;
 
 return [
@@ -19,9 +22,12 @@ return [
         'booking-engine' => BookingEngineServiceProvider::class,
         'payments-stripe' => StripeServiceProvider::class,
         'driver-verification' => DriverVerificationServiceProvider::class,
+        'promotions' => PromotionsServiceProvider::class,
+        'recommendations' => RecommendationsServiceProvider::class,
         'reviews' => ReviewsServiceProvider::class,
         'damage-reporting' => DamageReportingServiceProvider::class,
         'vehicle-media' => VehicleMediaServiceProvider::class,
+        'vehicle-attributes' => VehicleAttributesServiceProvider::class,
     ],
 
     /*

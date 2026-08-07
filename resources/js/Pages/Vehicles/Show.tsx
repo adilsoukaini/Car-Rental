@@ -1,7 +1,8 @@
 import PublicLayout from '@/Layouts/PublicLayout';
 import { LayoutSlot } from '@/layoutComponentRegistry';
+import VehicleRecommendations, { VehicleRecommendation } from '@/Widgets/VehicleRecommendations';
 import { ReviewsData } from '@/Widgets/VehicleReviewsCardList';
-import { Vehicle, VehicleGalleryImage } from '@/types';
+import { Vehicle, VehicleAttribute, VehicleGalleryImage } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import Breadcrumbs from '@/Components/Breadcrumbs';
 import EmptyState from '@/Components/EmptyState';
@@ -41,10 +42,14 @@ export default function Show({
     vehicle,
     galleryImages = [],
     reviewsData,
+    recommendations = [],
+    attributes = [],
 }: {
     vehicle: Vehicle | null;
     galleryImages: VehicleGalleryImage[];
     reviewsData: ReviewsData;
+    recommendations: VehicleRecommendation[];
+    attributes: VehicleAttribute[];
 }) {
     const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
     const dayAfter = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
@@ -252,6 +257,33 @@ export default function Show({
                             </div>
                         </div>
 
+                        {/* Custom specs from the vehicle-attributes plugin —
+                            resolved via the vehicle.attributes filter. Hidden
+                            entirely when the plugin is disabled or the vehicle
+                            carries no attribute values. */}
+                        {attributes.length > 0 ? (
+                            <div className="rounded-container border border-border bg-surface p-6 shadow-resting">
+                                <Text variant="h3">Caractéristiques</Text>
+                                <dl className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                    {attributes.map((attr) => (
+                                        <div
+                                            key={attr.key}
+                                            className="flex items-center justify-between gap-3"
+                                        >
+                                            <dt className="text-sm text-textMuted">{attr.label}</dt>
+                                            <dd className="text-sm font-medium text-text">
+                                                {attr.type === 'boolean'
+                                                    ? attr.value
+                                                        ? 'Oui'
+                                                        : 'Non'
+                                                    : String(attr.value)}
+                                            </dd>
+                                        </div>
+                                    ))}
+                                </dl>
+                            </div>
+                        ) : null}
+
                         <div className="rounded-container border border-border bg-surface p-6 shadow-raised">
                             <p className="font-mono text-3xl font-bold text-text">
                                 {price} <span className="text-base font-semibold text-textMuted">DH / jour</span>
@@ -279,6 +311,12 @@ export default function Show({
                 <div className="mt-8">
                     <LayoutSlot name="reviewDisplay" vehicleId={vehicle.id} reviewsData={reviewsData} />
                 </div>
+
+                {/* "You might also like" — similar vehicles resolved by the
+                    recommendations plugin's vehicle.recommendations filter.
+                    Renders nothing when empty (plugin disabled, or no
+                    similar vehicles found). */}
+                <VehicleRecommendations vehicles={recommendations} />
             </div>
         </PublicLayout>
     );
