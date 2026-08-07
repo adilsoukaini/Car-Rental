@@ -6,7 +6,6 @@ import { Head, Link, router } from '@inertiajs/react';
 import Breadcrumbs from '@/Components/Breadcrumbs';
 import EmptyState from '@/Components/EmptyState';
 import Text from '@/Components/Text';
-import VehiclePlaceholderIcon from '@/Components/VehiclePlaceholderIcon';
 import { Car, Check, Cog, DoorOpen, Gauge, Star, Users, Wind } from 'lucide-react';
 import { FormEventHandler, useState } from 'react';
 
@@ -52,7 +51,6 @@ export default function Show({
 
     const [pickupAt, setPickupAt] = useState(tomorrow);
     const [returnAt, setReturnAt] = useState(dayAfter);
-    const [activeImage, setActiveImage] = useState(0);
 
     if (!vehicle) {
         return (
@@ -95,11 +93,6 @@ export default function Show({
     // daily_rate arrives as "550.00" — trim the trailing zeros for display
     // ("550 DH / jour"), matching the Stitch reference.
     const price = String(Number(vehicle.daily_rate));
-
-    // Clamp the active index to the actual gallery size (defensive, since
-    // activeImage is state) and expose the current image for the hero.
-    const safeActive = Math.min(activeImage, Math.max(galleryImages.length - 1, 0));
-    const currentImage = galleryImages.length > 0 ? galleryImages[safeActive] : null;
 
     const specs = [
         { icon: Users, label: `${vehicle.seat_count} sièges`, available: vehicle.seat_count != null },
@@ -149,37 +142,12 @@ export default function Show({
                 <div className="grid gap-8 lg:grid-cols-[1.15fr_1fr]">
                     {/* Left column: gallery + included + booking form */}
                     <div className="space-y-6">
-                        <div className="rounded-container border border-border bg-surface p-4 shadow-resting">
-                            <div className="overflow-hidden rounded-container bg-background">
-                                {currentImage ? (
-                                    <img
-                                        src={currentImage.url}
-                                        alt={currentImage.altText ?? `${vehicle.make} ${vehicle.model}`}
-                                        className="aspect-video w-full object-cover"
-                                    />
-                                ) : (
-                                    <div className="flex aspect-video w-full items-center justify-center">
-                                        <VehiclePlaceholderIcon />
-                                    </div>
-                                )}
-                            </div>
-
-                            {galleryImages.length > 1 && (
-                                <div className="mt-3 flex items-center justify-center gap-2">
-                                    {galleryImages.map((image, index) => (
-                                        <button
-                                            key={index}
-                                            type="button"
-                                            aria-label={`Voir l'image ${index + 1}`}
-                                            onClick={() => setActiveImage(index)}
-                                            className={`h-2 w-2 rounded-pill transition-colors ${
-                                                index === activeImage ? 'bg-primary' : 'bg-border'
-                                            }`}
-                                        />
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                        {/* Gallery renders through the vehicle-gallery layout
+                            variant — LayoutSlot resolves
+                            activeLayoutVariants['vehicle-gallery'] to either
+                            the single-hero (default) or carousel component
+                            and passes the shared gallery images through. */}
+                        <LayoutSlot name="vehicle-gallery" images={galleryImages} />
 
                         <div className="rounded-container border border-border bg-surface p-6 shadow-resting">
                             <Text variant="h3">Inclus dans le prix</Text>

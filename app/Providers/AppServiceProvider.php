@@ -90,6 +90,20 @@ class AppServiceProvider extends ServiceProvider
         LayoutVariantRegistry::register('checkoutStyle', 'sidebar-flow', 'Sidebar Flow', 'checkout-sidebar', 'booking-engine');
         LayoutVariantRegistry::register('checkoutStyle', 'vertical-stack', 'Vertical Stack', 'checkout-vertical', 'booking-engine');
 
+        // vehicle-gallery layout variants — how the gallery renders on the
+        // vehicle detail page (resources/js/Pages/Vehicles/Show.tsx). The
+        // gallery region renders via LayoutSlot name="vehicle-gallery"; an
+        // admin can switch between the default single-hero (big image + dot
+        // indicators) and a carousel (prev/next arrows + thumbnail strip).
+        // Registered in core (not the vehicle-media plugin) because the
+        // gallery components and the primary consumer (Show.tsx) are both
+        // core-owned — the same precedent as vehicleCard / reviewDisplay
+        // above. The 'vehicle-media' plugin slug is metadata for the admin
+        // picker, not a class reference (Hard Rule 1 safe). Matches the
+        // component names in resources/js/layoutComponentRegistry.tsx.
+        LayoutVariantRegistry::register('vehicle-gallery', 'single-hero', 'Single Hero', 'Components/VehicleGallery', 'vehicle-media');
+        LayoutVariantRegistry::register('vehicle-gallery', 'carousel', 'Carousel', 'Components/VehicleGalleryCarousel', 'vehicle-media');
+
         // Plugins may call ThemeSchemaRegistry::registerField() from their own
         // boot() to add their own token fields — matches the Semantic interface
         // in resources/theme/semantic.ts. Keyed by dot-path, not appended to a

@@ -16,6 +16,11 @@ const registry: Record<string, React.ComponentType<any>> = {
     // on the vehicle detail page.
     'Widgets/VehicleReviewsCardList': lazy(() => import('@/Widgets/VehicleReviewsCardList')),
     'Widgets/VehicleReviewsCompact': lazy(() => import('@/Widgets/VehicleReviewsCompact')),
+    // vehicle-gallery variants — resolve via LayoutSlot name="vehicle-gallery"
+    // on the vehicle detail page. Keys match the componentName strings passed
+    // to LayoutVariantRegistry::register() in AppServiceProvider::boot().
+    'Components/VehicleGallery': lazy(() => import('@/Components/VehicleGallery')),
+    'Components/VehicleGalleryCarousel': lazy(() => import('@/Components/VehicleGalleryCarousel')),
 };
 
 /**
