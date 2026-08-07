@@ -1774,3 +1774,123 @@ state at each step. All test data (bookings, vehicle, location, user)
 cleaned up afterward.
 
 220 tests, Pint, Larastan, and `tsc --noEmit --strict` all pass.
+
+## Frontend Improvement Phase — admin controls + layout variants + server-side filtering (verified 2026-08-07)
+
+This phase established several reusable frontend/admin patterns in one sweep:
+a real layout-variant system (fulfilling the `LayoutVariantRegistry` deferred
+since the vehicle-reviews phase), server-side filtering/sorting registries for
+the fleet listing, a plugin relation-manager extension hook, two singleton
+admin settings pages, public booking tracking, and a plugin enable/disable
+admin control. Hard Rules 10 and 11 were added this session and every pattern
+below was proven against them — browser-verified screenshots with zero console
+errors for frontend work, and a full admin→frontend round-trip for anything
+with an admin control.
+
+### Layout variant system
+
+`App\Core\Support\LayoutVariantRegistry` — the deferred registry from the
+vehicle-reviews phase is now real, with the API shape `register()` /
+`availableFor()` / `activeComponentFor()` / `allRegisteredSlots()`.
+`availableFor()`/`activeComponentFor()` resolve the active variant for a
+region (falling back to a default when no admin selection exists);
+`allRegisteredSlots()` lets a host page enumerate every slot that registered
+into it. Persistence is a `LayoutSetting` model over a `layout_settings`
+table — one row per region (`region` + `active_variant`), editable from a
+`LayoutSettings` Filament page. On the frontend,
+`resources/js/layoutComponentRegistry.tsx` maps variant names to React
+components, and the `LayoutSlot` component (`registerLayoutSlot(name)`) is the
+per-region render point: a host region calls `registerLayoutSlot('vehicleCard')`
+once, then loops `allRegisteredSlots()` and renders the active component for
+each. Five regions are registered: `vehicleCard`, `fleetLayout`,
+`reviewDisplay`, `checkoutStyle`, `vehicle-gallery` — each with a default
+variant plus at least one alternative. The earlier "don't build a second
+extensibility layer for a hypothetical need" call in the vehicle-reviews
+section was the correct deferral *then*; the mechanism is only justified once
+real regions with real alternatives exist, which is what this phase provides.
+
+### VehicleFilterRegistry + VehicleSortRegistry
+
+`VehicleFilterRegistry` and `VehicleSortRegistry` (`app/Core/Support/`) are the
+server-side filtering/sorting backbone for the fleet listing, with contracts
+`VehicleFilterProvider` and `VehicleSortOption`. A filter provider exposes
+`label` + available options + `apply($query, $value)`; a sort option carries
+`label` + `apply($query, $direction)`. Both registries are flushed at the top
+of `PluginManager::boot()` alongside `FilterRegistry`/`SlotRegistry` — the
+same static-state-reset discipline as the earlier kernel fix, so repeated
+boots (the test suite's per-test `Application` boots, or any future
+persistent-worker model) never accumulate entries. Core registers the default
+filters (Category, Transmission) and default sorts (`price_asc`, `price_desc`,
+`name_asc`); plugins add their own providers the same way. `VehicleController::index()`
+orchestrates it all: it reads the incoming `filter`/`sort` query params, asks
+the registries which are valid, applies them to the `Vehicle` query in one
+pass, and shares the applied + available filter/sort state to the Inertia page
+so the UI can render active-state and option lists correctly. This is
+server-side filtering, not client-side — the fleet URL stays shareable and
+refresherable.
+
+### VehicleResourceExtension
+
+`App\Core\Support\VehicleResourceExtension` is the plugin relation-manager hook
+on the Filament `VehicleResource`, ported from the e-commerce project's
+`ProductResourceExtension` after reading the source (not assumed). A plugin
+registers a closure from its own `ServiceProvider::boot()` that receives the
+vehicle resource class and calls `pushRelationManagers([...])` on it — core
+never references the plugin; the plugin calls into the core hook.
+`vehicle-media` uses this exact hook to register
+`VehicleImagesRelationManager` onto the vehicle admin page, so vehicle image
+management lives with the media plugin while the resource itself stays
+core-owned.
+
+### HomepageContent
+
+`App\Models\HomepageContent` is a singleton-content model (a single-row table
+guarded by a migration) with an admin `HomepageContentSettings` Filament page
+for editing hero/headline/copy and the featured-vehicle selection. The row is
+resolved and passed to `Home.tsx` as Inertia props with fallback defaults when
+no row exists yet — so `/` renders correctly before an admin has ever saved
+content. Same singleton + fallback-default shape as `SiteIdentitySettings`
+below. Storefront-facing content that isn't theme token data lives in a single
+DB-backed row rather than being hardcoded in the page.
+
+### Booking tracking
+
+`booking_number` is auto-generated in the `Booking` model's `creating` hook —
+a human-friendly public reference distinct from the internal numeric id. A
+public `/bookings/track` lookup page lets a customer enter the number plus a
+contact detail to find their booking; the POST lookup is throttled (`throttle`
+middleware) to prevent enumeration. For guests, the result redirect is a
+signed URL — the same signed-vs-plain split already used by the checkout
+redirect and the confirmation email — so a guest can view their own booking
+detail without an account.
+
+### SiteIdentitySettings
+
+`SiteIdentitySettings` is a singleton admin settings page (site name, logo,
+favicon) backed by a single-row settings model — the same singleton pattern as
+`HomepageContent`. The values are shared to every Inertia page via
+`HandleInertiaRequests` as a `siteIdentity` prop, and the `SiteLogo` React
+component renders the configured logo (falling back to the site name text when
+no logo is uploaded) in the `PublicLayout` header/footer. Hard Rule 11 applies
+directly here: saving the identity in the admin panel must change what the
+storefront header actually renders, verified as a real round-trip.
+
+### PluginResource
+
+`PluginResource` is the admin control that makes a plugin's enable/disable
+state manageable from the admin panel, using a Filament `ToggleColumn` bound to
+`is_active`. Combined with `PluginManager::boot()`'s per-request flush +
+re-registration, toggling a row in the panel genuinely re-runs registration on
+the next request — the same disable→404/enable→200 toggle the Phase 4
+`verify-plugin-toggle.sh` script proved over real HTTP, now surfaced as a real
+UI. Hard Rule 11's round-trip (toggle in admin, load the storefront, confirm
+the change, zero console errors on both sides) is the verification standard.
+
+### Admin panel navigation
+
+Filament v4 pages here customize navigation via getter methods (`public static
+function getNavigationLabel(): string`, etc.) rather than typed static
+properties, because the parent `Page` class declares those properties with
+union types that don't narrow cleanly to the string literals these pages need —
+the getter-method form is the v4-correct way to set navigation label/icon/sort
+on these pages.
