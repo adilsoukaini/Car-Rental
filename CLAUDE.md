@@ -886,6 +886,48 @@ zero console errors, and admin→frontend round-trips per rule 11.
   one place without importing each other (rule 2 — the shared type is the
   boundary, same shape as core-owned DTOs for cross-plugin data).
 
+## Resilience patterns (verified 2026-08-08)
+
+Established, cross-cutting production patterns — every feature that talks to an
+external dependency must follow these. They are standards, not per-phase
+features:
+
+1. **External dependency fallback** — Every external service (Meilisearch,
+   Stripe, email) must have a graceful fallback. Use try/catch with a local
+   alternative. Proven by `SearchController::suggestions` (Meilisearch-first,
+   raw database `LIKE` fallback) and the Stripe checkout flow (failed hold is
+   caught and surfaced as a booking failure, never a crash).
+2. **Health check** — Every project must have a `/health` endpoint returning
+   JSON with DB, cache, search, storage status. This project's `/health`
+   (`routes/web.php`) reports `database`/`meilisearch`/`stripe`/`storage`,
+   always returns 200 with a `healthy`/`degraded` status + per-dependency
+   checks. Note: **cache is not yet in the `/health` payload** — add it when a
+   real cache driver (Redis) is used by application code.
+3. **Security headers** — CSP, nosniff, DENY, XSS, Referrer-Policy must be
+   present on every response. `SecurityHeaders` middleware
+   (`app/Http/Middleware/SecurityHeaders.php`) sets all of these for every
+   web response, including the CSP (self + Stripe + fonts).
+4. **Request timeouts** — External HTTP calls must have timeouts ≤5 seconds.
+   Meilisearch: `scout.meilisearch.timeout = 5`. **Wiring note:** Scout's own
+   service provider never reads that key — it only passes host/key/clientAgents
+   to `Meilisearch\Client`, so the timeout is applied by re-binding the client
+   in `AppServiceProvider::boot()` with a PSR-18 Guzzle client
+   (`['timeout' => 5]`). Default Guzzle behavior is NO timeout; without this
+   rebind a hung Meilisearch would block the request indefinitely. Stripe
+   calls go through the SDK's own default retry/timeout behavior — revisit if
+   a hang is ever observed.
+5. **Correlation IDs** — Every request gets a unique ID returned in response
+   headers for debugging. `CorrelationId` middleware
+   (`app/Http/Middleware/CorrelationId.php`, web group after SecurityHeaders)
+   echoes a client-supplied `X-Correlation-Id` or generates a UUID, and sets
+   it on the response — one value to grep logs by per user action.
+6. **Circuit breaker** — For external APIs with intermittent failures
+   (Stripe, email, future SMS). **Not yet implemented** — see
+   `docs/19-CIRCUIT-BREAKER.md` for the agreed shape and the trigger
+   conditions to add it (Stripe usage scales, or a second gateway arrives).
+   Meilisearch is deliberately excluded — its instant DB fallback makes a
+   breaker pointless there.
+
 ## Production Readiness Phase — security, CI/CD, accessibility, Meilisearch (verified 2026-08-08)
 
 ### Security hardening

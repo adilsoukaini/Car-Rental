@@ -21,9 +21,12 @@ use App\Core\Support\SlotRegistry;
 use App\Core\Support\ThemeSchemaRegistry;
 use App\Core\Support\VehicleFilterRegistry;
 use App\Core\Support\VehicleSortRegistry;
+use GuzzleHttp\Client as GuzzleClient;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Scout\Scout;
+use Meilisearch\Client as MeilisearchClient;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -40,6 +43,26 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // The Meilisearch\Client is normally bound by Scout's own service
+        // provider, which only passes host/key/clientAgents — it never reads
+        // the `timeout` config key. Override that binding here so
+        // `scout.meilisearch.timeout` actually reaches the underlying HTTP
+        // client: a PSR-18 Guzzle client with the timeout applied. Default
+        // Guzzle behavior is NO timeout — a hung Meilisearch would block the
+        // request indefinitely; with a timeout it fails fast and
+        // SearchController's catch(\Throwable) falls back to the database.
+        // Scout's own clientAgents string is preserved for parity.
+        $this->app->singleton(MeilisearchClient::class, function ($app) {
+            $config = $app['config']->get('scout.meilisearch');
+
+            return new MeilisearchClient(
+                $config['host'],
+                $config['key'],
+                new GuzzleClient(['timeout' => $config['timeout'] ?? 5]),
+                clientAgents: [sprintf('Meilisearch Laravel Scout (v%s)', Scout::VERSION)],
+            );
+        });
+
         // Must run in boot(), not register() — Eloquent's DB resolver isn't
         // available during register() (DatabaseServiceProvider::boot() sets it).
         // Plugin providers registered here get both register() and boot() called

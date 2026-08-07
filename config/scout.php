@@ -139,6 +139,7 @@ return [
     'meilisearch' => [
         'host' => env('MEILISEARCH_HOST', 'http://localhost:7700'),
         'key' => env('MEILISEARCH_KEY'),
+        'timeout' => 5, // seconds — fail fast, fall back to database
         'index-settings' => [
             // 'users' => [
             //     'filterableAttributes'=> ['id', 'name', 'email'],
