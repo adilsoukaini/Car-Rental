@@ -1,12 +1,12 @@
 import PublicLayout from '@/Layouts/PublicLayout';
 import { LayoutSlot } from '@/layoutComponentRegistry';
-import VehicleRecommendations, { VehicleRecommendation } from '@/Widgets/VehicleRecommendations';
 import { ReviewsData } from '@/Widgets/VehicleReviewsCardList';
 import { Vehicle, VehicleAttribute, VehicleGalleryImage } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import Breadcrumbs from '@/Components/Breadcrumbs';
 import EmptyState from '@/Components/EmptyState';
 import Text from '@/Components/Text';
+import VehicleRecommendations from '@/Widgets/VehicleRecommendations';
 import { Car, Check, Cog, DoorOpen, Gauge, Star, Users, Wind } from 'lucide-react';
 import { FormEventHandler, useState } from 'react';
 
@@ -42,13 +42,11 @@ export default function Show({
     vehicle,
     galleryImages = [],
     reviewsData,
-    recommendations = [],
     attributes = [],
 }: {
     vehicle: Vehicle | null;
     galleryImages: VehicleGalleryImage[];
     reviewsData: ReviewsData;
-    recommendations: VehicleRecommendation[];
     attributes: VehicleAttribute[];
 }) {
     const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
@@ -312,11 +310,7 @@ export default function Show({
                     <LayoutSlot name="reviewDisplay" vehicleId={vehicle.id} reviewsData={reviewsData} />
                 </div>
 
-                {/* "You might also like" — similar vehicles resolved by the
-                    recommendations plugin's vehicle.recommendations filter.
-                    Renders nothing when empty (plugin disabled, or no
-                    similar vehicles found). */}
-                <VehicleRecommendations vehicles={recommendations} />
+                <VehicleRecommendations vehicleId={vehicle.id} />
             </div>
         </PublicLayout>
     );

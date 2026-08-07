@@ -244,13 +244,12 @@ Registered via `App\Core\Support\FilterRegistry::register()`, run via `FilterReg
 
 | Filter name | Purpose | Registered by |
 |---|---|---|
-| `booking.priceCalculation` | Base daily rate → duration/loyalty discounts → promo code → deposit (extras not yet built) | booking-engine plugin (`CoreDurationDiscountPipe` + `CoreLoyaltyDiscountPipe` + `CoreDepositPipe`) + promotions plugin (`PromoCodePipe`) |
+| `booking.priceCalculation` | Base daily rate → duration/loyalty discounts → deposit (extras not yet built) | booking-engine plugin (`CoreDurationDiscountPipe` + `CoreLoyaltyDiscountPipe` + `CoreDepositPipe`) |
 | `booking.availabilityCheck` | Is this vehicle actually available for this date range + pickup location | booking-engine plugin (`CoreAvailabilityCheckPipe`, Phase 5) |
 | `booking.cancellationPolicy` | How much of a held deposit is refunded given how close to pickup | booking-engine plugin (`CoreCancellationPolicyPipe`, added 2026-08-05) |
 | `booking.driverEligibilityCheck` | Is this driver eligible (age/category) to book this vehicle | driver-verification plugin (`CoreDriverEligibilityCheckPipe`, Phase 9) |
 | `vehicle.listQuery` | Fleet listing query — filters/sorts applied to the base query | fleet-management plugin (Phase 4) |
 | `vehicle.reviews` | Approved reviews + average rating for a vehicle's detail page | reviews plugin (`GetVehicleReviewsPipe`, added 2026-08-05) |
-| `vehicle.recommendations` | "You might also like" similar vehicles for a detail page | recommendations plugin (`GetVehicleRecommendationsPipe`, added 2026-08-07) |
 | `vehicle.attributes` | Custom EAV spec attributes for a vehicle's detail page | vehicle-attributes plugin (`GetVehicleAttributesPipe`, added 2026-08-07) |
 
 ### Fleet-listing filter/sort registries (`VehicleFilterRegistry` / `VehicleSortRegistry`, added 2026-08-07)
@@ -359,35 +358,6 @@ charge" wording. **Neither this filter nor `BookingCreator` charges
 anything** — they compute numbers only; actually capturing a payment is
 the separate Payment/gateway phase (Phase 7, `PaymentGatewayRegistry` /
 `PaymentAuthorized` / `PaymentCaptured` events, below).
-
-**`PromoCodePipe`** (promotions plugin, added 2026-08-07) applies a
-promo/discount code on top of the duration/loyalty-discounted subtotal.
-Registered at priority **17** — after `CoreDurationDiscountPipe` (10) and
-`CoreLoyaltyDiscountPipe` (15) have set the base subtotal, before
-`CoreDepositPipe` (20) so the security deposit is a percentage of the
-final, promo-discounted subtotal. Reads `promo_code` off the
-`PriceCalculationRequest` (a nullable string threaded through by
-`BookingCreator::validateAndPrice()` and `BookingCheckoutController::show()`
-from the checkout form's `promo_code` field). A valid code reduces
-`$breakdown->subtotal` (percentage: `subtotal * (1 - value/100)`, fixed:
-`subtotal - value`, clamped at zero) and records the amount in
-`$breakdown->promoDiscount` with `promoApplied = true`. An invalid,
-expired, over-limit, or below-minimum code is silently left unapplied with
-a human-readable `promoError` set for the checkout UI — the pricing
-pipeline must stay robust, so an unbookable code means "no discount," not
-a broken checkout. `type` is `'percentage'` (value = 10 for 10% off) or
-`'fixed'` (value = 100 for 100.00 MAD off); `min_booking_amount`,
-`max_uses`/`uses_count`, `expires_at`, and `is_active` gate eligibility.
-
-**`PromoCodePipe` deliberately does NOT increment `uses_count`** — it runs
-during read-only price previews too, and a preview must never consume a
-usage (a customer refreshing the checkout page would otherwise burn the
-code's limit). Instead, `BookingCreator` records a genuinely-applied code
-on `Booking.metadata['promo_code']` (only when `promoApplied` is true), and
-the promotions plugin's `IncrementPromoCodeUsage` listener on the core
-`BookingConfirmed` event bumps the code's `uses_count` once, at confirm
-time — the same "validate at quote, increment at order" split the source
-e-commerce project's `CheckoutController` uses.
 
 **Explicitly out of scope for this filter as of Phase 6:** extras pricing
 (GPS, child seat, additional driver, insurance tiers) — these need their
@@ -505,38 +475,6 @@ reviews, latest first, with the average rating rounded to 1 decimal place
 — an unapproved review is invisible to everyone except staff (via
 `ReviewResource`).
 
-### `vehicle.recommendations` — result convention
-
-A normal transform-and-pass filter, called via
-`FilterRegistry::applyWithContext()` (like `vehicle.reviews`) with the
-current `Vehicle` bound into the container for the pipe's constructor
-injection (`GetVehicleRecommendationsPipe(Vehicle $vehicle)`). The value
-passed through (and returned) is a plain array of recommendation card
-data — `id`, `make`, `model`, `category`, `daily_rate`, `imageUrl` — the
-caller (`VehicleController::show()`) seeds it with `[]` before applying
-the filter, so a vehicle with the `recommendations` plugin disabled (or
-no similar vehicles found) renders with no widget and no special-casing
-in the controller.
-
-**`GetVehicleRecommendationsPipe`** (recommendations plugin, added
-2026-08-07) resolves the active strategy from
-`config('recommendations.active_strategy')` (default `same_category`;
-`similar_price` is the other option) via
-`RecommendationStrategyResolver`, capped at
-`config('recommendations.max_results')` (default 4), and maps each result
-to the card shape above. The primary image URL is eager-loaded in ONE
-query for all recommendations (rule 8) — guarded by
-`Vehicle::isRelation('primaryImage')`, since that relation is registered
-dynamically by the `vehicle-media` plugin and only exists when that
-plugin is booted; a vehicle with no image falls back to the frontend's
-placeholder icon.
-
-**Strategies are internal to the plugin** (`SameCategoryStrategy`,
-`SimilarPriceStrategy`), selected by config, not a cross-plugin registry —
-a future cross-plugin strategy would need the interface moved to core
-(same precedent as `DriverEligibilityCheckRequest`), but nothing requires
-that yet (rule 6).
-
 ### `vehicle.attributes` — result convention
 
 A normal transform-and-pass filter, called via
@@ -558,18 +496,6 @@ resolves the vehicle's stored `VehicleAttributeValue` (one query, rule 8)
 and casts it via `AttributeValueCaster`. Only definitions with a real
 value on this vehicle are returned — a definition the vehicle doesn't
 carry is simply absent from the list.
-
-## Vehicle Recommendations (added 2026-08-07)
-
-A deliberately small plugin proving the same "plugin registers a filter,
-core/fleet-management consumes it by name" pattern as reviews, without
-the Filament resource/admin surface. `fleet-management`'s
-`VehicleController::show()` calls the `vehicle.recommendations` filter and
-shares the result as a direct `recommendations` page prop; the detail page
-renders it via `resources/js/Widgets/VehicleRecommendations.tsx` (a
-horizontal row of up to 4 cards on desktop, stacked on mobile). Both
-strategies only ever return `available` vehicles and always exclude the
-current one.
 
 ## Vehicle Reviews (added 2026-08-05)
 

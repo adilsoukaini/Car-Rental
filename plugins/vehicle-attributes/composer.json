@@ -1,0 +1,18 @@
+{
+    "name": "carrental/vehicle-attributes",
+    "description": "EAV vehicle attributes — typed definitions (text/number/textarea/boolean/select), admin CRUD, dynamic form section on VehicleResource, and a vehicle.attributes filter pipe.",
+    "type": "library",
+    "license": "MIT",
+    "version": "1.0.0",
+    "autoload": {
+        "psr-4": {
+            "Plugins\\VehicleAttributes\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": []
+        }
+    },
+    "minimum-stability": "stable"
+}

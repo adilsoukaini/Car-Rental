@@ -65,12 +65,10 @@ class VehicleController extends Controller
 
         $vehicles = $query->paginate(12)->withQueryString();
 
-        // Only expose what's registered AND enabled — the frontend renders
-        // every entry generically, so a newly-registered filter/sort appears
-        // with zero frontend changes, and a filter/sort disabled in
-        // catalog_control_settings (the CatalogControlSettings admin page) is
-        // neither shown nor applied.
-        $availableFilters = collect(VehicleFilterRegistry::enabled())
+        // Only expose what's registered — the frontend renders every entry
+        // generically, so a newly-registered filter/sort appears with zero
+        // frontend changes.
+        $availableFilters = collect(VehicleFilterRegistry::all())
             ->map(fn ($filter) => [
                 'id' => $filter->id(),
                 'label' => $filter->label(),
@@ -80,7 +78,7 @@ class VehicleController extends Controller
             ->values()
             ->all();
 
-        $availableSorts = collect(VehicleSortRegistry::enabled())
+        $availableSorts = collect(VehicleSortRegistry::all())
             ->map(fn ($sortOption) => [
                 'id' => $sortOption->id(),
                 'label' => $sortOption->label(),
@@ -90,7 +88,7 @@ class VehicleController extends Controller
 
         // The currently-active values, so the FilterBar and SearchBox can
         // pre-select/reflect what the URL says.
-        $activeFilters = collect(VehicleFilterRegistry::enabled())
+        $activeFilters = collect(VehicleFilterRegistry::all())
             ->mapWithKeys(fn ($filter) => [$filter->id() => $request->string($filter->id())->toString()])
             ->filter(fn (string $value) => $value !== '')
             ->all();
@@ -135,17 +133,6 @@ class VehicleController extends Controller
             [Vehicle::class => $vehicle],
         );
 
-        // "You might also like" — resolved via the vehicle.recommendations
-        // filter (registered by the recommendations plugin). Seed with an
-        // empty array so the page renders fine with the plugin disabled
-        // (the widget simply hides). fleet-management never references the
-        // recommendations plugin; it only knows the named filter exists.
-        $recommendations = FilterRegistry::applyWithContext(
-            'vehicle.recommendations',
-            [],
-            [Vehicle::class => $vehicle],
-        );
-
         // Custom spec attributes (GPS, insurance type, mileage limit, ...)
         // resolved via the vehicle.attributes filter (registered by the
         // vehicle-attributes plugin). Empty array when the plugin is disabled
@@ -157,12 +144,20 @@ class VehicleController extends Controller
             [Vehicle::class => $vehicle],
         );
 
+        // Resolved via the vehicle.recommendations filter (registered by the
+        // recommendations plugin). Empty array when the plugin is disabled.
+        $recommendations = FilterRegistry::applyWithContext(
+            'vehicle.recommendations',
+            [],
+            [Vehicle::class => $vehicle],
+        );
+
         return Inertia::render('Vehicles/Show', [
             'vehicle' => $vehicle,
             'galleryImages' => $galleryImages,
             'reviewsData' => $reviewsData,
-            'recommendations' => $recommendations,
             'attributes' => $attributes,
+            'recommendations' => $recommendations,
         ]);
     }
 }
