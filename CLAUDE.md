@@ -1904,3 +1904,135 @@ properties, because the parent `Page` class declares those properties with
 union types that don't narrow cleanly to the string literals these pages need —
 the getter-method form is the v4-correct way to set navigation label/icon/sort
 on these pages.
+
+## Feature Expansion Phase — Scout search, i18n, bulk import, one-way rental, booking export + calendar (verified 2026-08-07)
+
+### Laravel Scout search (storefront autocomplete)
+
+`App\Http\Controllers\SearchController::suggestions()` powers the storefront
+SearchBox dropdown. The `Vehicle` model uses Laravel Scout's **`database`
+driver** (`Searchable` trait, `toSearchableArray()` limited to public catalog
+fields — id/make/model/category/year — plus a `->where('status', 'available')`
+guard so a suggestion always lands on a 200 page, never a 404 detail page).
+`/search/suggestions` is **throttled (`30,1`)**, returns a plain JSON array of
+at most 5 vehicles, and batch-loads the primary image in one query only when
+the vehicle-media plugin has registered the dynamic `primaryImage` relation
+(rule 8; core checks the relation-resolver registry, never the plugin's
+namespace). Two patterns worth keeping:
+
+- **No search provider credentials live in `.env`** — the `database` driver is
+  a deliberate local-first default, so there is no Algolia/Meilisearch secret
+  to leak, and the endpoint stays fully offline-capable.
+- **The suggestions endpoint is a genuine data-exposure boundary.** It was
+  checked (and re-checked during the security audit) to return only public
+  vehicle data — never booking/customer data — and the frontend renders it as
+  escaped React text inside a proper ARIA `listbox`/`option` structure, so an
+  XSS-shaped query string renders harmlessly. The security audit's XSS probe
+  (`<img src=x onerror=alert(1)>`) returned `[]` and produced zero console
+  errors.
+
+### FR/EN i18n
+
+Client-side translation layer, deliberately framework-light: `lang/en.json` +
+`lang/fr.json` (keys are canonical English UI strings; `en.json` is the
+identity mapping, `fr.json` holds the French translations), a `useTranslation()`
+hook (`resources/js/hooks/useTranslation.ts`) that reads the locale from the
+Inertia props and resolves against the imported JSON objects, and a locale
+switcher in `PublicLayout`'s header that navigates to `?lang=en|fr`, preserving
+any existing query params (search, filters, pagination).
+
+**The `?lang=` param is strictly whitelisted** in
+`HandleInertiaRequests::share()` — `in_array($locale, ['en', 'fr'], true)`,
+else default to `fr` — so a hand-typed `?lang=../../etc/passwd` degrades
+cleanly to French instead of attempting to load an arbitrary file (no LFI
+vector). **The admin panel stays English-only** — the storefront `app()->setLocale()`
+is scoped to storefront requests; Filament's own locale is untouched. The
+default storefront locale is French (`'fr'`), the business's current language.
+
+### Bulk vehicle CSV import
+
+Admin-only bulk import via **Maatwebsite Excel**: `App\Imports\VehiclesImport`
+owns the CSV column contract and per-row validation (invalid rows are skipped
+with per-row reasons), and `App\Filament\Pages\BulkVehicleImport` is the shell —
+a pure Blade view (not a Filament form) with a three-step flow: upload → live
+preview of the first 5 parsed rows → Import → inline success/failure summary
+plus a Filament notification.
+
+Two security-relevant details worth recording:
+- **The template download is gated inside the controller, not by the route.**
+  The route `GET /admin/vehicle-import-template` lives in `routes/web.php`
+  with only `['web', 'auth']` middleware (it must be reachable before Filament
+  boot and is not a panel route), and `BulkVehicleImport::downloadTemplate()`
+  does the real `abort_unless(hasAtLeast(Role::Admin))` check. This is a
+  deliberate second layer rather than a `Route::middleware(['can:...'])` — a
+  Filament Page can't easily be referenced in a route middleware closure, and
+  the check is trivially visible at the top of the method it protects.
+- The upload is validated (`mimes:csv,txt`, `max:2048`) and parsed via
+  `(new VehiclesImport)->toArray(...)`, so a malformed file surfaces as a
+  caught preview error rather than a crash.
+
+### One-way rental UI
+
+`Bookings/CheckoutForm.tsx` now exposes **distinct pickup/return location
+selectors** ("Lieu de prise en charge" / "Lieu de restitution"), and the
+service layer has supported one-way since Phase 5 — `BookingCreator` accepts
+separate `pickup_location_id`/`return_location_id`. `BookingCheckoutController::store()`
+validates both ids against the `locations` table (`exists:locations,id`) and
+defaults each to the vehicle's current location when absent, so a bogus id can
+never be persisted as a broken FK. `RelocateVehicleOnReturn` (Phase 5) already
+relocates the vehicle to the return location on `VehicleReturned`, which is how
+a one-way car "belongs" at its drop-off afterward.
+
+### Booking CSV export
+
+`App\Http\Controllers\Admin\BookingExportController` streams the currently-
+filtered Bookings list as a CSV. It is registered as a **Filament panel
+authenticated route** (`AdminPanelProvider::authenticatedRoutes()` →
+`GET /admin/bookings/export`), so it inherits the panel's auth middleware and
+is never reachable by storefront users — the security audit confirmed a logged-
+in customer is redirected away and a non-admin cannot call it. It mirrors the
+Bookings table's `status` SelectFilter and global search exactly (id,
+booking_number, guest/user name, license plate), and all filters are plain
+query-builder `where`/`like` bindings — parameterized, no SQL injection (the
+audit's `' OR 1=1--` probes returned 200 with unchanged data).
+
+### Booking calendar widget
+
+`App\Filament\Widgets\BookingCalendarWidget` is a **deliberately-not-FullCalendar**
+visual month grid: a single self-contained Blade view
+(`resources/views/filament/widgets/booking-calendar.blade.php`) with pickup days
+(green), return days (red), and the active rental period (blue) as colored dots,
+hover popovers, and previous/next/current month navigation. Month navigation is
+plain Livewire state (`$month`/`$year`), no query strings or extra routes. The
+status filter matches the project's established "real booking" definition
+(`confirmed`/`checked_out`/`returned` — `pending` holds and `cancelled`/`expired`
+excluded, named explicitly). Rule 8: all overlapping bookings for the month are
+loaded in one query (vehicles eager-loaded in a second) and the per-day
+classification is done in PHP. `isLazy()` is `false` — the calendar is the
+point of the widget, there's no expensive render to defer.
+
+### Plugin scaffolding command — NOT PRESENT (documented-as-planned only)
+
+The expected `make:carrental-plugin` Artisan command **does not exist in the
+codebase** — verified during the security audit by file search across
+`app/`/`plugins/`/`docs/`, by `php artisan list`, and against composer.json.
+The `add-plugin` skill (`.claude/skills/add-plugin/SKILL.md` and
+`docs/SKILL-add-plugin.md`) documents the package-scaffolding *process* for
+building a new plugin by hand, but no Artisan generator was ever written to
+automate it. This is recorded in the same "documented, not implemented"
+category as `LayoutVariantRegistry` (see the vehicle-reviews section) rather
+than silently omitted or falsely claimed — if a generator is wanted later, the
+skill's documented structure is the specification it should automate.
+
+### Layout props contracts
+
+`resources/js/layout-contracts/` is the home for the shared, server-agnostic
+TypeScript prop shapes passed to layout-variant components —
+`VehicleCardProps.ts`, `VehicleGalleryProps.ts`, `ReviewDisplayProps.ts` — and
+`pluginComponentRegistry.tsx`'s `SlotOutlet` is the generic `LayoutSlot`
+renderer that merges server props with client-only `extraProps` (static PHP
+props win on collision). The contracts directory exists so a component's props
+are typed once in a place both `fleet-management`'s host page and the
+plugin-owned variant components can import, without either importing the other
+(Hard Rule 2 — the shared type is the boundary, same shape as core-owned DTOs
+for cross-plugin data).
