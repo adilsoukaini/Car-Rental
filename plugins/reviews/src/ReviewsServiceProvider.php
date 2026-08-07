@@ -8,6 +8,9 @@ use App\Core\Support\FilterRegistry;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
+use Livewire\Mechanisms\ComponentRegistry;
+use Plugins\Reviews\Filament\Resources\Reviews\Pages\ListReviews;
 use Plugins\Reviews\Filament\Resources\Reviews\ReviewResource;
 use Plugins\Reviews\Filters\GetVehicleReviewsPipe;
 
@@ -58,6 +61,15 @@ class ReviewsServiceProvider extends ServiceProvider
                                     ->group(function () use ($panel): void {
                                         ReviewResource::registerRoutes($panel);
                                     });
+
+                                // Register Livewire page components so Filament
+                                // actions (Approve/Reject) don't 419 on plugin-owned
+                                // resources — same late-registration pattern already
+                                // proven for vehicle-media's relation manager.
+                                Livewire::component(
+                                    app(ComponentRegistry::class)->getName(ListReviews::class),
+                                    ListReviews::class,
+                                );
                             });
                     });
             });

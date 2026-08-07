@@ -10,7 +10,12 @@ use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
+use Livewire\Mechanisms\ComponentRegistry;
 use Plugins\Promotions\Filament\Resources\PromoCodeResource;
+use Plugins\Promotions\Filament\Resources\PromoCodeResource\Pages\CreatePromoCode;
+use Plugins\Promotions\Filament\Resources\PromoCodeResource\Pages\EditPromoCode;
+use Plugins\Promotions\Filament\Resources\PromoCodeResource\Pages\ListPromoCodes;
 use Plugins\Promotions\Filters\PromoCodePipe;
 use Plugins\Promotions\Listeners\IncrementPromoCodeUsage;
 
@@ -58,6 +63,24 @@ class PromotionsServiceProvider extends ServiceProvider
                                     ->group(function () use ($panel): void {
                                         PromoCodeResource::registerRoutes($panel);
                                     });
+
+                                // Register Livewire page components so Filament
+                                // actions (Create/Edit/Delete) don't 419 on
+                                // plugin-owned resources — same late-registration
+                                // pattern already proven for vehicle-media's relation
+                                // manager.
+                                Livewire::component(
+                                    app(ComponentRegistry::class)->getName(ListPromoCodes::class),
+                                    ListPromoCodes::class,
+                                );
+                                Livewire::component(
+                                    app(ComponentRegistry::class)->getName(CreatePromoCode::class),
+                                    CreatePromoCode::class,
+                                );
+                                Livewire::component(
+                                    app(ComponentRegistry::class)->getName(EditPromoCode::class),
+                                    EditPromoCode::class,
+                                );
                             });
                     });
             });

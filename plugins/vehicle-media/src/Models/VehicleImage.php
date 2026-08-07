@@ -38,6 +38,21 @@ class VehicleImage extends Model
     ];
 
     /**
+     * Delete the physical file when the DB row goes away, so an admin
+     * deleting a vehicle image doesn't orphan the file on the public disk.
+     * Seeded demo images store a full remote URL (picsum.photos) in `path`
+     * — those are skipped, only local files on the public disk are deleted.
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (VehicleImage $image): void {
+            if ($image->path && ! str_starts_with($image->path, 'http')) {
+                Storage::disk('public')->delete($image->path);
+            }
+        });
+    }
+
+    /**
      * Resolve a stored path to a usable URL.
      *
      * Seeded demo images store a full remote URL (picsum.photos) in `path`;
