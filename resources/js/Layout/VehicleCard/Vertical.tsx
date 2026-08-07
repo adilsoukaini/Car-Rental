@@ -1,15 +1,14 @@
 import VehiclePlaceholderIcon from '@/Components/VehiclePlaceholderIcon';
-import Text from '@/Components/Text';
 import { Vehicle } from '@/types';
 import { Link } from '@inertiajs/react';
 import { Cog, Gauge, Users } from 'lucide-react';
 
 /**
  * Image on top, details below — matches the Stitch design source's "Nos
- * Véhicules - Project Atlas"/"Sidebar Search" card structure: a full-bleed
- * image (category badge overlaid on a subtle photo scrim), the name,
- * feature chips (transmission/fuel/seats), price, and a full-width CTA
- * spanning the card footer.
+ * Véhicules - Project Atlas" card structure exactly: a full-bleed image
+ * (no overlay badge), category label above the name, inline icon+text specs
+ * (no chips), the price in "DH / jour", and a full-width "Réserver
+ * maintenant" CTA.
  *
  * The whole card is a single Link (matches this project's existing
  * click-through-to-detail UX) — the CTA is a styled span, not a nested
@@ -19,9 +18,6 @@ import { Cog, Gauge, Users } from 'lucide-react';
 function capitalize(value: string): string {
     return value.charAt(0).toUpperCase() + value.slice(1);
 }
-
-const chipClassName =
-    'inline-flex items-center gap-1 rounded-pill border border-border bg-background px-2 py-0.5 text-xs font-medium text-textMuted';
 
 export default function Vertical({ vehicle }: { vehicle: Vehicle }) {
     return (
@@ -41,41 +37,44 @@ export default function Vertical({ vehicle }: { vehicle: Vehicle }) {
                         <VehiclePlaceholderIcon />
                     </div>
                 )}
-
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-photoScrim/60 via-photoScrim/10 to-transparent" />
-
-                <span className="absolute bottom-3 left-3 rounded-pill bg-surface/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-text">
-                    {vehicle.category}
-                </span>
             </div>
 
-            <div className="flex flex-1 flex-col gap-3 p-4">
-                <h3 className="font-display text-xl font-bold text-text">
+            <div className="flex flex-1 flex-col p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-textMuted">
+                    {vehicle.category}
+                </p>
+
+                <h3 className="mt-1 font-display text-lg font-semibold text-text">
                     {vehicle.make} {vehicle.model}
                 </h3>
 
-                <div className="flex flex-wrap gap-2">
-                    <span className={chipClassName}>
-                        <Cog className="h-3.5 w-3.5" />
-                        {capitalize(vehicle.transmission_type)}
-                    </span>
-                    <span className={chipClassName}>
-                        <Gauge className="h-3.5 w-3.5" />
-                        {capitalize(vehicle.fuel_type)}
-                    </span>
-                    <span className={chipClassName}>
-                        <Users className="h-3.5 w-3.5" />
-                        {vehicle.seat_count} seats
-                    </span>
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-textMuted">
+                    {vehicle.transmission_type && (
+                        <span className="inline-flex items-center gap-1">
+                            <Cog className="h-3.5 w-3.5" />
+                            {capitalize(vehicle.transmission_type)}
+                        </span>
+                    )}
+                    {vehicle.seat_count > 0 && (
+                        <span className="inline-flex items-center gap-1">
+                            <Users className="h-3.5 w-3.5" />
+                            {vehicle.seat_count} sièges
+                        </span>
+                    )}
+                    {vehicle.fuel_type && (
+                        <span className="inline-flex items-center gap-1">
+                            <Gauge className="h-3.5 w-3.5" />
+                            {capitalize(vehicle.fuel_type)}
+                        </span>
+                    )}
                 </div>
 
-                <div className="mt-auto flex items-baseline gap-1 pt-2">
-                    <Text variant="mono-price">{vehicle.daily_rate}</Text>
-                    <span className="text-sm font-normal text-textMuted">MAD / day</span>
-                </div>
+                <p className="mt-3 font-display text-xl font-bold text-text">
+                    {vehicle.daily_rate} DH / jour
+                </p>
 
-                <span className="w-full rounded-interactive bg-primary py-2 text-center font-body text-sm font-semibold text-onPrimary transition group-hover:bg-primaryHover">
-                    View Details
+                <span className="mt-3 w-full rounded-interactive bg-primary py-2.5 text-center text-sm font-semibold text-onPrimary group-hover:bg-primaryHover">
+                    Réserver maintenant
                 </span>
             </div>
         </Link>
