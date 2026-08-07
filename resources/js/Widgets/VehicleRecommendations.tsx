@@ -26,7 +26,7 @@ function capitalize(value: string): string {
  * interactive elements. Colors/spacing come exclusively from theme tokens.
  */
 export default function VehicleRecommendations({ vehicles }: { vehicles: VehicleRecommendation[] }) {
-    if (vehicles.length === 0) {
+    if (!vehicles || vehicles.length === 0) {
         return null;
     }
 

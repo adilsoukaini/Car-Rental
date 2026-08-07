@@ -43,11 +43,13 @@ export default function Show({
     galleryImages = [],
     reviewsData,
     attributes = [],
+    recommendations = [],
 }: {
     vehicle: Vehicle | null;
     galleryImages: VehicleGalleryImage[];
     reviewsData: ReviewsData;
     attributes: VehicleAttribute[];
+    recommendations: import('@/Widgets/VehicleRecommendations').VehicleRecommendation[];
 }) {
     const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
     const dayAfter = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
@@ -310,7 +312,7 @@ export default function Show({
                     <LayoutSlot name="reviewDisplay" vehicleId={vehicle.id} reviewsData={reviewsData} />
                 </div>
 
-                <VehicleRecommendations vehicleId={vehicle.id} />
+                <VehicleRecommendations vehicles={recommendations} />
             </div>
         </PublicLayout>
     );
