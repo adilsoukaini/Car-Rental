@@ -4,11 +4,16 @@
  * plugin, which lets staff actually upload real photos). Shared by every
  * vehicle card layout variant.
  */
-export default function VehiclePlaceholderIcon() {
+interface VehiclePlaceholderIconProps {
+    /** Optional size/color overrides. When omitted, defaults to the 12×12 icon size. */
+    className?: string;
+}
+
+export default function VehiclePlaceholderIcon({ className }: VehiclePlaceholderIconProps) {
     return (
         <svg
             viewBox="0 0 24 24"
-            className="h-12 w-12 text-textMuted"
+            className={`text-textMuted ${className ?? 'h-12 w-12'}`}
             fill="none"
             stroke="currentColor"
             strokeWidth={1.5}
