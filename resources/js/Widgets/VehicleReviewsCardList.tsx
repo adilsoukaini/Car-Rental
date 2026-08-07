@@ -91,8 +91,9 @@ export default function VehicleReviewsCardList({ vehicleId, reviewsData }: { veh
                     <h3 className="text-sm font-medium text-text">Leave a review</h3>
 
                     <div>
-                        <label className="mb-1 block text-sm text-textMuted">Rating</label>
+                        <label htmlFor="review-rating" className="mb-1 block text-sm text-textMuted">Rating</label>
                         <select
+                            id="review-rating"
                             value={data.rating}
                             onChange={(e) => setData('rating', Number(e.target.value))}
                             className="w-full rounded-interactive border border-border bg-surface px-3 py-2 text-text focus:border-focusRing focus:outline-none"
@@ -106,26 +107,33 @@ export default function VehicleReviewsCardList({ vehicleId, reviewsData }: { veh
                     </div>
 
                     <div>
-                        <label className="mb-1 block text-sm text-textMuted">Title (optional)</label>
+                        <label htmlFor="review-title" className="mb-1 block text-sm text-textMuted">Title (optional)</label>
                         <input
+                            id="review-title"
                             type="text"
                             value={data.title}
                             onChange={(e) => setData('title', e.target.value)}
                             className="w-full rounded-interactive border border-border bg-surface px-3 py-2 text-text focus:border-focusRing focus:outline-none"
+                            aria-invalid={errors.title ? 'true' : 'false'}
+                            aria-describedby={errors.title ? 'review-title-error' : undefined}
                         />
-                        {errors.title && <p className="mt-1 text-sm text-danger">{errors.title}</p>}
+                        {errors.title && <p id="review-title-error" className="mt-1 text-sm text-danger">{errors.title}</p>}
                     </div>
 
                     <div>
-                        <label className="mb-1 block text-sm text-textMuted">Review</label>
+                        <label htmlFor="review-body" className="mb-1 block text-sm text-textMuted">Review</label>
                         <textarea
+                            id="review-body"
                             value={data.body}
                             onChange={(e) => setData('body', e.target.value)}
                             rows={3}
                             className="w-full rounded-interactive border border-border bg-surface px-3 py-2 text-text focus:border-focusRing focus:outline-none"
                             required
+                            aria-required="true"
+                            aria-invalid={errors.body ? 'true' : 'false'}
+                            aria-describedby={errors.body ? 'review-body-error' : undefined}
                         />
-                        {errors.body && <p className="mt-1 text-sm text-danger">{errors.body}</p>}
+                        {errors.body && <p id="review-body-error" className="mt-1 text-sm text-danger">{errors.body}</p>}
                     </div>
 
                     {(errors as Record<string, string>).review && (

@@ -131,5 +131,14 @@
     "Deposit": "Deposit",
     "Taxes included": "Taxes included",
     "Confirm and pay": "Confirm and pay",
-    "By confirming, you accept the terms and conditions": "By confirming, you accept the terms and conditions"
+    "By confirming, you accept the terms and conditions": "By confirming, you accept the terms and conditions",
+    "Skip to content": "Skip to content",
+
+    "Page not found": "Page not found",
+    "The page you're looking for doesn't exist": "The page you're looking for doesn't exist",
+    "Server Error": "Server Error",
+    "Something went wrong on our end. Please try again later.": "Something went wrong on our end. Please try again later.",
+    "Back to homepage": "Back to homepage",
+    "We use cookies to improve your experience. By using our site, you agree to our use of cookies.": "We use cookies to improve your experience. By using our site, you agree to our use of cookies.",
+    "Accept": "Accept"
 }

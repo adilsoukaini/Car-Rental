@@ -131,5 +131,14 @@
     "Deposit": "Caution",
     "Taxes included": "Taxes incluses",
     "Confirm and pay": "Confirmer et payer",
-    "By confirming, you accept the terms and conditions": "En confirmant, vous acceptez les conditions générales"
+    "By confirming, you accept the terms and conditions": "En confirmant, vous acceptez les conditions générales",
+    "Skip to content": "Aller au contenu",
+
+    "Page not found": "Page non trouvée",
+    "The page you're looking for doesn't exist": "La page que vous recherchez n'existe pas",
+    "Server Error": "Erreur du serveur",
+    "Something went wrong on our end. Please try again later.": "Une erreur est survenue de notre côté. Veuillez réessayer plus tard.",
+    "Back to homepage": "Retour à l'accueil",
+    "We use cookies to improve your experience. By using our site, you agree to our use of cookies.": "Nous utilisons des cookies pour améliorer votre expérience. En utilisant notre site, vous acceptez notre utilisation des cookies.",
+    "Accept": "Accepter"
 }

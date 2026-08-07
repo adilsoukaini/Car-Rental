@@ -140,7 +140,7 @@ export default function Home({
                     <div className="grid grid-cols-1 items-center gap-4 md:grid-cols-[1fr_1fr_auto]">
                         <Link
                             href={route('vehicles.index')}
-                            className="flex select-none cursor-text items-center gap-3 rounded-interactive border border-border bg-background px-4 py-3 transition-colors hover:border-primary"
+                            className="flex select-none cursor-text items-center gap-3 rounded-interactive border border-border bg-background px-4 py-3 transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing"
                         >
                             <MapPin className="h-5 w-5 shrink-0 text-primary" />
                             <span className="text-sm font-medium text-text">{t('Pickup location')}</span>
@@ -148,7 +148,7 @@ export default function Home({
 
                         <Link
                             href={route('vehicles.index')}
-                            className="flex select-none cursor-text items-center gap-3 rounded-interactive border border-border bg-background px-4 py-3 transition-colors hover:border-primary"
+                            className="flex select-none cursor-text items-center gap-3 rounded-interactive border border-border bg-background px-4 py-3 transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing"
                         >
                             <Calendar className="h-5 w-5 shrink-0 text-primary" />
                             <span className="text-sm font-medium text-text">{t('Pickup date')}</span>
@@ -156,7 +156,7 @@ export default function Home({
 
                         <Link
                             href={heroCtaLink}
-                            className="flex items-center justify-center gap-2 rounded-interactive bg-secondary px-6 py-3 font-semibold text-onSecondary transition-opacity hover:opacity-90"
+                            className="flex items-center justify-center gap-2 rounded-interactive bg-secondary px-6 py-3 font-semibold text-onSecondary transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing focus-visible:ring-offset-2"
                         >
                             <Search className="h-5 w-5" />
                             {heroCtaText}
@@ -209,7 +209,7 @@ export default function Home({
                         </div>
                         <Link
                             href={route('vehicles.index')}
-                            className="whitespace-nowrap text-sm font-semibold text-primary hover:underline"
+                            className="whitespace-nowrap rounded-interactive text-sm font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing"
                         >
                             {t('View full catalog')} &rarr;
                         </Link>
@@ -220,7 +220,7 @@ export default function Home({
                     ) : (
                         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                             {featuredVehicles.slice(0, 4).map((vehicle) => (
-                                <LayoutSlot key={vehicle.id} name="vehicleCard" vehicle={vehicle} />
+                                <LayoutSlot key={vehicle.id} name="vehicleCard" vehicle={vehicle} headingLevel="h3" />
                             ))}
                         </div>
                     )}
@@ -239,13 +239,13 @@ export default function Home({
                     <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
                         <Link
                             href={route('vehicles.index')}
-                            className="rounded-interactive border border-onPrimary/30 px-6 py-3 font-semibold text-onPrimary transition-colors hover:bg-onPrimary/10"
+                            className="rounded-interactive border border-onPrimary/30 px-6 py-3 font-semibold text-onPrimary transition-colors hover:bg-onPrimary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-onPrimary"
                         >
                             {t('Discover our vehicles')}
                         </Link>
                         <Link
                             href={route('vehicles.index')}
-                            className="rounded-interactive bg-secondary px-6 py-3 font-semibold text-onSecondary transition-opacity hover:opacity-90"
+                            className="rounded-interactive bg-secondary px-6 py-3 font-semibold text-onSecondary transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing focus-visible:ring-offset-2"
                         >
                             {t('Book now')}
                         </Link>

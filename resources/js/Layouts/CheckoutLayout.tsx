@@ -29,6 +29,13 @@ export default function CheckoutLayout({
 
     return (
         <div className="flex min-h-screen flex-col bg-background font-body text-text">
+            <a
+                href="#main-content"
+                className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-interactive focus:bg-primary focus:px-4 focus:py-2 focus:text-onPrimary"
+            >
+                Aller au contenu
+            </a>
+
             <header className="border-b border-border bg-surface">
                 <div className="mx-auto grid w-full max-w-6xl grid-cols-[auto_1fr_auto] items-center px-4 py-4 sm:px-6">
                     {/* Back button + brand */}
@@ -36,11 +43,11 @@ export default function CheckoutLayout({
                         <Link
                             href={backHref}
                             aria-label={backLabel}
-                            className="flex h-10 w-10 items-center justify-center rounded-full text-text transition-colors hover:bg-background"
+                            className="flex h-10 w-10 items-center justify-center rounded-full text-text transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing"
                         >
                             <ArrowLeft className="h-5 w-5" />
                         </Link>
-                        <Link href="/" className="font-display text-xl font-black tracking-tight text-primary">
+                        <Link href="/" className="rounded-interactive font-display text-xl font-black tracking-tight text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing">
                             {siteName}
                         </Link>
                     </div>
@@ -57,7 +64,7 @@ export default function CheckoutLayout({
                 </div>
             </header>
 
-            <main className="flex flex-1 justify-center">
+            <main id="main-content" className="flex flex-1 justify-center">
                 <div className="w-full max-w-6xl px-4 sm:px-6 lg:px-8">{children}</div>
             </main>
         </div>

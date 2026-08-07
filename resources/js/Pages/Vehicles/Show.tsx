@@ -132,7 +132,9 @@ export default function Show({
 
     return (
         <PublicLayout>
-            <Head title={`${vehicle.make} ${vehicle.model}`} />
+            {/* Mirrors the server-side `seo` prop (VehicleController::show)
+                so client-side navigations keep the same SEO title. */}
+            <Head title={`${vehicle.make} ${vehicle.model} — Rent from ${price} MAD/day`} />
 
             <div className="mx-auto max-w-7xl p-8">
                 <Breadcrumbs
@@ -143,7 +145,10 @@ export default function Show({
                     className="mb-4"
                 />
 
-                <Link href={route('vehicles.index')} className="mb-6 inline-block text-sm text-primary">
+                <Link
+                    href={route('vehicles.index')}
+                    className="mb-6 inline-block rounded-interactive text-sm text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing"
+                >
                     &larr; {t('Back to fleet')}
                 </Link>
 
@@ -158,12 +163,12 @@ export default function Show({
                         <LayoutSlot name="vehicle-gallery" images={galleryImages} />
 
                         <div className="rounded-container border border-border bg-surface p-6 shadow-resting">
-                            <Text variant="h3">{t('Included in the price')}</Text>
+                            <Text variant="h2">{t('Included in the price')}</Text>
                             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                                 {INCLUDED_FEATURES.map((feature) => (
                                     <div key={feature} className="flex items-center gap-3">
                                         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-success/10 text-success">
-                                            <Check className="h-4 w-4" strokeWidth={2.5} />
+                                            <Check className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
                                         </span>
                                         <span className="text-sm text-text">{t(feature)}</span>
                                     </div>
@@ -172,35 +177,39 @@ export default function Show({
                         </div>
 
                         <div className="rounded-container border border-border bg-surface p-6 shadow-resting">
-                            <Text variant="h3">{t('Book')}</Text>
+                            <Text variant="h2">{t('Book')}</Text>
                             <form onSubmit={submit} className="mt-4 space-y-4">
                                 <div className="grid gap-4 sm:grid-cols-2">
                                     <div>
-                                        <label className="mb-1 block text-sm text-textMuted">{t('Pickup date')}</label>
+                                        <label htmlFor="pickup-date" className="mb-1 block text-sm text-textMuted">{t('Pickup date')}</label>
                                         <input
+                                            id="pickup-date"
                                             type="datetime-local"
                                             value={pickupAt}
                                             onChange={(e) => setPickupAt(e.target.value)}
-                                            className="w-full rounded-interactive border border-border bg-background px-3 py-2 text-text focus:border-focusRing focus:outline-none"
+                                            className="w-full rounded-interactive border border-border bg-background px-3 py-2 text-text focus:border-focusRing focus:outline-none focus:ring-focusRing"
                                             required
+                                            aria-required="true"
                                         />
                                     </div>
 
                                     <div>
-                                        <label className="mb-1 block text-sm text-textMuted">{t('Return date')}</label>
+                                        <label htmlFor="return-date" className="mb-1 block text-sm text-textMuted">{t('Return date')}</label>
                                         <input
+                                            id="return-date"
                                             type="datetime-local"
                                             value={returnAt}
                                             onChange={(e) => setReturnAt(e.target.value)}
-                                            className="w-full rounded-interactive border border-border bg-background px-3 py-2 text-text focus:border-focusRing focus:outline-none"
+                                            className="w-full rounded-interactive border border-border bg-background px-3 py-2 text-text focus:border-focusRing focus:outline-none focus:ring-focusRing"
                                             required
+                                            aria-required="true"
                                         />
                                     </div>
                                 </div>
 
                                 <button
                                     type="submit"
-                                    className="w-full rounded-interactive bg-primary px-4 py-3 font-body font-semibold text-onPrimary shadow-resting hover:bg-primaryHover"
+                                    className="w-full rounded-interactive bg-primary px-4 py-3 font-body font-semibold text-onPrimary shadow-resting hover:bg-primaryHover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing"
                                 >
                                     {t('Continue booking')}
                                 </button>
@@ -251,7 +260,7 @@ export default function Show({
                                             className="flex flex-col items-center gap-2 text-center"
                                         >
                                             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-background text-textMuted">
-                                                <Icon className="h-5 w-5" />
+                                                <Icon className="h-5 w-5" aria-hidden="true" />
                                             </span>
                                             <span className="text-sm text-text">{spec.label}</span>
                                         </div>
@@ -266,7 +275,7 @@ export default function Show({
                             carries no attribute values. */}
                         {attributes.length > 0 ? (
                             <div className="rounded-container border border-border bg-surface p-6 shadow-resting">
-                                <Text variant="h3">{t('Features')}</Text>
+                                <Text variant="h2">{t('Features')}</Text>
                                 <dl className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                                     {attributes.map((attr) => (
                                         <div
@@ -295,7 +304,7 @@ export default function Show({
                             <Link
                                 href={route('bookings.checkout', vehicle.id)}
                                 data={{ pickup_at: pickupAt, return_at: returnAt }}
-                                className="mt-4 block w-full rounded-interactive bg-primary px-4 py-3 text-center font-body font-semibold text-onPrimary shadow-resting transition hover:bg-primaryHover"
+                                className="mt-4 block w-full rounded-interactive bg-primary px-4 py-3 text-center font-body font-semibold text-onPrimary shadow-resting transition hover:bg-primaryHover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing"
                             >
                                 {t('Continue booking')}
                             </Link>

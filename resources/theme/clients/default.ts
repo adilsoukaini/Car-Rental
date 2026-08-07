@@ -31,9 +31,11 @@ export const semantic: Semantic = {
         border:       '#C5C6CF',
 
         // Semantic
-        success:      '#16A34A',
+        // success/warning darkened from green-600/amber-600 to green-700/amber-700
+        // so text usage meets WCAG AA (>=4.5:1) on both background and surface.
+        success:      '#15803D',
         danger:       '#BA1A1A',
-        warning:      '#D97706',
+        warning:      '#B45309',
 
         focusRing:    '#0047FF',
 

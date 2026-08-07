@@ -173,7 +173,7 @@ export default function Index({
         ) : (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {vehicles.data.map((vehicle) => (
-                    <LayoutSlot key={vehicle.id} name="vehicleCard" vehicle={vehicle} />
+                    <LayoutSlot key={vehicle.id} name="vehicleCard" vehicle={vehicle} headingLevel="h2" />
                 ))}
             </div>
         );
@@ -191,7 +191,7 @@ export default function Index({
                         <Link
                             key={i}
                             href={link.url}
-                            className={`rounded-interactive px-3 py-1 text-sm ${
+                            className={`rounded-interactive px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing ${
                                 link.active
                                     ? 'bg-primary text-onPrimary'
                                     : 'border border-border text-textMuted'

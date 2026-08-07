@@ -173,7 +173,7 @@ export default function FilterBar({
                 <button
                     type="button"
                     onClick={onClear}
-                    className="rounded-interactive border border-border bg-surface px-3 py-2 text-sm font-medium text-textMuted transition-colors hover:bg-background hover:text-text"
+                    className="rounded-interactive border border-border bg-surface px-3 py-2 text-sm font-medium text-textMuted transition-colors hover:bg-background hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing"
                 >
                     {t('Clear all')}
                 </button>

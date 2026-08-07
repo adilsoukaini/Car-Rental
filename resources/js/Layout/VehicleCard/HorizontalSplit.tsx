@@ -20,12 +20,20 @@ function capitalize(value: string): string {
     return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-export default function HorizontalSplit({ vehicle }: { vehicle: Vehicle }) {
+export default function HorizontalSplit({
+    vehicle,
+    headingLevel = 'h2',
+}: {
+    vehicle: Vehicle;
+    /** Heading level for the vehicle name — h2 on the fleet page, h3 when nested inside a section on the homepage. */
+    headingLevel?: 'h2' | 'h3';
+}) {
     const { t } = useTranslation();
+    const HeadingTag = headingLevel;
     return (
         <Link
             href={route('vehicles.show', vehicle.id)}
-            className="group flex flex-col overflow-hidden rounded-container border border-border bg-surface shadow-resting transition hover:shadow-raised sm:flex-row"
+            className="group flex flex-col overflow-hidden rounded-container border border-border bg-surface shadow-resting transition hover:shadow-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing sm:flex-row"
         >
             <div className="relative h-48 w-full shrink-0 overflow-hidden bg-background sm:h-full sm:w-2/5">
                 {vehicle.primary_image ? (
@@ -46,26 +54,26 @@ export default function HorizontalSplit({ vehicle }: { vehicle: Vehicle }) {
                     {vehicle.category}
                 </p>
 
-                <h3 className="mt-1 font-display text-lg font-semibold text-text">
+                <HeadingTag className="mt-1 font-display text-lg font-semibold text-text">
                     {vehicle.make} {vehicle.model}
-                </h3>
+                </HeadingTag>
 
                 <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-textMuted">
                     {vehicle.transmission_type && (
                         <span className="inline-flex items-center gap-1">
-                            <Cog className="h-3.5 w-3.5" />
+                            <Cog className="h-3.5 w-3.5" aria-hidden="true" />
                             {t(capitalize(vehicle.transmission_type))}
                         </span>
                     )}
                     {vehicle.seat_count > 0 && (
                         <span className="inline-flex items-center gap-1">
-                            <Users className="h-3.5 w-3.5" />
+                            <Users className="h-3.5 w-3.5" aria-hidden="true" />
                             {vehicle.seat_count} {t('seats')}
                         </span>
                     )}
                     {vehicle.fuel_type && (
                         <span className="inline-flex items-center gap-1">
-                            <Gauge className="h-3.5 w-3.5" />
+                            <Gauge className="h-3.5 w-3.5" aria-hidden="true" />
                             {t(capitalize(vehicle.fuel_type))}
                         </span>
                     )}

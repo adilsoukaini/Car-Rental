@@ -261,7 +261,7 @@ export default function SearchBox({
                     type="button"
                     onClick={clear}
                     aria-label={t('Clear search')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-interactive p-1 text-textMuted transition-colors hover:bg-background hover:text-text"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-interactive p-1 text-textMuted transition-colors hover:bg-background hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing"
                 >
                     <svg
                         className="h-4 w-4"

@@ -106,6 +106,9 @@ export default function CheckoutForm({
                                     className={inputClass}
                                     placeholder={t('Your first name')}
                                     required
+                                    aria-required="true"
+                                    aria-invalid={errors.guest_name ? 'true' : 'false'}
+                                    aria-describedby={errors.guest_name ? 'guest_name-error' : undefined}
                                 />
                             </div>
                             <div>
@@ -120,11 +123,14 @@ export default function CheckoutForm({
                                     className={inputClass}
                                     placeholder={t('Your last name')}
                                     required
+                                    aria-required="true"
+                                    aria-invalid={errors.guest_name ? 'true' : 'false'}
+                                    aria-describedby={errors.guest_name ? 'guest_name-error' : undefined}
                                 />
                             </div>
                         </div>
                         {errors.guest_name && (
-                            <p className="text-sm text-danger">{errors.guest_name}</p>
+                            <p id="guest_name-error" className="text-sm text-danger">{errors.guest_name}</p>
                         )}
 
                         <div>
@@ -139,9 +145,12 @@ export default function CheckoutForm({
                                 className={inputClass}
                                 placeholder="vous@email.com"
                                 required
+                                aria-required="true"
+                                aria-invalid={errors.guest_email ? 'true' : 'false'}
+                                aria-describedby={errors.guest_email ? 'guest_email-error' : undefined}
                             />
                             {errors.guest_email && (
-                                <p className="mt-1 text-sm text-danger">{errors.guest_email}</p>
+                                <p id="guest_email-error" className="mt-1 text-sm text-danger">{errors.guest_email}</p>
                             )}
                         </div>
 
@@ -159,10 +168,13 @@ export default function CheckoutForm({
                                     className={phoneInputClass}
                                     placeholder="6XX XXX XXX"
                                     required
+                                    aria-required="true"
+                                    aria-invalid={errors.guest_phone ? 'true' : 'false'}
+                                    aria-describedby={errors.guest_phone ? 'guest_phone-error' : undefined}
                                 />
                             </div>
                             {errors.guest_phone && (
-                                <p className="mt-1 text-sm text-danger">{errors.guest_phone}</p>
+                                <p id="guest_phone-error" className="mt-1 text-sm text-danger">{errors.guest_phone}</p>
                             )}
                         </div>
                     </div>
@@ -174,6 +186,7 @@ export default function CheckoutForm({
 
                 {errors.pickup_at && (
                     <div
+                        role="alert"
                         className="mt-4 rounded-interactive border border-danger p-3 text-sm text-danger"
                         style={tintDanger}
                     >
@@ -254,6 +267,9 @@ export default function CheckoutForm({
                         onChange={(e) => onDataChange('promo_code', e.target.value)}
                         className={inputClass}
                         placeholder={t('e.g. WELCOME10 (optional)')}
+                        aria-label={t('Promo code')}
+                        aria-invalid={promoError ? 'true' : 'false'}
+                        aria-describedby={promoError ? 'promo-error' : undefined}
                     />
                     <button
                         type="button"
@@ -264,7 +280,7 @@ export default function CheckoutForm({
                     </button>
                 </div>
                 {promoError && (
-                    <p className="mt-2 text-sm text-danger">{promoError}</p>
+                    <p id="promo-error" className="mt-2 text-sm text-danger">{promoError}</p>
                 )}
                 {promoApplied && !promoError && (
                     <p className="mt-2 text-sm text-success">{t('Promo code applied')}</p>
