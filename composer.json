@@ -24,11 +24,13 @@
         "carrental/vehicle-attributes": "*",
         "carrental/vehicle-media": "*",
         "filament/filament": "^4.0",
+        "http-interop/http-factory-guzzle": "^1.0",
         "inertiajs/inertia-laravel": "^2.0",
         "laravel/framework": "^13.8",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",
         "maatwebsite/excel": "*",
+        "meilisearch/meilisearch-php": "^1.10",
         "tightenco/ziggy": "^2.0"
     },
     "require-dev": {
