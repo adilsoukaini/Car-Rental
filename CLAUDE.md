@@ -61,6 +61,11 @@ it governs how every phase gets built and verified, not just what gets built.
     (3) verify zero console errors on both sides. "The admin page loaded without
     errors" is not sufficient — the point of an admin control is that it changes
     what visitors see.
+12. **After any frontend feature is completed, run all Playwright test scripts**
+    (`customer-flow.ts`, `admin-flow.ts`, `customer-journey.ts`, `smoke-test.ts`)
+    to verify nothing was broken. These scripts are regression guards — a change
+    to checkout shouldn't silently break the fleet page. If a script fails,
+    investigate and fix before declaring the feature done.
 
 ## Folder structure
 
