@@ -255,11 +255,13 @@ export default function Show({
                                 </span>
                             </div>
 
-                            <p className="mt-3 flex items-center gap-1.5 text-sm text-textMuted">
-                                <Star className="h-4 w-4 fill-secondary text-secondary" aria-hidden="true" />
-                                <span className="font-semibold text-text">4.8</span>
-                                <span>(124 avis)</span>
-                            </p>
+                            {reviewsData.reviewCount > 0 ? (
+                                <p className="mt-3 flex items-center gap-1.5 text-sm text-textMuted">
+                                    <Star className="h-4 w-4 fill-secondary text-secondary" aria-hidden="true" />
+                                    <span className="font-semibold text-text">{reviewsData.averageRating.toFixed(1)}</span>
+                                    <span>({reviewsData.reviewCount} avis)</span>
+                                </p>
+                            ) : null}
                         </div>
 
                         <div className="rounded-container border border-border bg-surface p-6 shadow-resting">

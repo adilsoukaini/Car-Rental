@@ -6,6 +6,16 @@
 
         <title inertia>{{ config('app.name', 'Laravel') }}</title>
 
+        @php
+            $siteIdentity = \App\Models\SiteIdentity::first();
+            $faviconUrl = $siteIdentity?->favicon_path
+                ? \Illuminate\Support\Facades\Storage::disk('public')->url($siteIdentity->favicon_path)
+                : null;
+        @endphp
+        @if($faviconUrl)
+            <link rel="icon" href="{{ $faviconUrl }}">
+        @endif
+
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=space-grotesk:400,500,600,700|inter:400,500,600|jetbrains-mono:400,500|poppins:400,500,600,700&display=swap" rel="stylesheet" />
