@@ -57,6 +57,10 @@ function PaymentForm({ bookingId }: { bookingId: number }) {
         const { error: confirmError } = await stripe.confirmPayment({
             elements,
             confirmParams: {
+                // Same URL as the POST below — bookings.confirm is a POST-only
+                // state-changing route. When Stripe needs a 3D-Secure redirect
+                // it GETs this URL, which the server answers with a tiny
+                // non-mutating interstitial that auto-POSTs back here.
                 return_url: route('bookings.confirm', bookingId),
             },
             redirect: 'if_required',
@@ -68,10 +72,11 @@ function PaymentForm({ bookingId }: { bookingId: number }) {
             return;
         }
 
-        // No redirect was needed (the common case) — finalize on our side.
-        // If a redirect WAS needed (e.g. 3D Secure), Stripe already sent
-        // the browser to return_url above and this line never runs.
-        router.get(route('bookings.confirm', bookingId));
+        // No redirect was needed (the common case) — finalize on our side via
+        // POST (state-changing, CSRF-protected by Inertia). If a redirect WAS
+        // needed (e.g. 3D Secure), Stripe already sent the browser to
+        // return_url above and this line never runs.
+        router.post(route('bookings.confirm', bookingId));
     };
 
     return (

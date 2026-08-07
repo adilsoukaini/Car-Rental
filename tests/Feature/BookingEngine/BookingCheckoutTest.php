@@ -292,7 +292,7 @@ class BookingCheckoutTest extends TestCase
                 return $authorization->fresh();
             });
 
-        $response = $this->get("/bookings/{$booking->id}/confirm");
+        $response = $this->post("/bookings/{$booking->id}/confirm");
 
         $booking->refresh();
         $this->assertSame('confirmed', $booking->status);
@@ -333,11 +333,93 @@ class BookingCheckoutTest extends TestCase
             ->once()
             ->andReturnUsing(fn (Payment $authorization) => $authorization);
 
-        $response = $this->get("/bookings/{$booking->id}/confirm");
+        $response = $this->post("/bookings/{$booking->id}/confirm");
 
         $response->assertSessionHasErrors(['pickup_at']);
         $booking->refresh();
         $this->assertSame('pending', $booking->status);
+    }
+
+    public function test_checkout_page_receives_active_locations_for_the_pickers(): void
+    {
+        $other = Location::factory()->create(['is_active' => true]);
+        Location::factory()->create(['is_active' => false]);
+
+        $response = $this->get("/vehicles/{$this->vehicle->id}/book?pickup_at=".now()->addDay()->toDateTimeString().'&return_at='.now()->addDays(3)->toDateTimeString());
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Bookings/Checkout')
+            ->has('locations', 2)
+            ->where('pickupLocationId', $this->location->id)
+            ->where('returnLocationId', $this->location->id)
+        );
+
+        $page = $response->viewData('page');
+        $locationIds = array_map(fn ($location) => $location['id'], $page['props']['locations']);
+        sort($locationIds);
+        $this->assertSame([$this->location->id, $other->id], $locationIds);
+    }
+
+    public function test_store_persists_distinct_pickup_and_return_locations_for_a_one_way_rental(): void
+    {
+        $gateway = $this->registerMockGateway();
+        $gateway->shouldReceive('authorizeDeposit')->once()->andReturnUsing(fn ($booking, $amount) => Payment::create([
+            'booking_id' => $booking->id,
+            'type' => 'deposit_authorization',
+            'gateway' => 'stripe',
+            'status' => 'pending',
+            'amount' => $amount,
+            'provider_reference' => 'pi_test_one_way',
+            'metadata' => ['client_secret' => 'secret'],
+        ]));
+
+        $returnLocation = Location::factory()->create(['is_active' => true]);
+
+        $response = $this->post("/vehicles/{$this->vehicle->id}/book", [
+            'pickup_at' => now()->addDay()->toDateTimeString(),
+            'return_at' => now()->addDays(3)->toDateTimeString(),
+            'guest_name' => 'One Way Guest',
+            'guest_email' => 'one-way@example.com',
+            'guest_phone' => '0600000000',
+            'pickup_location_id' => $this->location->id,
+            'return_location_id' => $returnLocation->id,
+        ]);
+
+        $booking = Booking::where('guest_email', 'one-way@example.com')->first();
+
+        $this->assertNotNull($booking);
+        $this->assertSame($this->location->id, $booking->pickup_location_id);
+        $this->assertSame($returnLocation->id, $booking->return_location_id);
+        $response->assertOk();
+    }
+
+    public function test_store_defaults_both_locations_to_the_vehicles_location_when_omitted(): void
+    {
+        $gateway = $this->registerMockGateway();
+        $gateway->shouldReceive('authorizeDeposit')->once()->andReturnUsing(fn ($booking, $amount) => Payment::create([
+            'booking_id' => $booking->id,
+            'type' => 'deposit_authorization',
+            'gateway' => 'stripe',
+            'status' => 'pending',
+            'amount' => $amount,
+            'provider_reference' => 'pi_test_default_loc',
+            'metadata' => ['client_secret' => 'secret'],
+        ]));
+
+        $this->post("/vehicles/{$this->vehicle->id}/book", [
+            'pickup_at' => now()->addDay()->toDateTimeString(),
+            'return_at' => now()->addDays(3)->toDateTimeString(),
+            'guest_name' => 'Default Loc Guest',
+            'guest_email' => 'default-loc@example.com',
+            'guest_phone' => '0600000000',
+        ])->assertOk();
+
+        $booking = Booking::where('guest_email', 'default-loc@example.com')->first();
+
+        $this->assertNotNull($booking);
+        $this->assertSame($this->location->id, $booking->pickup_location_id);
+        $this->assertSame($this->location->id, $booking->return_location_id);
     }
 
     protected function tearDown(): void
