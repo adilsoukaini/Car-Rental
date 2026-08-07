@@ -250,6 +250,7 @@ Registered via `App\Core\Support\FilterRegistry::register()`, run via `FilterReg
 | `booking.driverEligibilityCheck` | Is this driver eligible (age/category) to book this vehicle | driver-verification plugin (`CoreDriverEligibilityCheckPipe`, Phase 9) |
 | `vehicle.listQuery` | Fleet listing query — filters/sorts applied to the base query | fleet-management plugin (Phase 4) |
 | `vehicle.reviews` | Approved reviews + average rating for a vehicle's detail page | reviews plugin (`GetVehicleReviewsPipe`, added 2026-08-05) |
+| `vehicle.attributes` | Custom EAV spec attributes for a vehicle's detail page | vehicle-attributes plugin (`GetVehicleAttributesPipe`, added 2026-08-07) |
 
 ### Fleet-listing filter/sort registries (`VehicleFilterRegistry` / `VehicleSortRegistry`, added 2026-08-07)
 
@@ -473,6 +474,28 @@ renders correctly with no special-casing in the controller.
 reviews, latest first, with the average rating rounded to 1 decimal place
 — an unapproved review is invisible to everyone except staff (via
 `ReviewResource`).
+
+### `vehicle.attributes` — result convention
+
+A normal transform-and-pass filter, called via
+`FilterRegistry::applyWithContext()` (like `vehicle.reviews`) with the
+current `Vehicle` bound into the container for the pipe's constructor
+injection (`GetVehicleAttributesPipe(Vehicle $vehicle)`). The value passed
+through (and returned) is a plain array of attribute objects — `key`,
+`label`, `type`, `value` — where `value` has already been cast to its
+typed representation (`number` → float, `boolean` → bool, `select` → the
+option's display label, `text`/`textarea` → string) and **blank values are
+excluded**. The caller (`VehicleController::show()`) seeds it with `[]`
+before applying the filter, so a vehicle with the plugin disabled or with
+no attribute values renders with no attributes section and no
+special-casing in the controller.
+
+**`GetVehicleAttributesPipe`** (vehicle-attributes plugin) iterates every
+`VehicleAttributeDefinition` ordered by `sort_order`, and for each one
+resolves the vehicle's stored `VehicleAttributeValue` (one query, rule 8)
+and casts it via `AttributeValueCaster`. Only definitions with a real
+value on this vehicle are returned — a definition the vehicle doesn't
+carry is simply absent from the list.
 
 ## Vehicle Reviews (added 2026-08-05)
 

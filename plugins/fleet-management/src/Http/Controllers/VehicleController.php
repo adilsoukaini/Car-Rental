@@ -133,10 +133,22 @@ class VehicleController extends Controller
             [Vehicle::class => $vehicle],
         );
 
+        // Custom spec attributes (GPS, insurance type, mileage limit, ...)
+        // resolved via the vehicle.attributes filter (registered by the
+        // vehicle-attributes plugin). Empty array when the plugin is disabled
+        // or the vehicle carries no values — the detail page hides the
+        // attributes section in that case.
+        $attributes = FilterRegistry::applyWithContext(
+            'vehicle.attributes',
+            [],
+            [Vehicle::class => $vehicle],
+        );
+
         return Inertia::render('Vehicles/Show', [
             'vehicle' => $vehicle,
             'galleryImages' => $galleryImages,
             'reviewsData' => $reviewsData,
+            'attributes' => $attributes,
         ]);
     }
 }
