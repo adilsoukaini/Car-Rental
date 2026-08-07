@@ -37,9 +37,25 @@ class VehicleImage extends Model
         'is_primary' => 'boolean',
     ];
 
+    /**
+     * Resolve a stored path to a usable URL.
+     *
+     * Seeded demo images store a full remote URL (picsum.photos) in `path`;
+     * admin-uploaded images store a local path on the public disk. Full
+     * http(s) URLs are returned as-is, everything else goes through
+     * Storage::url() — single rule shared by the `url()` accessor and
+     * GetVehicleGalleryPipe so both resolve the same way.
+     */
+    public static function resolveUrl(string $path): string
+    {
+        return str_starts_with($path, 'http://') || str_starts_with($path, 'https://')
+            ? $path
+            : Storage::url($path);
+    }
+
     protected function url(): Attribute
     {
-        return Attribute::get(fn (): string => Storage::url($this->path));
+        return Attribute::get(fn (): string => self::resolveUrl($this->path));
     }
 
     /** @return BelongsTo<Vehicle, $this> */

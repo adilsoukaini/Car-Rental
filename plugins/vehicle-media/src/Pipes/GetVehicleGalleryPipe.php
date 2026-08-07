@@ -6,7 +6,6 @@ namespace Plugins\VehicleMedia\Pipes;
 
 use App\Models\Vehicle;
 use Closure;
-use Illuminate\Support\Facades\Storage;
 use Plugins\VehicleMedia\Models\VehicleImage;
 
 /**
@@ -28,7 +27,7 @@ class GetVehicleGalleryPipe
             ->get()
             ->map(static function (VehicleImage $image): array {
                 return [
-                    'url' => Storage::url($image->path),
+                    'url' => VehicleImage::resolveUrl($image->path),
                     'altText' => $image->alt_text,
                     'isPrimary' => $image->is_primary,
                 ];
