@@ -65,10 +65,12 @@ it governs how every phase gets built and verified, not just what gets built.
     (`customer-flow.ts`, `admin-flow.ts`, `customer-journey.ts`, `smoke-test.ts`)
     to verify nothing was broken. These scripts are regression guards — a change
     to checkout shouldn't silently break the fleet page. If a script fails,
-    investigate and fix before declaring the feature done. **After using
-    Playwright MCP, run `bash scripts/cleanup-artifacts.sh`** to remove session
-    logs, snapshots, screenshots, and root-level image artifacts that accumulate
-    during interactive testing.
+    investigate and fix before declaring the feature done. **Every new feature
+    gets its own Playwright test script** (e.g. `.claude/playwright-tests/
+    {feature-name}.ts`) verifying its specific behavior end-to-end. **After
+    using Playwright MCP, run `bash scripts/cleanup-artifacts.sh`** to remove
+    session logs, snapshots, screenshots, and root-level image artifacts that
+    accumulate during interactive testing.
 
 ## Folder structure
 
