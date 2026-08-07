@@ -8,9 +8,11 @@ use App\Core\Support\FilterRegistry;
 use App\Core\Support\PaymentGatewayRegistry;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\Location;
 use App\Models\Payment;
 use App\Models\Vehicle;
 use Carbon\Carbon;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
@@ -57,6 +59,23 @@ class BookingCheckoutController extends Controller
 
         $vehicle->loadMissing('location');
 
+        // Every active location the customer may pick as pickup/return
+        // destination — the two location pickers on the checkout form render
+        // from this list. One-way rentals (pickup != return) have been
+        // supported by the service layer since Phase 5; this exposes the
+        // choice to the customer for the first time.
+        $locations = Location::query()
+            ->where('is_active', true)
+            ->orderBy('city')
+            ->orderBy('name')
+            ->get(['id', 'name', 'address_line', 'city', 'country']);
+
+        // The pickers default to the vehicle's current location; the query
+        // params are only present after the customer changes a picker and the
+        // form re-fetches the price preview (applyPromo).
+        $pickupLocationId = (int) $request->input('pickup_location_id', $vehicle->location_id);
+        $returnLocationId = (int) $request->input('return_location_id', $vehicle->location_id);
+
         // Validate dates manually instead of letting $request->validate()
         // throw: a failed validation redirects back to the referer (usually
         // the fleet page), silently bouncing the customer with no explanation
@@ -87,6 +106,9 @@ class BookingCheckoutController extends Controller
                 ],
                 'promoError' => null,
                 'dateError' => $validator->errors()->first(),
+                'locations' => $locations,
+                'pickupLocationId' => $pickupLocationId,
+                'returnLocationId' => $returnLocationId,
             ]);
         }
 
@@ -99,7 +121,7 @@ class BookingCheckoutController extends Controller
             vehicleId: $vehicle->id,
             pickupAt: $pickupAt,
             returnAt: $returnAt,
-            pickupLocationId: $vehicle->location_id,
+            pickupLocationId: $pickupLocationId,
         );
 
         $available = FilterRegistry::apply('booking.availabilityCheck', $availabilityRequest) !== false;
@@ -129,6 +151,9 @@ class BookingCheckoutController extends Controller
                 'promoDiscount' => $breakdown->promoDiscount,
             ],
             'promoError' => $breakdown->promoError,
+            'locations' => $locations,
+            'pickupLocationId' => $pickupLocationId,
+            'returnLocationId' => $returnLocationId,
         ]);
     }
 
@@ -143,6 +168,14 @@ class BookingCheckoutController extends Controller
         abort_if($vehicle->status !== 'available', 404);
 
         $rules = $this->dateRules();
+
+        // Location ids are optional on the wire only so that callers who
+        // don't care (tests, the pre-picker checkout flow) still default to
+        // the vehicle's current location — a real checkout form always sends
+        // them. When present they must reference a real location row; a bogus
+        // id would otherwise be persisted as a broken FK on bookings.
+        $rules['pickup_location_id'] = ['sometimes', 'integer', 'exists:locations,id'];
+        $rules['return_location_id'] = ['sometimes', 'integer', 'exists:locations,id'];
 
         if (! $request->user()) {
             $rules['guest_name'] = ['required', 'string', 'max:255'];
@@ -159,8 +192,8 @@ class BookingCheckoutController extends Controller
                 'guest_name' => $validated['guest_name'] ?? null,
                 'guest_email' => $validated['guest_email'] ?? null,
                 'guest_phone' => $validated['guest_phone'] ?? null,
-                'pickup_location_id' => $vehicle->location_id,
-                'return_location_id' => $vehicle->location_id,
+                'pickup_location_id' => (int) ($validated['pickup_location_id'] ?? $vehicle->location_id),
+                'return_location_id' => (int) ($validated['return_location_id'] ?? $vehicle->location_id),
                 'pickup_at' => $validated['pickup_at'],
                 'return_at' => $validated['return_at'],
                 'promo_code' => $validated['promo_code'] ?? null,
@@ -255,6 +288,20 @@ class BookingCheckoutController extends Controller
         }
 
         return redirect()->to($this->bookingShowUrl($confirmed));
+    }
+
+    /**
+     * The Stripe 3D-Secure redirect-back landing (return_url) is always a
+     * GET — Stripe navigates the browser here after the customer completes
+     * the challenge. The actual confirmation (confirm()) is strictly POST
+     * since it is state-changing, so this method renders a minimal,
+     * deliberately non-mutating interstitial that auto-submits a CSRF-
+     * protected POST to bookings.confirm. This preserves the 3DS flow
+     * without ever performing the state change on a GET request.
+     */
+    public function confirmReturn(Booking $booking): View
+    {
+        return view('booking-confirm-return', ['booking' => $booking]);
     }
 
     private function clientSecretFor(Payment $authorization): string
