@@ -2,18 +2,33 @@
 
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ProfileController;
+use App\Models\HomepageContent;
 use App\Models\Vehicle;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 // Replaces Laravel's default Welcome scaffold — reachability-audit finding
 // #3. A single query for the featured set (rule 8) — no per-vehicle N+1.
+// The singleton homepage_content row (admin-editable via the Filament
+// Homepage Content page) is passed along so the hero/value-prop/CTA copy is
+// operator-editable without a deploy. Passed only here, not shared globally,
+// since no other page consumes it.
 Route::get('/', function () {
     return Inertia::render('Home', [
         'featuredVehicles' => Vehicle::where('status', 'available')
             ->latest()
             ->take(4)
             ->get(),
+        'homepageContent' => HomepageContent::current()->only([
+            'hero_title',
+            'hero_subtitle',
+            'hero_cta_text',
+            'hero_cta_link',
+            'features_title',
+            'features_subtitle',
+            'cta_band_title',
+            'cta_band_subtitle',
+        ]),
     ]);
 })->name('home');
 

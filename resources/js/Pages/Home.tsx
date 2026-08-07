@@ -60,7 +60,44 @@ const stats = [
     { icon: Shield, value: 'Meilleurs prix', label: 'Garantie' },
 ] as const;
 
-export default function Home({ featuredVehicles }: { featuredVehicles: Vehicle[] }) {
+interface HomepageContentProps {
+    hero_title?: string | null;
+    hero_subtitle?: string | null;
+    hero_cta_text?: string | null;
+    hero_cta_link?: string | null;
+    features_title?: string | null;
+    features_subtitle?: string | null;
+    cta_band_title?: string | null;
+    cta_band_subtitle?: string | null;
+}
+
+/**
+ * Homepage hero/value-prop/CTA copy is admin-editable via the Filament
+ * "Homepage Content" page and shared as the `homepageContent` prop by the `/`
+ * route. Every field falls back to the original hardcoded French copy so a
+ * fresh install (or a null column) renders exactly as before.
+ */
+export default function Home({
+    featuredVehicles,
+    homepageContent,
+}: {
+    featuredVehicles: Vehicle[];
+    homepageContent?: HomepageContentProps;
+}) {
+    const heroTitle = homepageContent?.hero_title ?? "L'excellence de la location de voitures.";
+    const heroSubtitle =
+        homepageContent?.hero_subtitle ??
+        'Découvrez une flotte premium pour des voyages sans compromis. Réservation rapide, véhicules impeccables, service irréprochable.';
+    const heroCtaText = homepageContent?.hero_cta_text ?? 'Trouver un véhicule';
+    const heroCtaLink = homepageContent?.hero_cta_link || route('vehicles.index');
+    const featuresTitle = homepageContent?.features_title ?? 'Pourquoi choisir Project Atlas ?';
+    const featuresSubtitle =
+        homepageContent?.features_subtitle ??
+        'Nous redéfinissons la location de voitures avec des processus simplifiés et une flotte soigneusement entretenue.';
+    const ctaBandTitle = homepageContent?.cta_band_title ?? "Prêt pour l'aventure ?";
+    const ctaBandSubtitle =
+        homepageContent?.cta_band_subtitle ?? 'Réservez dès maintenant et profitez du Maroc en toute liberté.';
+
     return (
         <PublicLayout>
             <Head title="Accueil" />
@@ -75,11 +112,10 @@ export default function Home({ featuredVehicles }: { featuredVehicles: Vehicle[]
                                 NOUVEAU STANDARD
                             </span>
                             <h1 className="font-display text-4xl font-bold leading-tight text-onPrimary sm:text-5xl lg:text-6xl">
-                                L&rsquo;excellence de la location de voitures.
+                                {heroTitle}
                             </h1>
                             <p className="mt-5 max-w-xl text-lg text-onPrimary/80">
-                                Découvrez une flotte premium pour des voyages sans compromis. Réservation
-                                rapide, véhicules impeccables, service irréprochable.
+                                {heroSubtitle}
                             </p>
                         </div>
 
@@ -113,11 +149,11 @@ export default function Home({ featuredVehicles }: { featuredVehicles: Vehicle[]
                         </Link>
 
                         <Link
-                            href={route('vehicles.index')}
+                            href={heroCtaLink}
                             className="flex items-center justify-center gap-2 rounded-interactive bg-secondary px-6 py-3 font-semibold text-onSecondary transition-opacity hover:opacity-90"
                         >
                             <Search className="h-5 w-5" />
-                            Trouver un véhicule
+                            {heroCtaText}
                         </Link>
                     </div>
                 </div>
@@ -128,11 +164,10 @@ export default function Home({ featuredVehicles }: { featuredVehicles: Vehicle[]
                 <div className="mx-auto max-w-7xl">
                     <div className="mx-auto mb-12 max-w-2xl text-center">
                         <h2 className="font-display text-3xl font-bold text-text">
-                            Pourquoi choisir Project Atlas ?
+                            {featuresTitle}
                         </h2>
                         <p className="mt-2 text-lg text-textMuted">
-                            Nous redéfinissons la location de voitures avec des processus simplifiés et
-                            une flotte soigneusement entretenue.
+                            {featuresSubtitle}
                         </p>
                     </div>
 
@@ -190,10 +225,10 @@ export default function Home({ featuredVehicles }: { featuredVehicles: Vehicle[]
             <section className="bg-primary px-4 py-20 sm:px-6 lg:px-8">
                 <div className="mx-auto max-w-7xl text-center">
                     <h2 className="font-display text-3xl font-bold text-onPrimary sm:text-4xl">
-                        Prêt pour l&rsquo;aventure ?
+                        {ctaBandTitle}
                     </h2>
                     <p className="mx-auto mt-3 max-w-xl text-lg text-onPrimary/80">
-                        Réservez dès maintenant et profitez du Maroc en toute liberté.
+                        {ctaBandSubtitle}
                     </p>
                     <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
                         <Link
