@@ -65,4 +65,5 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__.'/auth.php';
-Route::get('/admin/vehicle-import-template', [App\Filament\Pages\BulkVehicleImport::class, 'downloadTemplate'])->name('filament.admin.vehicle-import-template');
+Route::get('/admin/vehicle-import-template', [App\Filament\Pages\BulkVehicleImport::class, 'downloadTemplate'])
+    ->middleware(['web', 'auth'])->name('filament.admin.vehicle-import-template');
