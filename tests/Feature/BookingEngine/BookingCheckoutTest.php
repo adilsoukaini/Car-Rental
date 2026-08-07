@@ -88,6 +88,34 @@ class BookingCheckoutTest extends TestCase
         $response->assertInertia(fn ($page) => $page->where('available', false));
     }
 
+    public function test_invalid_dates_render_the_checkout_page_with_an_error_instead_of_redirecting(): void
+    {
+        // QA finding: a GET with return-before-pickup used to let
+        // $request->validate() throw, which redirected the customer back to
+        // the fleet page with no explanation. The checkout page must render
+        // with an explicit dateError instead.
+        $response = $this->get("/vehicles/{$this->vehicle->id}/book?pickup_at=".now()->addDays(3)->toDateTimeString().'&return_at='.now()->addDay()->toDateTimeString());
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Bookings/Checkout')
+            ->where('available', false)
+            ->where('dateError', 'La date de retour doit être postérieure à la date de prise en charge.')
+        );
+    }
+
+    public function test_past_pickup_date_renders_the_checkout_page_with_an_error(): void
+    {
+        $response = $this->get("/vehicles/{$this->vehicle->id}/book?pickup_at=".now()->subDay()->toDateTimeString().'&return_at='.now()->addDays(3)->toDateTimeString());
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Bookings/Checkout')
+            ->where('available', false)
+            ->where('dateError', 'La date de prise en charge doit être dans le futur.')
+        );
+    }
+
     public function test_a_non_available_vehicle_returns_404_on_the_checkout_page(): void
     {
         $this->vehicle->update(['status' => 'maintenance']);

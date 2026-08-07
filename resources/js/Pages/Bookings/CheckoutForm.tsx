@@ -226,6 +226,11 @@ export default function CheckoutForm({
                                 Retour
                             </p>
                             <p className="text-sm text-text">{formatDateTime(returnAt)}</p>
+                            {vehicle.location && (
+                                <p className="text-sm text-textMuted">
+                                    {vehicle.location.name}, {vehicle.location.city}
+                                </p>
+                            )}
                         </div>
                     </div>
                 </div>

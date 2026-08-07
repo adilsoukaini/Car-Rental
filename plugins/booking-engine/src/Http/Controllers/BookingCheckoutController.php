@@ -14,6 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -54,12 +55,45 @@ class BookingCheckoutController extends Controller
     {
         abort_if($vehicle->status !== 'available', 404);
 
-        $validated = $request->validate($this->dateRules());
+        $vehicle->loadMissing('location');
+
+        // Validate dates manually instead of letting $request->validate()
+        // throw: a failed validation redirects back to the referer (usually
+        // the fleet page), silently bouncing the customer with no explanation
+        // for the bogus dates (QA finding). Render the checkout page with an
+        // explicit error banner instead.
+        $validator = Validator::make($request->all(), $this->dateRules(), [
+            'pickup_at.required' => 'Veuillez choisir une date de prise en charge.',
+            'pickup_at.date' => 'La date de prise en charge est invalide.',
+            'pickup_at.after' => 'La date de prise en charge doit être dans le futur.',
+            'return_at.required' => 'Veuillez choisir une date de retour.',
+            'return_at.date' => 'La date de retour est invalide.',
+            'return_at.after' => 'La date de retour doit être postérieure à la date de prise en charge.',
+        ]);
+
+        if ($validator->fails()) {
+            return Inertia::render('Bookings/Checkout', [
+                'vehicle' => $vehicle,
+                'pickupAt' => (string) $request->input('pickup_at', ''),
+                'returnAt' => (string) $request->input('return_at', ''),
+                'available' => false,
+                'priceBreakdown' => [
+                    'days' => 0,
+                    'dailyRate' => 0,
+                    'discountPercent' => 0,
+                    'totalPrice' => 0,
+                    'depositAmount' => 0,
+                    'promoDiscount' => 0,
+                ],
+                'promoError' => null,
+                'dateError' => $validator->errors()->first(),
+            ]);
+        }
+
+        $validated = $validator->validated();
 
         $pickupAt = Carbon::parse($validated['pickup_at']);
         $returnAt = Carbon::parse($validated['return_at']);
-
-        $vehicle->loadMissing('location');
 
         $availabilityRequest = new AvailabilityCheckRequest(
             vehicleId: $vehicle->id,

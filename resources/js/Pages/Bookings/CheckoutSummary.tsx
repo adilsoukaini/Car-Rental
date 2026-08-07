@@ -90,6 +90,11 @@ export default function CheckoutSummary({
                     <div>
                         <p className="text-sm font-medium text-text">Retour</p>
                         <p className="text-xs text-textMuted">{formatDateTime(returnAt)}</p>
+                        {vehicle.location && (
+                            <p className="text-sm text-textMuted">
+                                {vehicle.location.name}, {vehicle.location.city}
+                            </p>
+                        )}
                     </div>
                 </div>
                 <div className="flex justify-between border-t border-dashed border-border pt-2">

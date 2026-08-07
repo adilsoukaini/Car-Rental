@@ -30,6 +30,7 @@ export default function Checkout({
     available,
     priceBreakdown,
     promoError,
+    dateError,
 }: {
     vehicle: Vehicle;
     pickupAt: string;
@@ -37,6 +38,7 @@ export default function Checkout({
     available: boolean;
     priceBreakdown: PriceBreakdown;
     promoError: string | null;
+    dateError?: string | null;
 }) {
     const { auth, driverVerificationStatus, activeLayoutVariants } = usePage<PageProps>().props;
     const user = auth.user;
@@ -121,7 +123,9 @@ export default function Checkout({
                 >
                     <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0" />
                     <div>
-                        <p className="font-semibold">Ce véhicule n'est plus disponible pour ces dates.</p>
+                        <p className="font-semibold">
+                            {dateError ?? "Ce véhicule n'est plus disponible pour ces dates."}
+                        </p>
                         <Link href={route('vehicles.show', vehicle.id)} className="mt-1 inline-block underline">
                             Retourner et choisir d'autres dates
                         </Link>
@@ -144,9 +148,13 @@ export default function Checkout({
                             <CheckoutForm {...formProps} />
                         </div>
 
-                        {/* Right — sticky summary card (desktop only) */}
-                        <div className="hidden lg:col-span-5 lg:block">
-                            <div className="sticky top-24">
+                        {/* Right — sticky summary card on desktop; inline below
+                            the form on mobile so the line-item price breakdown
+                            is visible on every screen size (QA finding: the
+                            mobile bar alone showed a bare "Total" with no
+                            breakdown). */}
+                        <div className="lg:col-span-5">
+                            <div className="lg:sticky lg:top-24">
                                 <CheckoutSummary {...summaryProps} />
                             </div>
                         </div>

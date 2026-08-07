@@ -134,7 +134,7 @@ export default function Home({
                     <div className="grid grid-cols-1 items-center gap-4 md:grid-cols-[1fr_1fr_auto]">
                         <Link
                             href={route('vehicles.index')}
-                            className="flex items-center gap-3 rounded-interactive border border-border bg-background px-4 py-3 transition-colors hover:border-primary"
+                            className="flex select-none cursor-text items-center gap-3 rounded-interactive border border-border bg-background px-4 py-3 transition-colors hover:border-primary"
                         >
                             <MapPin className="h-5 w-5 shrink-0 text-primary" />
                             <span className="text-sm font-medium text-text">Lieu de prise en charge</span>
@@ -142,7 +142,7 @@ export default function Home({
 
                         <Link
                             href={route('vehicles.index')}
-                            className="flex items-center gap-3 rounded-interactive border border-border bg-background px-4 py-3 transition-colors hover:border-primary"
+                            className="flex select-none cursor-text items-center gap-3 rounded-interactive border border-border bg-background px-4 py-3 transition-colors hover:border-primary"
                         >
                             <Calendar className="h-5 w-5 shrink-0 text-primary" />
                             <span className="text-sm font-medium text-text">Date de prise en charge</span>

@@ -170,18 +170,31 @@ export default function Index({
     const pagination =
         vehicles.last_page > 1 ? (
             <nav className="mt-8 flex gap-2">
-                {vehicles.links.map((link, i) => (
-                    <Link
-                        key={i}
-                        href={link.url ?? '#'}
-                        className={`rounded-interactive px-3 py-1 text-sm ${
-                            link.active
-                                ? 'bg-primary text-onPrimary'
-                                : 'border border-border text-textMuted'
-                        }`}
-                        dangerouslySetInnerHTML={{ __html: link.label }}
-                    />
-                ))}
+                {vehicles.links.map((link, i) =>
+                    link.url ? (
+                        <Link
+                            key={i}
+                            href={link.url}
+                            className={`rounded-interactive px-3 py-1 text-sm ${
+                                link.active
+                                    ? 'bg-primary text-onPrimary'
+                                    : 'border border-border text-textMuted'
+                            }`}
+                            dangerouslySetInnerHTML={{ __html: link.label }}
+                        />
+                    ) : (
+                        // Laravel's paginator gives the first/last boundary
+                        // links (e.g. "« Previous" on page 1) a null URL —
+                        // render them as a disabled element instead of a link
+                        // with an empty href (QA finding).
+                        <span
+                            key={i}
+                            aria-disabled="true"
+                            className="pointer-events-none rounded-interactive border border-border px-3 py-1 text-sm opacity-50"
+                            dangerouslySetInnerHTML={{ __html: link.label }}
+                        />
+                    )
+                )}
             </nav>
         ) : null;
 
