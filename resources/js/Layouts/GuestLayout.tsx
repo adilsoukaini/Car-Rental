@@ -1,4 +1,4 @@
-import ApplicationLogo from '@/Components/ApplicationLogo';
+import SiteLogo from '@/Components/SiteLogo';
 import { Link } from '@inertiajs/react';
 import { PropsWithChildren } from 'react';
 
@@ -7,7 +7,7 @@ export default function GuestLayout({ children }: PropsWithChildren) {
         <div className="flex min-h-screen flex-col items-center bg-background pt-6 sm:justify-center sm:pt-0">
             <div>
                 <Link href="/">
-                    <ApplicationLogo className="h-20 w-20 fill-current text-textMuted" />
+                    <SiteLogo />
                 </Link>
             </div>
 

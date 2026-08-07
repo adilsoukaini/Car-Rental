@@ -1,3 +1,4 @@
+import SiteLogo from '@/Components/SiteLogo';
 import { PageProps } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren, useState } from 'react';
@@ -27,8 +28,8 @@ export default function PublicLayout({ children }: PropsWithChildren) {
         <div className="flex min-h-screen flex-col bg-background font-body text-text">
             <header className="sticky top-0 z-50 border-b border-border bg-surface/90 backdrop-blur-md">
                 <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-                    <Link href="/" className="font-display text-xl font-black tracking-tight text-primary">
-                        Car Rental
+                    <Link href="/">
+                        <SiteLogo />
                     </Link>
 
                     <nav className="hidden items-center gap-8 md:flex">
@@ -117,7 +118,7 @@ export default function PublicLayout({ children }: PropsWithChildren) {
 
             <footer className="mt-auto grid grid-cols-1 gap-8 bg-primary px-4 py-16 text-onPrimary sm:px-6 md:grid-cols-4 lg:px-8">
                 <div className="space-y-4">
-                    <div className="font-display text-lg font-bold">Car Rental</div>
+                    <SiteLogo textClassName="text-onPrimary" iconClassName="text-onPrimary" />
                     <p className="text-sm text-onPrimary/80">Your trusted partner for premium, hassle-free mobility.</p>
                 </div>
 

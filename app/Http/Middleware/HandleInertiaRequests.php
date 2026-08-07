@@ -66,6 +66,17 @@ class HandleInertiaRequests extends Middleware
             'driverVerificationStatus' => ($user instanceof User && Schema::hasTable('driver_verifications'))
                 ? $this->latestDriverVerificationStatus($user)
                 : null,
+            // Site identity — drives the storefront SiteLogo component's
+            // name/logo. siteName falls back to config('app.name'); logoUrl
+            // comes from config/site.php (null when not configured, in which
+            // case SiteLogo renders its default icon mark).
+            'siteIdentity' => [
+                'siteName' => config('app.name', 'Car Rental'),
+                'logoUrl' => config('site.logo_url', null),
+            ],
+            // Any flash message set on the session ({ message, type } | null)
+            // — consumed by the ToastContainer component in the root layout.
+            'flash' => fn () => $request->session()->get('flash'),
         ];
     }
 
