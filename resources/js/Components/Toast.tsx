@@ -1,4 +1,3 @@
-import { usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
 type ToastType = 'success' | 'error' | 'info';
@@ -15,13 +14,12 @@ const typeClasses: Record<ToastType, string> = {
 };
 
 /**
- * Reads `usePage().props.flash` ({ message, type } | null — shared by
- * HandleInertiaRequests from the session) and shows a fixed-position toast
- * at the bottom-right that auto-dismisses after 5 seconds. Mounted once in
- * the root layout (app.tsx).
+ * Shows a fixed-position toast at the bottom-right that auto-dismisses after
+ * 5 seconds. Accepts `flash` as a prop (passed from the Root component
+ * rather than reading it via usePage(), since Root sits above the Inertia
+ * component tree where usePage() is unavailable).
  */
-export default function ToastContainer() {
-    const { flash } = usePage<{ flash?: FlashMessage | null }>().props;
+export default function ToastContainer({ flash }: { flash?: FlashMessage | null }) {
     const [visible, setVisible] = useState<boolean>(false);
 
     useEffect(() => {

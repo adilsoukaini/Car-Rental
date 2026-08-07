@@ -15,6 +15,7 @@ const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
 interface SharedProps extends PageProps {
     themeData?: Semantic;
+    flash?: { message: string; type: 'success' | 'error' | 'info' } | null;
 }
 
 // The public API only exports createInertiaApp itself, not the internal
@@ -24,22 +25,29 @@ type SetupCallback = NonNullable<Parameters<typeof createInertiaApp<SharedProps>
 type SetupArgs = Parameters<SetupCallback>[0];
 
 /**
- * Holds the resolved themeData outside the Inertia component tree (where
- * usePage() is unavailable — see ThemeProvider's own docblock) — reads the
- * initial value from the first page's Inertia props, then stays in sync via
- * router.on('navigate') so a theme activated in the admin panel takes
- * effect on this visitor's very next navigation, with zero rebuild.
+ * Holds the resolved themeData and flash outside the Inertia component tree
+ * (where usePage() is unavailable — see ThemeProvider's own docblock) —
+ * reads the initial value from the first page's Inertia props, then stays in
+ * sync via router.on('navigate') so a theme activated in the admin panel
+ * takes effect on this visitor's very next navigation, with zero rebuild.
  */
 function Root({ App, props }: { App: SetupArgs['App']; props: SetupArgs['props'] }) {
     const initial = props.initialPage.props.themeData ?? fallbackSemantic;
     const [themeData, setThemeData] = useState<Semantic>(initial);
 
+    const initialFlash = (props.initialPage.props as SharedProps).flash ?? null;
+    const [flash, setFlash] = useState(initialFlash);
+
     useEffect(() => {
         return router.on('navigate', (event) => {
-            const next = (event.detail.page.props as SharedProps).themeData;
+            const pageProps = event.detail.page.props as SharedProps;
 
-            if (next) {
-                setThemeData(next);
+            if (pageProps.themeData) {
+                setThemeData(pageProps.themeData);
+            }
+
+            if (pageProps.flash) {
+                setFlash(pageProps.flash);
             }
         });
     }, []);
@@ -47,7 +55,7 @@ function Root({ App, props }: { App: SetupArgs['App']; props: SetupArgs['props']
     return (
         <ThemeProvider themeData={themeData}>
             <App {...props} />
-            <ToastContainer />
+            <ToastContainer flash={flash} />
         </ThemeProvider>
     );
 }

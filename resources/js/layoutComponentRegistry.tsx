@@ -24,15 +24,19 @@ const registry: Record<string, React.ComponentType<any>> = {
  */
 export function LayoutSlot<P extends object>({ name, ...props }: { name: string } & P) {
     const { activeLayoutVariants } = usePage<PageProps>().props;
-    const componentName: string | undefined = activeLayoutVariants[name];
+    const componentName: string | undefined = activeLayoutVariants?.[name];
+
+    // If no variant is registered for this slot yet (e.g. the plugin that
+    // owns the region hasn't been activated, or the layout_settings migration
+    // hasn't run), silently render nothing rather than exploding — this
+    // matches SlotOutlet's "unknown component names render nothing" contract
+    // and prevents a single missing region from crashing the entire page.
     const Component = componentName
         ? (registry[componentName] as React.ComponentType<P> | undefined)
         : undefined;
 
     if (!Component) {
-        throw new Error(
-            `LayoutSlot: no component registered for variant '${componentName ?? '(none)'}' in slot '${name}'.`,
-        );
+        return null;
     }
 
     return (
