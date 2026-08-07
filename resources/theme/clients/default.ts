@@ -1,5 +1,8 @@
 /**
- * Default client theme — blue + amber, rounded corners, Poppins/Inter.
+ * Default client theme — matches the Stitch "Premium Mobility Design System"
+ * exactly. Deep Atlantic Navy primary, Electric Blue accent, clean white
+ * surfaces with blue tint, Inter typography.
+ *
  * Copy this file to clients/client-<name>.ts and edit only `semantic`
  * to create a new client theme.
  */
@@ -8,27 +11,33 @@ import type { Semantic } from '../semantic';
 
 export const semantic: Semantic = {
     color: {
-        primary:      p.color.blue[600],
-        primaryHover: p.color.blue[500],
+        // Deep Atlantic Navy — Stitch primary
+        primary:      '#0A1F44',
+        primaryHover: '#0D2857',
         onPrimary:    p.color.white,
 
-        secondary:    p.color.amber[500],
-        onSecondary:  p.color.gray[900],
+        // Electric Blue — Stitch accent
+        secondary:    '#0047FF',
+        onSecondary:  p.color.white,
 
-        background:   p.color.gray[50],
+        // Clean white with blue tint
+        background:   '#F8F9FF',
         surface:      p.color.white,
         surfaceRaised: p.color.white,
 
-        text:         p.color.gray[900],
-        textMuted:    p.color.gray[600],
-        border:       p.color.gray[300],
+        // High-contrast dark text
+        text:         '#0B1C30',
+        textMuted:    '#64748B',
+        border:       '#C5C6CF',
 
-        success:      p.color.green[600],
-        danger:       p.color.red[600],
-        warning:      p.color.amber[600],
+        // Semantic
+        success:      '#16A34A',
+        danger:       '#BA1A1A',
+        warning:      '#D97706',
 
-        focusRing:    p.color.blue[500],
+        focusRing:    '#0047FF',
 
+        // Photo overlay tokens
         onPhoto:      p.color.white,
         photoScrim:   '#000000',
     },
@@ -38,13 +47,13 @@ export const semantic: Semantic = {
         mono:    p.font.family.mono,
     },
     radius: {
-        interactive: p.radius.md,
-        container:   p.radius.lg,
+        interactive: '8px',
+        container:   '12px',
         pill:        p.radius.full,
     },
     shadow: {
-        resting: p.shadow.sm,
-        raised:  p.shadow.md,
-        overlay: p.shadow.lg,
+        resting: '0 1px 3px rgba(0,0,0,0.08)',
+        raised:  '0 4px 12px rgba(0,0,0,0.12)',
+        overlay: '0 8px 24px rgba(0,0,0,0.16)',
     },
 };

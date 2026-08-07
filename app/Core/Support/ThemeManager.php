@@ -10,12 +10,11 @@ use Illuminate\Support\Facades\DB;
 class ThemeManager
 {
     /**
-     * The built-in default theme data, resolved from resources/theme/clients/default.ts
-     * at the time of writing. This is the single source of truth for the fallback
-     * value and for the seeded "Default" DB row — having one PHP constant prevents
-     * the fallback and the seed from drifting apart.
-     *
-     * Fields match the Semantic interface defined in resources/theme/semantic.ts.
+     * The built-in default theme data, matching the Stitch "Premium Mobility
+     * Design System" colors. MUST stay byte-identical to
+     * resources/theme/clients/default.ts — the single source of truth for
+     * the fallback value and for the seeded "Default" DB row. Having one
+     * PHP constant prevents the fallback and the seed from drifting apart.
      *
      * @return array<string, mixed>
      */
@@ -23,23 +22,23 @@ class ThemeManager
     {
         return [
             'color' => [
-                'primary' => '#2563eb',  // p.color.blue[600]
-                'primaryHover' => '#3b82f6',  // p.color.blue[500]
-                'onPrimary' => '#ffffff',  // p.color.white
-                'secondary' => '#f59e0b',  // p.color.amber[500]
-                'onSecondary' => '#18181b',  // p.color.gray[900]
-                'background' => '#fafafa',  // p.color.gray[50]
-                'surface' => '#ffffff',  // p.color.white
-                'surfaceRaised' => '#ffffff', // p.color.white
-                'text' => '#18181b',  // p.color.gray[900]
-                'textMuted' => '#52525b',  // p.color.gray[600]
-                'border' => '#d4d4d8',  // p.color.gray[300]
-                'success' => '#16a34a',  // p.color.green[600]
-                'danger' => '#dc2626',  // p.color.red[600]
-                'warning' => '#d97706',  // p.color.amber[600]
-                'focusRing' => '#3b82f6',  // p.color.blue[500]
-                'onPhoto' => '#ffffff',  // near-white — readable on any dark photo scrim
-                'photoScrim' => '#000000', // pure black — used at opacity as gradient scrim
+                'primary'      => '#0A1F44',
+                'primaryHover' => '#0D2857',
+                'onPrimary'    => '#ffffff',
+                'secondary'    => '#0047FF',
+                'onSecondary'  => '#ffffff',
+                'background'   => '#F8F9FF',
+                'surface'      => '#ffffff',
+                'surfaceRaised'=> '#ffffff',
+                'text'         => '#0B1C30',
+                'textMuted'    => '#64748B',
+                'border'       => '#C5C6CF',
+                'success'      => '#16A34A',
+                'danger'       => '#BA1A1A',
+                'warning'      => '#D97706',
+                'focusRing'    => '#0047FF',
+                'onPhoto'      => '#ffffff',
+                'photoScrim'   => '#000000',
             ],
             'font' => [
                 'display' => '"Space Grotesk", sans-serif',
