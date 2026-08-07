@@ -47,6 +47,21 @@ class AppServiceProvider extends ServiceProvider
         LayoutVariantRegistry::register('vehicleCard', 'vertical', 'Vertical', 'Layout/VehicleCard/Vertical');
         LayoutVariantRegistry::register('vehicleCard', 'horizontal-split', 'Horizontal Split', 'Layout/VehicleCard/HorizontalSplit');
 
+        // fleetLayout page-layout variants — the storefront's fleet-listing
+        // page (resources/js/Pages/Vehicles/Index.tsx) renders the search/
+        // filter controls inline above the grid (default) or in a sticky
+        // sidebar beside it. Unlike vehicleCard these aren't mapped to
+        // separate React components in layoutComponentRegistry.tsx (no
+        // LayoutSlot is used for the page itself): Index.tsx reads the
+        // active component name directly from the shared
+        // activeLayoutVariants prop and switches its render. The
+        // componentName strings are the exact variant keys that page checks.
+        // Registered in core (not the fleet-management plugin) because the
+        // page component being switched is core-owned — the same precedent
+        // as vehicleCard above.
+        LayoutVariantRegistry::register('fleetLayout', 'default', 'Inline Search', 'fleet-layout-default', 'fleet-management');
+        LayoutVariantRegistry::register('fleetLayout', 'sidebar', 'Sidebar Search', 'fleet-layout-sidebar', 'fleet-management');
+
         // Plugins may call ThemeSchemaRegistry::registerField() from their own
         // boot() to add their own token fields — matches the Semantic interface
         // in resources/theme/semantic.ts. Keyed by dot-path, not appended to a

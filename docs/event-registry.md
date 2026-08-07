@@ -675,16 +675,41 @@ documentation asserting kernel infrastructure exists when it was simply
 never written, which a future session could reasonably try to use and
 find nothing there.
 
-**Status: planned, not implemented.** The source e-commerce project's
-version exists to let each of its 6+ real client themes render a genuinely
-different layout for the same feature (9 different review-display
-components, for example) — a real, load-bearing need there. This project
-currently has exactly one real client theme (plus one disposable
-theme-swap proof file) — building `LayoutVariantRegistry`/`LayoutSlot` now
-would mean constructing kernel infrastructure with only a hypothetical
-future consumer, the exact thing `PROCESS-GUIDE.md` rule 6 exists to
-prevent. Build it for real the first time a second real client theme
-genuinely needs a different layout for the same feature — not before.
+**Status: implemented since the Frontend Foundation Phase (2026-08-05),
+for real consumers — not built speculatively.** The correction above
+predicted it would only be built for a *second real client theme*. What
+actually triggered it was a *second real layout* in this project's own
+Stitch design source: the storefront has genuinely different vehicle-card
+arrangements (Vertical / Horizontal Split) and — as of this phase — a
+genuinely different fleet-listing page arrangement (inline search / sidebar
+search). `LayoutVariantRegistry`/`LayoutSlot` now exist for real:
+
+- **`vehicleCard`** (registered in `AppServiceProvider::boot()`) — the
+  vehicle-card region on the homepage (`Home.tsx` via
+  `LayoutSlot name="vehicleCard"`) and the fleet listing
+  (`Vehicles/Index.tsx`). Variants: `vertical` →
+  `Layout/VehicleCard/Vertical`, `horizontal-split` →
+  `Layout/VehicleCard/HorizontalSplit`. These component-name strings are
+  mapped to (lazily-imported) React components in
+  `resources/js/layoutComponentRegistry.tsx` — add one entry there per new
+  card variant.
+- **`fleetLayout`** (registered in `AppServiceProvider::boot()`, added
+  2026-08-07) — the fleet-listing *page* layout. Unlike `vehicleCard`,
+  these variants are NOT mapped in `layoutComponentRegistry.tsx` and are NOT
+  rendered via `LayoutSlot`: `Vehicles/Index.tsx` reads the active component
+  name directly from the shared `activeLayoutVariants` prop and switches its
+  render inline. Variants: `default` → `fleet-layout-default` (inline
+  search + filter above a 3-column grid), `sidebar` →
+  `fleet-layout-sidebar` (sticky search/filter sidebar at `md:w-1/4` beside
+  the grid at `md:w-3/4`). Both share the same search/filter/sort state and
+  client-side logic — only the arrangement differs.
+
+The admin switches either region on the Layout Variants page
+(`app/Filament/Pages/LayoutSettingsScaffold.php`), which persists the choice
+in `layout_settings` (`slot_name` → `active_variant_id`). With no DB row
+yet, `LayoutVariantRegistry::activeComponentFor()` falls back to the first
+registered variant — `vertical` for `vehicleCard`, `default` for
+`fleetLayout`.
 
 ## Analytics Dashboard (added 2026-08-05)
 
