@@ -1,6 +1,7 @@
 import '../css/app.css';
 import './bootstrap';
 
+import ToastContainer from '@/Components/Toast';
 import { semantic as fallbackSemantic } from '../theme/active';
 import { ThemeProvider } from '../theme/ThemeProvider';
 import type { Semantic } from '../theme/semantic';
@@ -46,6 +47,7 @@ function Root({ App, props }: { App: SetupArgs['App']; props: SetupArgs['props']
     return (
         <ThemeProvider themeData={themeData}>
             <App {...props} />
+            <ToastContainer />
         </ThemeProvider>
     );
 }
@@ -63,6 +65,6 @@ createInertiaApp({
         root.render(<Root App={App} props={props} />);
     },
     progress: {
-        color: '#4B5563',
+        color: 'var(--color-primary)',
     },
 });

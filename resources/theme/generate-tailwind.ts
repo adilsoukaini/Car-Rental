@@ -18,6 +18,7 @@ export const tailwindTheme = {
         onSecondary:  'var(--color-onSecondary)',
         background:   'var(--color-background)',
         surface:      'var(--color-surface)',
+        surfaceRaised: 'var(--color-surfaceRaised)',
         text:         'var(--color-text)',
         textMuted:    'var(--color-textMuted)',
         border:       'var(--color-border)',
