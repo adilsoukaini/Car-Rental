@@ -13,20 +13,15 @@ class SearchController extends Controller
     /**
      * Instant autocomplete suggestions for the storefront SearchBox.
      *
-     * Searches vehicles through Laravel Scout (database driver), which
-     * performs a case-insensitive ILIKE/LIKE match against the columns listed
-     * in Vehicle::toSearchableArray() (id, make, model, category, year). Only
-     * available vehicles are suggested — a suggestion must always land on a
-     * page that returns 200, never a 404 detail page.
+     * **Meilisearch-first, database-fallback.** Tries Scout (Meilisearch when
+     * SCOUT_DRIVER=meilisearch) first. If it fails for any reason (container
+     * down, connection refused, index missing, timeout), falls back to a raw
+     * database ILIKE/LIKE query — the search box always works regardless of
+     * Meilisearch availability.
      *
-     * The primary image is batch-loaded in one query when the vehicle-media
-     * plugin has registered the dynamic `primaryImage` relation (rule 8); when
-     * it hasn't, `imageUrl` is simply null and the frontend falls back to a
-     * placeholder icon. Core never references the plugin's namespace — it only
-     * checks whether the model's dynamic-relation registry knows the key.
-     *
-     * Response shape is a plain JSON array (max 5), matching what the SearchBox
-     * dropdown consumes directly.
+     * Only available vehicles are suggested. Response shape is a plain JSON
+     * array (max 5), matching what the SearchBox dropdown consumes directly.
+     * The primary image is batch-loaded in one query (rule 8).
      */
     public function suggestions(Request $request): JsonResponse
     {
@@ -36,13 +31,28 @@ class SearchController extends Controller
             return response()->json([]);
         }
 
-        $vehicles = Vehicle::search($query)
-            ->where('status', 'available')
-            ->take(5)
-            ->get();
+        // Meilisearch-first, graceful fallback to database.
+        try {
+            $vehicles = Vehicle::search($query)
+                ->where('status', 'available')
+                ->take(5)
+                ->get();
+        } catch (\Throwable) {
+            // Scout/Meilisearch is unavailable — fall back to a raw database
+            // LIKE query. Case-insensitive on both SQLite and Postgres via
+            // LOWER(). This is deliberately NOT the fleet page's full text
+            // search — it's the autocomplete dropdown only.
+            $needle = '%'.mb_strtolower($query).'%';
+            $vehicles = Vehicle::where('status', 'available')
+                ->where(function ($q) use ($needle) {
+                    $q->whereRaw('LOWER(make) LIKE ?', [$needle])
+                      ->orWhereRaw('LOWER(model) LIKE ?', [$needle]);
+                })
+                ->take(5)
+                ->get();
+        }
 
-        // Batch-load each result's primary image in one query (rule 8) — but
-        // only when the vehicle-media plugin actually registered the relation.
+        // Batch-load primary images in one query (rule 8).
         if ((new Vehicle)->relationResolver(Vehicle::class, 'primaryImage') !== null) {
             $vehicles->load('primaryImage');
         }
