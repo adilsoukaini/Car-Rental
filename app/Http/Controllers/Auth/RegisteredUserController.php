@@ -45,11 +45,20 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        event(new Registered($user));
+        try {
+            event(new Registered($user));
+        } catch (\Throwable) {
+            // Silently continue — email verification can be resent later.
+            // An unconfigured mailer must not block registration (Hard Rule 10).
+        }
 
         Auth::login($user);
 
-        Mail::to($user->email)->queue(new WelcomeEmail($user));
+        try {
+            Mail::to($user->email)->queue(new WelcomeEmail($user));
+        } catch (\Throwable) {
+            // Silently continue — welcome email is nice-to-have, not critical.
+        }
 
         return redirect(route('dashboard', absolute: false));
     }
