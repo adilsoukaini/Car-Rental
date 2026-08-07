@@ -58,6 +58,160 @@ class VehicleControllerTest extends TestCase
             ->where('vehicles.data.0.make', 'Dacia'));
     }
 
+    public function test_index_filters_by_search_query(): void
+    {
+        Vehicle::factory()->create(['status' => 'available', 'make' => 'Toyota', 'model' => 'Corolla']);
+        Vehicle::factory()->create(['status' => 'available', 'make' => 'Dacia', 'model' => 'Logan']);
+
+        $response = $this->get('/vehicles?search=Toyota');
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Vehicles/Index')
+            ->has('vehicles.data', 1)
+            ->where('vehicles.data.0.make', 'Toyota')
+            ->where('search', 'Toyota'));
+    }
+
+    public function test_index_filters_by_category(): void
+    {
+        Vehicle::factory()->create(['status' => 'available', 'category' => 'suv', 'make' => 'Toyota']);
+        Vehicle::factory()->create(['status' => 'available', 'category' => 'economy', 'make' => 'Dacia']);
+
+        $response = $this->get('/vehicles?category=suv');
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Vehicles/Index')
+            ->has('vehicles.data', 1)
+            ->where('vehicles.data.0.category', 'suv')
+            ->where('activeFilters.category', 'suv'));
+    }
+
+    public function test_index_category_filter_is_case_insensitive(): void
+    {
+        Vehicle::factory()->create(['status' => 'available', 'category' => 'suv', 'make' => 'Toyota']);
+        Vehicle::factory()->create(['status' => 'available', 'category' => 'economy', 'make' => 'Dacia']);
+
+        // Hand-typed ?category=SUV must match the stored lowercase 'suv'.
+        $response = $this->get('/vehicles?category=SUV');
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Vehicles/Index')
+            ->has('vehicles.data', 1)
+            ->where('vehicles.data.0.category', 'suv'));
+    }
+
+    public function test_index_filters_by_transmission(): void
+    {
+        Vehicle::factory()->create(['status' => 'available', 'transmission_type' => 'automatic', 'make' => 'Toyota']);
+        Vehicle::factory()->create(['status' => 'available', 'transmission_type' => 'manual', 'make' => 'Dacia']);
+
+        $response = $this->get('/vehicles?transmission=automatic');
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Vehicles/Index')
+            ->has('vehicles.data', 1)
+            ->where('vehicles.data.0.transmission_type', 'automatic')
+            ->where('activeFilters.transmission', 'automatic'));
+    }
+
+    public function test_index_combines_search_and_filters(): void
+    {
+        Vehicle::factory()->create(['status' => 'available', 'category' => 'suv', 'make' => 'Toyota', 'model' => 'RAV4']);
+        Vehicle::factory()->create(['status' => 'available', 'category' => 'suv', 'make' => 'Dacia', 'model' => 'Duster']);
+        Vehicle::factory()->create(['status' => 'available', 'category' => 'economy', 'make' => 'Toyota', 'model' => 'Yaris']);
+
+        $response = $this->get('/vehicles?category=suv&search=Toyota');
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Vehicles/Index')
+            ->has('vehicles.data', 1)
+            ->where('vehicles.data.0.model', 'RAV4'));
+    }
+
+    public function test_index_sorts_by_price_ascending(): void
+    {
+        Vehicle::factory()->create(['status' => 'available', 'make' => 'B', 'daily_rate' => 500]);
+        Vehicle::factory()->create(['status' => 'available', 'make' => 'A', 'daily_rate' => 100]);
+
+        $response = $this->get('/vehicles?sort=price_asc');
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Vehicles/Index')
+            ->where('vehicles.data.0.daily_rate', '100.00')
+            ->where('vehicles.data.1.daily_rate', '500.00')
+            ->where('currentSort', 'price_asc'));
+    }
+
+    public function test_index_sorts_by_price_descending(): void
+    {
+        Vehicle::factory()->create(['status' => 'available', 'make' => 'B', 'daily_rate' => 500]);
+        Vehicle::factory()->create(['status' => 'available', 'make' => 'A', 'daily_rate' => 100]);
+
+        $response = $this->get('/vehicles?sort=price_desc');
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Vehicles/Index')
+            ->where('vehicles.data.0.daily_rate', '500.00')
+            ->where('vehicles.data.1.daily_rate', '100.00'));
+    }
+
+    public function test_index_sorts_by_name_ascending(): void
+    {
+        Vehicle::factory()->create(['status' => 'available', 'make' => 'Renault', 'model' => 'Zoe']);
+        Vehicle::factory()->create(['status' => 'available', 'make' => 'Dacia', 'model' => 'Logan']);
+
+        $response = $this->get('/vehicles?sort=name_asc');
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Vehicles/Index')
+            ->where('vehicles.data.0.make', 'Dacia')
+            ->where('vehicles.data.1.make', 'Renault'));
+    }
+
+    public function test_index_falls_back_to_first_sort_for_unknown_sort_id(): void
+    {
+        Vehicle::factory()->create(['status' => 'available', 'make' => 'B', 'daily_rate' => 500]);
+        Vehicle::factory()->create(['status' => 'available', 'make' => 'A', 'daily_rate' => 100]);
+
+        $response = $this->get('/vehicles?sort=not_a_real_sort');
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Vehicles/Index')
+            ->where('vehicles.data.0.daily_rate', '100.00')
+            ->where('currentSort', 'price_asc'));
+    }
+
+    public function test_index_exposes_registered_filters_and_sorts_as_props(): void
+    {
+        Vehicle::factory()->create(['status' => 'available']);
+
+        $response = $this->get('/vehicles');
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Vehicles/Index')
+            ->has('availableFilters', 2)
+            ->where('availableFilters.0.id', 'category')
+            ->where('availableFilters.0.uiType', 'select')
+            ->where('availableFilters.1.id', 'transmission')
+            ->where('availableFilters.1.uiType', 'select')
+            ->has('availableSorts', 3)
+            ->where('availableSorts.0.id', 'price_asc')
+            ->where('availableSorts.1.id', 'price_desc')
+            ->where('availableSorts.2.id', 'name_asc')
+            ->where('search', '')
+            ->where('currentSort', ''));
+    }
+
     public function test_show_returns_the_vehicle_when_available(): void
     {
         $location = Location::factory()->create();

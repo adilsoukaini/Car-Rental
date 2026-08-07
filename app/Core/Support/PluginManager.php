@@ -50,6 +50,8 @@ class PluginManager
         FilterRegistry::flush();
         SlotRegistry::flush();
         LayoutVariantRegistry::flush();
+        VehicleFilterRegistry::flush();
+        VehicleSortRegistry::flush();
 
         foreach (static::enabled() as $slug) {
             $providerClass = config("plugins.registry.{$slug}");

@@ -4,12 +4,21 @@ interface SearchBoxProps {
     onSearch: (query: string) => void;
     placeholder?: string;
     className?: string;
+    /**
+     * Initial text for the input. The fleet page keys the SearchBox on the
+     * server-provided search value (`key={search}`), so when the URL's search
+     * changes — a shared/bookmarked link, or browser back/forward — the
+     * component remounts with this value pre-filled. During normal typing the
+     * component owns its own input state, so the debounce never fights the
+     * parent.
+     */
+    defaultValue?: string;
 }
 
 /**
  * Debounced search input. Emits `onSearch(query)` 200ms after the user stops
- * typing — the parent owns whatever the query is used for (this is frontend
- * only; there is intentionally no backend search endpoint behind it).
+ * typing — the parent owns whatever the query is used for (the fleet page
+ * turns it into a server-side `router.get()` request with `search` in the URL).
  *
  * Styling is entirely theme-token-driven (Hard Rule 3).
  */
@@ -17,8 +26,9 @@ export default function SearchBox({
     onSearch,
     placeholder = 'Search vehicles...',
     className = '',
+    defaultValue = '',
 }: SearchBoxProps) {
-    const [value, setValue] = useState('');
+    const [value, setValue] = useState(defaultValue);
     const onSearchRef = useRef(onSearch);
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 

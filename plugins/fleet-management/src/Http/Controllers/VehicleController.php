@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Plugins\FleetManagement\Http\Controllers;
 
 use App\Core\Support\FilterRegistry;
+use App\Core\Support\VehicleFilterRegistry;
+use App\Core\Support\VehicleSortRegistry;
 use App\Http\Controllers\Controller;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
@@ -14,20 +16,90 @@ use Inertia\Response;
 class VehicleController extends Controller
 {
     /**
-     * Public fleet listing — applies the vehicle.listQuery filter so other
-     * plugins (pricing-rules, insurance-addons, etc.) can augment the query
-     * without touching this controller.
+     * Public fleet listing — server-side filtering/sorting.
+     *
+     * Search (free-text make/model), the registered VehicleFilterRegistry
+     * filters (category, transmission), and the active VehicleSortRegistry
+     * sort (price_asc/price_desc/name_asc) are all applied as WHERE/ORDER BY
+     * clauses BEFORE pagination, so filtering works across the whole fleet,
+     * not just the current page. The vehicle.listQuery filter still composes
+     * here (vehicle-media's eager-load pipe, etc.) — independent of and
+     * stacking cleanly with this new filter/sort layer.
+     *
+     * The frontend renders filter/sort controls generically from the
+     * availableFilters/availableSorts props, and reflects the current values
+     * back through the URL query string (search/sort/category/transmission).
      */
     public function index(Request $request): Response
     {
-        $query = Vehicle::where('status', 'available')->with('location');
+        $query = Vehicle::where('status', 'available');
 
+        // Free-text search by make/model — deliberately kept out of the
+        // filter registry: it's a text search, not a selectable FilterBar
+        // filter, and the task's server-side spec handles it explicitly.
+        $search = $request->string('search')->trim()->toString();
+        if ($search !== '') {
+            // Case-insensitive (LOWER on both sides) so ?search=toyota matches
+            // a stored 'Toyota' — works identically on SQLite and Postgres.
+            $needle = '%'.mb_strtolower($search).'%';
+            $query->where(function ($q) use ($needle) {
+                $q->whereRaw('LOWER(make) LIKE ?', [$needle])
+                    ->orWhereRaw('LOWER(model) LIKE ?', [$needle]);
+            });
+        }
+
+        // Registered select filters — each provider knows its own WHERE clause.
+        $query = VehicleFilterRegistry::applyAll($query, $request->all());
+
+        // Registered sort options. No sort param means the DB's natural order
+        // (the frontend's "Default" option) — a sort is only applied when the
+        // request actually asks for one.
+        $requestedSort = $request->string('sort')->trim()->toString();
+        $sort = $requestedSort !== '' ? VehicleSortRegistry::resolveActive($requestedSort) : null;
+        if ($sort !== null) {
+            $query = $sort->apply($query);
+        }
+
+        $query = $query->with('location');
         $query = FilterRegistry::apply('vehicle.listQuery', $query);
 
         $vehicles = $query->paginate(12)->withQueryString();
 
+        // Only expose what's registered — the frontend renders every entry
+        // generically, so a newly-registered filter/sort appears with zero
+        // frontend changes.
+        $availableFilters = collect(VehicleFilterRegistry::all())
+            ->map(fn ($filter) => [
+                'id' => $filter->id(),
+                'label' => $filter->label(),
+                'uiType' => $filter->uiType(),
+                'options' => $filter->options(),
+            ])
+            ->values()
+            ->all();
+
+        $availableSorts = collect(VehicleSortRegistry::all())
+            ->map(fn ($sortOption) => [
+                'id' => $sortOption->id(),
+                'label' => $sortOption->label(),
+            ])
+            ->values()
+            ->all();
+
+        // The currently-active values, so the FilterBar and SearchBox can
+        // pre-select/reflect what the URL says.
+        $activeFilters = collect(VehicleFilterRegistry::all())
+            ->mapWithKeys(fn ($filter) => [$filter->id() => $request->string($filter->id())->toString()])
+            ->filter(fn (string $value) => $value !== '')
+            ->all();
+
         return Inertia::render('Vehicles/Index', [
             'vehicles' => $vehicles,
+            'search' => $search,
+            'availableFilters' => $availableFilters,
+            'availableSorts' => $availableSorts,
+            'currentSort' => $sort?->id() ?? '',
+            'activeFilters' => $activeFilters,
         ]);
     }
 

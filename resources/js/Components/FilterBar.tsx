@@ -4,7 +4,7 @@ interface FilterBarProps {
     filters: AvailableFilter[];
     sorts: AvailableSort[];
     activeFilters: Record<string, string | string[]>;
-    activeSort: string;
+    currentSort: string;
     onFilterChange: (name: string, value: string | string[]) => void;
     onSortChange: (value: string) => void;
     onClear: () => void;
@@ -14,8 +14,13 @@ interface FilterBarProps {
 /**
  * Renders a horizontal row of filter controls (one per `AvailableFilter`) plus
  * a sort dropdown and a "Clear all" reset. Purely presentational — the parent
- * owns the active state and decides what to do with the callbacks (this is
- * frontend-only infrastructure; there is no backend filter system behind it).
+ * owns the active state and decides what to do with the callbacks (the fleet
+ * page translates them into server-side `router.get()` requests so filters
+ * persist in the URL).
+ *
+ * Controls are driven by the server's `availableFilters`/`availableSorts`
+ * props — a filter provider registered server-side renders automatically with
+ * no change here, as long as it uses a `uiType` the renderer already handles.
  *
  * Styling is entirely theme-token-driven (Hard Rule 3). Wraps on mobile,
  * sits on one row on desktop.
@@ -24,7 +29,7 @@ export default function FilterBar({
     filters,
     sorts,
     activeFilters,
-    activeSort,
+    currentSort,
     onFilterChange,
     onSortChange,
     onClear,
@@ -34,7 +39,7 @@ export default function FilterBar({
         'rounded-interactive border border-border bg-surface px-3 py-2 text-text focus:border-focusRing focus:outline-none focus:ring-focusRing';
 
     const hasActiveFilters =
-        activeSort !== '' ||
+        currentSort !== '' ||
         Object.values(activeFilters).some((value) =>
             Array.isArray(value)
                 ? value.some((entry) => entry !== '')
@@ -44,42 +49,42 @@ export default function FilterBar({
     return (
         <div className={`flex flex-wrap items-end gap-3 ${className}`}>
             {filters.map((filter) => {
-                const raw = activeFilters[filter.name];
+                const raw = activeFilters[filter.id];
                 const isArray = Array.isArray(raw);
 
                 return (
-                    <div key={filter.name} className="flex flex-col gap-1">
+                    <div key={filter.id} className="flex flex-col gap-1">
                         <label
-                            htmlFor={`filter-${filter.name}`}
+                            htmlFor={`filter-${filter.id}`}
                             className="text-xs font-semibold text-textMuted"
                         >
                             {filter.label}
                         </label>
 
-                        {filter.type === 'select' && (
+                        {filter.uiType === 'select' && (
                             <select
-                                id={`filter-${filter.name}`}
+                                id={`filter-${filter.id}`}
                                 value={typeof raw === 'string' ? raw : isArray ? (raw[0] ?? '') : ''}
-                                onChange={(e) => onFilterChange(filter.name, e.target.value)}
+                                onChange={(e) => onFilterChange(filter.id, e.target.value)}
                                 className={inputClass}
                             >
                                 <option value="">All</option>
                                 {filter.options?.map((option) => (
-                                    <option key={option.value} value={option.value}>
+                                    <option key={String(option.value)} value={String(option.value)}>
                                         {option.label}
                                     </option>
                                 ))}
                             </select>
                         )}
 
-                        {filter.type === 'checkbox' && (
+                        {filter.uiType === 'checkbox' && (
                             <div className="flex flex-wrap items-center gap-3 py-2">
                                 {filter.options?.map((option) => {
                                     const selected =
-                                        isArray && raw.includes(option.value);
+                                        isArray && raw.includes(String(option.value));
                                     return (
                                         <label
-                                            key={option.value}
+                                            key={String(option.value)}
                                             className="flex items-center gap-1 text-sm text-text"
                                         >
                                             <input
@@ -88,9 +93,9 @@ export default function FilterBar({
                                                 onChange={() => {
                                                     const current = isArray ? raw : [];
                                                     const next = selected
-                                                        ? current.filter((v) => v !== option.value)
-                                                        : [...current, option.value];
-                                                    onFilterChange(filter.name, next);
+                                                        ? current.filter((v) => v !== String(option.value))
+                                                        : [...current, String(option.value)];
+                                                    onFilterChange(filter.id, next);
                                                 }}
                                                 className="rounded border-border text-primary shadow-sm focus:ring-focusRing"
                                             />
@@ -101,7 +106,7 @@ export default function FilterBar({
                             </div>
                         )}
 
-                        {filter.type === 'range' && (
+                        {filter.uiType === 'range' && (
                             <div className="flex items-center gap-2">
                                 <input
                                     type="number"
@@ -111,7 +116,7 @@ export default function FilterBar({
                                     max={filter.max}
                                     value={isArray ? (raw[0] ?? '') : ''}
                                     onChange={(e) =>
-                                        onFilterChange(filter.name, [
+                                        onFilterChange(filter.id, [
                                             e.target.value,
                                             isArray ? (raw[1] ?? '') : '',
                                         ])
@@ -127,7 +132,7 @@ export default function FilterBar({
                                     max={filter.max}
                                     value={isArray ? (raw[1] ?? '') : ''}
                                     onChange={(e) =>
-                                        onFilterChange(filter.name, [
+                                        onFilterChange(filter.id, [
                                             isArray ? (raw[0] ?? '') : '',
                                             e.target.value,
                                         ])
@@ -149,13 +154,13 @@ export default function FilterBar({
                 </label>
                 <select
                     id="filter-sort"
-                    value={activeSort}
+                    value={currentSort}
                     onChange={(e) => onSortChange(e.target.value)}
                     className={inputClass}
                 >
                     <option value="">Default</option>
                     {sorts.map((sort) => (
-                        <option key={sort.value} value={sort.value}>
+                        <option key={sort.id} value={sort.id}>
                             {sort.label}
                         </option>
                     ))}
