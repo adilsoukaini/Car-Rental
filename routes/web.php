@@ -5,7 +5,9 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SearchController;
 use App\Models\HomepageContent;
 use App\Models\Vehicle;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 // Replaces Laravel's default Welcome scaffold — reachability-audit finding
@@ -78,3 +80,40 @@ Route::middleware('auth')->group(function () {
 require __DIR__.'/auth.php';
 Route::get('/admin/vehicle-import-template', [App\Filament\Pages\BulkVehicleImport::class, 'downloadTemplate'])
     ->middleware(['web', 'auth'])->name('filament.admin.vehicle-import-template');
+
+// Health check — reports status of all external dependencies. Used by
+// monitoring tools, load balancers, and CI/CD smoke tests. Always returns
+// 200 with a JSON body; individual dependency statuses are in the response.
+Route::get('/health', function () {
+    $checks = [
+        'database' => 'ok',
+        'meilisearch' => 'ok',
+        'stripe' => 'ok',
+        'storage' => 'ok',
+    ];
+
+    // Database
+    try { DB::connection()->getPdo(); } catch (\Throwable $e) {
+        $checks['database'] = 'error: ' . $e->getMessage();
+    }
+
+    // Meilisearch
+    try {
+        $meili = new \GuzzleHttp\Client(['timeout' => 2]);
+        $resp = $meili->get('http://localhost:7700/health');
+        if ($resp->getStatusCode() !== 200) $checks['meilisearch'] = 'unhealthy';
+    } catch (\Throwable) {
+        $checks['meilisearch'] = 'unreachable';
+    }
+
+    // Stripe — just check the key is configured
+    $checks['stripe'] = (config('payments-stripe.secret_key') ?: env('STRIPE_SECRET')) ? 'configured' : 'missing';
+
+    // Storage
+    try { Storage::disk('public')->exists('.'); } catch (\Throwable $e) {
+        $checks['storage'] = 'error: ' . $e->getMessage();
+    }
+
+    $allOk = !array_filter($checks, fn($v) => $v !== 'ok' && $v !== 'configured');
+    return response()->json(['status' => $allOk ? 'healthy' : 'degraded', 'checks' => $checks]);
+})->name('health');
