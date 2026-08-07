@@ -3,6 +3,10 @@ import { Paginated, Vehicle } from '@/types';
 import { Head, Link } from '@inertiajs/react';
 import SearchBox from '@/Components/SearchBox';
 import FilterBar from '@/Components/FilterBar';
+import Breadcrumbs from '@/Components/Breadcrumbs';
+import EmptyState from '@/Components/EmptyState';
+import Text from '@/Components/Text';
+import { Car } from 'lucide-react';
 import { AvailableFilter, AvailableSort } from '@/types/filters';
 import { useMemo, useState } from 'react';
 
@@ -94,9 +98,11 @@ export default function Index({ vehicles }: { vehicles: Paginated<Vehicle> }) {
             <Head title="Our Fleet" />
 
             <div className="mx-auto max-w-7xl p-8">
-                <h1 className="mb-6 font-display text-3xl font-bold text-text">
+                <Breadcrumbs items={[{ label: 'Our Fleet' }]} className="mb-4" />
+
+                <Text variant="h1" className="mb-6">
                     Our Fleet
-                </h1>
+                </Text>
 
                 <div className="mb-6 space-y-4">
                     <SearchBox
@@ -118,21 +124,37 @@ export default function Index({ vehicles }: { vehicles: Paginated<Vehicle> }) {
                     />
                 </div>
 
+                {filtered.length > 0 && (
+                    <p className="mb-4 text-sm text-textMuted">
+                        Showing {filtered.length} {filtered.length === 1 ? 'vehicle' : 'vehicles'}
+                    </p>
+                )}
+
                 {filtered.length === 0 ? (
-                    <div className="rounded-container border border-border bg-surface p-12 text-center">
-                        <p className="text-lg font-medium text-text">
-                            {isFiltered
-                                ? 'No vehicles match your search.'
-                                : 'No vehicles available right now.'}
-                        </p>
-                        {isFiltered && (
-                            <button
-                                onClick={clearFilters}
-                                className="mt-3 text-sm font-medium text-primary hover:text-primaryHover"
-                            >
-                                Clear filters
-                            </button>
-                        )}
+                    <div className="rounded-container border border-border bg-surface">
+                        <EmptyState
+                            icon={<Car className="h-10 w-10" />}
+                            title={
+                                isFiltered
+                                    ? 'No vehicles match your search'
+                                    : 'No vehicles available right now'
+                            }
+                            description={
+                                isFiltered
+                                    ? 'Try adjusting your filters or search terms.'
+                                    : 'Check back soon — we update our fleet regularly.'
+                            }
+                            action={
+                                isFiltered ? (
+                                    <button
+                                        onClick={clearFilters}
+                                        className="text-sm font-medium text-primary hover:text-primaryHover"
+                                    >
+                                        Clear filters
+                                    </button>
+                                ) : undefined
+                            }
+                        />
                     </div>
                 ) : (
                     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

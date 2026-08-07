@@ -1,6 +1,8 @@
 import PublicLayout from '@/Layouts/PublicLayout';
 import { Booking } from '@/types';
 import { Head } from '@inertiajs/react';
+import Breadcrumbs from '@/Components/Breadcrumbs';
+import Text from '@/Components/Text';
 
 const STATUS_LABELS: Record<string, string> = {
     pending: 'Pending',
@@ -31,10 +33,12 @@ export default function Show({ booking }: { booking: Booking }) {
             <Head title={`Booking #${booking.id}`} />
 
             <div className="mx-auto max-w-lg p-8">
+                <Breadcrumbs items={[{ label: `Booking #${booking.id}` }]} className="mb-4" />
+
                 <div className="mb-6 flex items-center justify-between">
-                    <h1 className="font-display text-3xl font-bold text-text">
+                    <Text variant="h1">
                         Booking #{booking.id}
-                    </h1>
+                    </Text>
                     <span className="inline-block rounded-pill bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
                         {STATUS_LABELS[booking.status] ?? booking.status}
                     </span>
