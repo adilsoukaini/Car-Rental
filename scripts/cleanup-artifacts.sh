@@ -16,15 +16,23 @@ if [ -d "$REPO_ROOT/.playwright-mcp" ]; then
     echo "  Removed .playwright-mcp/*.log and *.yml files"
 fi
 
-# Remove root-level PNG screenshots (match patterns like 01-*, screenshot-*)
+# Remove root-level image screenshots (PNG, JPEG, WebP, etc.)
 shopt -s nullglob
-pngs=("$REPO_ROOT"/*.png)
+imgs=("$REPO_ROOT"/*.png "$REPO_ROOT"/*.jpg "$REPO_ROOT"/*.jpeg "$REPO_ROOT"/*.webp "$REPO_ROOT"/*.gif)
 shopt -u nullglob
-if [ ${#pngs[@]} -gt 0 ]; then
-    rm "${pngs[@]}"
-    echo "  Removed ${#pngs[@]} root-level .png files"
+if [ ${#imgs[@]} -gt 0 ]; then
+    rm "${imgs[@]}"
+    echo "  Removed ${#imgs[@]} root-level image files (.png/.jpg/.jpeg/.webp/.gif)"
 else
-    echo "  No root-level .png files to remove"
+    echo "  No root-level image files to remove"
+fi
+
+# Remove Playwright MCP screenshots/storage
+if [ -d "$REPO_ROOT/.playwright-mcp" ]; then
+    find "$REPO_ROOT/.playwright-mcp" -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" -o -name "*.webp" \) -delete
+    echo "  Removed Playwright MCP screenshots"
+    # Also remove the entire .playwright-mcp dir if empty
+    find "$REPO_ROOT/.playwright-mcp" -type d -empty -delete 2>/dev/null || true
 fi
 
 # Remove Playwright test screenshots directory
