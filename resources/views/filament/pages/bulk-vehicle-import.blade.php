@@ -28,7 +28,7 @@
 
                 <div class="flex items-center gap-2">
                     <x-filament::button
-                        href="#"
+                        href="{{ route('filament.admin.vehicle-import-template') }}"
                         tag="a"
                         icon="heroicon-m-arrow-down-tray"
                         color="gray"
