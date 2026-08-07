@@ -50,8 +50,19 @@ class VehicleController extends Controller
             [Vehicle::class => $vehicle],
         );
 
+        // Real gallery from the vehicle-media plugin (registered on the
+        // vehicle.gallery filter). An empty array when the plugin is disabled
+        // or the vehicle has no uploaded photos — the page falls back to the
+        // VehiclePlaceholderIcon in that case.
+        $galleryImages = FilterRegistry::applyWithContext(
+            'vehicle.gallery',
+            [],
+            [Vehicle::class => $vehicle],
+        );
+
         return Inertia::render('Vehicles/Show', [
             'vehicle' => $vehicle,
+            'galleryImages' => $galleryImages,
             'detailWidgets' => SlotRegistry::render('vehicle.detailWidgets', [
                 'vehicleId' => $vehicle->id,
                 'reviewsData' => $reviewsData,

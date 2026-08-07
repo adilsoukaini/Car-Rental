@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f3b595f56b27d8ed6dc607433661af1d",
+    "content-hash": "6810fcb0a356576af23d854f28cc9ad6",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -510,6 +510,33 @@
                 "MIT"
             ],
             "description": "Vehicle reviews with verified-rental badging (a returned booking for that vehicle) and staff moderation.",
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "carrental/vehicle-media",
+            "version": "1.0.0",
+            "dist": {
+                "type": "path",
+                "url": "plugins/vehicle-media",
+                "reference": "3dd9353f206744c4c36906f07415e559a1c48961"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": []
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Plugins\\VehicleMedia\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "Vehicle photo management — upload, gallery, and batched primary-image loading for the fleet listing.",
             "transport-options": {
                 "relative": true
             }
