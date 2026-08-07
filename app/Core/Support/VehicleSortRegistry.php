@@ -5,14 +5,16 @@ declare(strict_types=1);
 namespace App\Core\Support;
 
 use App\Core\Contracts\VehicleSortOption;
+use App\Models\CatalogControlSetting;
 
 /**
  * Registry of every available fleet-listing sort option.
  *
- * Mirror of the e-commerce project's ProductSortRegistry. The design doc's
- * admin-control layer (fleet_control_settings gating which sorts are enabled)
- * is a separate, deliberately deferred phase — until it exists every
- * registered sort is available by default.
+ * Mirror of the e-commerce project's ProductSortRegistry. Admin control via
+ * the catalog_control_settings table (CatalogControlSetting model): absence
+ * of a row means enabled, so every registered sort is available by default
+ * until the CatalogControlSettings admin page disables one. resolveActive()/
+ * enabled() consult the table.
  *
  * NOTE: static state survives across Application boots within the same PHP
  * process, so PluginManager::boot() calls flush() before re-registering —
@@ -29,13 +31,29 @@ class VehicleSortRegistry
     }
 
     /**
-     * All registered sorts, in registration order.
+     * All registered sorts, in registration order — including disabled ones,
+     * so the admin page can render a toggle for every sort.
      *
      * @return array<string, VehicleSortOption>
      */
     public static function all(): array
     {
         return static::$sorts;
+    }
+
+    /**
+     * Only the sorts still enabled in catalog_control_settings, in
+     * registration order. The storefront sort dropdown uses this so a
+     * disabled sort is neither shown nor applied.
+     *
+     * @return array<string, VehicleSortOption>
+     */
+    public static function enabled(): array
+    {
+        return array_filter(
+            static::$sorts,
+            fn (VehicleSortOption $sort) => static::isEnabled($sort->id()),
+        );
     }
 
     /**
@@ -47,27 +65,49 @@ class VehicleSortRegistry
     }
 
     /**
-     * Resolve a sort by the requested ID, falling back to the first registered
-     * sort when the requested one is unknown. Guarantees the controller always
-     * has a valid sort to apply for a non-empty requested ID.
+     * Resolve a sort by the requested ID among the *enabled* sorts only.
+     * Returns null when the requested sort is registered but disabled — the
+     * controller then applies no sort (default order), rather than silently
+     * substituting the first enabled sort, which could invert the user's
+     * intent (e.g. a disabled price_asc falling back to price_desc). An
+     * unknown ID keeps the pre-existing fallback to the first enabled sort.
      */
-    public static function resolveActive(string $requestedId): VehicleSortOption
+    public static function resolveActive(string $requestedId): ?VehicleSortOption
     {
-        foreach (static::$sorts as $sort) {
+        $enabled = static::enabled();
+
+        foreach ($enabled as $sort) {
             if ($sort->id() === $requestedId) {
                 return $sort;
             }
         }
 
-        return static::$sorts[array_key_first(static::$sorts)];
+        // Registered but disabled — honor the disable, don't substitute.
+        if (isset(static::$sorts[$requestedId])) {
+            return null;
+        }
+
+        // Unknown requested ID — fall back to the first enabled sort.
+        $first = array_key_first($enabled);
+
+        return $first !== null ? $enabled[$first] : null;
+    }
+
+    protected static function isEnabled(string $sortId): bool
+    {
+        return CatalogControlSetting::isControlEnabled(CatalogControlSetting::TYPE_SORT, $sortId);
     }
 
     /**
      * Clear all registered sorts — called at the top of PluginManager::boot()
-     * so each boot cycle starts from a genuinely clean registry state.
+     * so each boot cycle starts from a genuinely clean registry state. Also
+     * drops the shared enabled-map cache so stale settings never survive a
+     * boot boundary (tests create a fresh Application — and a fresh DB — per
+     * test method within the same PHP process).
      */
     public static function flush(): void
     {
         static::$sorts = [];
+        CatalogControlSetting::resetCache();
     }
 }

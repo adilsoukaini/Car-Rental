@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\FleetManagement;
 
+use App\Models\CatalogControlSetting;
 use App\Models\Location;
 use App\Models\Review;
 use App\Models\Vehicle;
@@ -209,6 +210,86 @@ class VehicleControllerTest extends TestCase
             ->where('availableSorts.1.id', 'price_desc')
             ->where('availableSorts.2.id', 'name_asc')
             ->where('search', '')
+            ->where('currentSort', ''));
+    }
+
+    public function test_index_excludes_a_disabled_filter_from_props_and_does_not_apply_it(): void
+    {
+        Vehicle::factory()->create(['status' => 'available', 'transmission_type' => 'automatic', 'make' => 'Toyota']);
+        Vehicle::factory()->create(['status' => 'available', 'transmission_type' => 'manual', 'make' => 'Dacia']);
+
+        CatalogControlSetting::create([
+            'control_type' => 'filter',
+            'control_id' => 'transmission',
+            'is_enabled' => false,
+        ]);
+
+        // Even though the URL asks for ?transmission=automatic, the disabled
+        // filter must be neither exposed to the FilterBar nor applied — both
+        // vehicles come back, and availableFilters only has 'category'.
+        $response = $this->get('/vehicles?transmission=automatic');
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Vehicles/Index')
+            ->has('vehicles.data', 2)
+            ->has('availableFilters', 1)
+            ->where('availableFilters.0.id', 'category')
+            ->where('activeFilters', []));
+    }
+
+    public function test_index_restores_a_re_enabled_filter(): void
+    {
+        Vehicle::factory()->create(['status' => 'available', 'transmission_type' => 'automatic', 'make' => 'Toyota']);
+        Vehicle::factory()->create(['status' => 'available', 'transmission_type' => 'manual', 'make' => 'Dacia']);
+
+        CatalogControlSetting::updateOrCreate(
+            ['control_type' => 'filter', 'control_id' => 'transmission'],
+            ['is_enabled' => false],
+        );
+
+        // Re-enable it (the same upsert the admin page performs) and confirm
+        // the filter is exposed and applied again.
+        CatalogControlSetting::updateOrCreate(
+            ['control_type' => 'filter', 'control_id' => 'transmission'],
+            ['is_enabled' => true],
+        );
+        CatalogControlSetting::resetCache();
+
+        $response = $this->get('/vehicles?transmission=automatic');
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Vehicles/Index')
+            ->has('vehicles.data', 1)
+            ->where('vehicles.data.0.transmission_type', 'automatic')
+            ->has('availableFilters', 2)
+            ->where('activeFilters.transmission', 'automatic'));
+    }
+
+    public function test_index_excludes_a_disabled_sort_from_props_and_does_not_apply_it(): void
+    {
+        Vehicle::factory()->create(['status' => 'available', 'make' => 'B', 'daily_rate' => 500]);
+        Vehicle::factory()->create(['status' => 'available', 'make' => 'A', 'daily_rate' => 100]);
+
+        CatalogControlSetting::create([
+            'control_type' => 'sort',
+            'control_id' => 'price_asc',
+            'is_enabled' => false,
+        ]);
+
+        // A disabled sort is hidden from the dropdown, and a request asking
+        // for it resolves to null (default order) rather than silently
+        // substituting price_desc — which would invert the user's intent.
+        $response = $this->get('/vehicles?sort=price_asc');
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Vehicles/Index')
+            ->has('vehicles.data', 2)
+            ->has('availableSorts', 2)
+            ->where('availableSorts.0.id', 'price_desc')
+            ->where('availableSorts.1.id', 'name_asc')
             ->where('currentSort', ''));
     }
 
