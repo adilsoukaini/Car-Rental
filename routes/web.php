@@ -37,6 +37,17 @@ Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
+// Dynamic XML sitemap — homepage, fleet listing, and every available
+// vehicle's detail page. Only `available` vehicles are included (a
+// `maintenance`-status vehicle already 404s on its detail page, so listing
+// it here would be a soft-404). View: resources/views/sitemap.blade.php.
+Route::get('/sitemap.xml', function () {
+    $vehicles = Vehicle::where('status', 'available')->get();
+
+    return response()->view('sitemap', ['vehicles' => $vehicles])
+        ->header('Content-Type', 'application/xml');
+})->name('sitemap');
+
 // Throwaway Phase 3 verification page — proves the theme token system applies
 // and swaps correctly. Remove once a real themed page exists to demonstrate this.
 Route::get('/theme-test', function () {

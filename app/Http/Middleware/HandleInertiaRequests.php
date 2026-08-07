@@ -102,6 +102,16 @@ class HandleInertiaRequests extends Middleware
             // hard-crash the entire site over one optional feature" lesson as
             // driverVerificationStatus above.
             'siteIdentity' => $this->siteIdentity(),
+            // Default SEO metadata shared to every page — the root template
+            // (app.blade.php) reads `$page['props']['seo']` for its Open
+            // Graph / Twitter meta tags. A page overrides it by passing its
+            // own `seo` prop (page props merge over shared props): the
+            // vehicle detail page sets a vehicle-specific "Rent from ..."
+            // title, everything else falls back to these defaults.
+            'seo' => [
+                'title' => config('app.name', 'Car Rental'),
+                'description' => 'Premium car rental in Morocco',
+            ],
             // Any flash message set on the session ({ message, type } | null)
             // — consumed by the ToastContainer component in the root layout.
             'flash' => fn () => $request->session()->get('flash'),

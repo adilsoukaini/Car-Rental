@@ -152,12 +152,22 @@ class VehicleController extends Controller
             [Vehicle::class => $vehicle],
         );
 
+        // Per-page SEO — overrides the shared `seo` default shared by
+        // HandleInertiaRequests so this page's og:title is vehicle-specific
+        // (page props merge over shared props). The price formatting mirrors
+        // Show.tsx's `String(Number(vehicle.daily_rate))` ("550.00" → "550").
+        $price = (string) (float) $vehicle->daily_rate;
+
         return Inertia::render('Vehicles/Show', [
             'vehicle' => $vehicle,
             'galleryImages' => $galleryImages,
             'reviewsData' => $reviewsData,
             'attributes' => $attributes,
             'recommendations' => $recommendations,
+            'seo' => [
+                'title' => "{$vehicle->make} {$vehicle->model} — Rent from {$price} MAD/day",
+                'description' => "Rent a {$vehicle->make} {$vehicle->model} for {$price} MAD/day.",
+            ],
         ]);
     }
 }

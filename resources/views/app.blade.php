@@ -16,6 +16,15 @@
             <link rel="icon" href="{{ $faviconUrl }}">
         @endif
 
+        <!-- Social sharing / SEO metadata — per-page values come from the
+             page's `seo` prop (shared default in HandleInertiaRequests,
+             overridden per page e.g. by the vehicle detail page's "Rent
+             from ..." title), falling back to the site name. -->
+        <meta property="og:title" content="{{ $page['props']['seo']['title'] ?? config('app.name') }}">
+        <meta property="og:description" content="{{ $page['props']['seo']['description'] ?? 'Premium car rental in Morocco' }}">
+        <meta property="og:type" content="website">
+        <meta name="twitter:card" content="summary_large_image">
+
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=space-grotesk:400,500,600,700|inter:400,500,600|jetbrains-mono:400,500|poppins:400,500,600,700&display=swap" rel="stylesheet" />

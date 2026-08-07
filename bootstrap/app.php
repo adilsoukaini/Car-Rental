@@ -8,6 +8,8 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\Response as Respond;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -40,4 +42,27 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );
+
+        // Replace Laravel's bare error views with the themed Inertia error
+        // pages (Errors/NotFound, Errors/ServerError) for storefront
+        // requests. 503 is caught by the `>= 500` branch, covering
+        // maintenance-mode. JSON/API requests are unaffected
+        // (shouldRenderJsonWhen above runs first). Type-hinting the base
+        // Symfony Response (not Illuminate\Http\Response) is required — the
+        // finalize callback also receives RedirectResponse (validation
+        // errors, auth redirects) and JsonResponse. The trailing `return
+        // $response;` is load-bearing: this callback is the FINAL render
+        // step, so returning null for any other status (403, 419, validation
+        // 422, ...) would discard the real response entirely.
+        $exceptions->respond(function (Respond $response, Throwable $e, Request $request) {
+            if ($response->getStatusCode() === 404) {
+                return Inertia::render('Errors/NotFound', [])->toResponse($request)->setStatusCode(404);
+            }
+
+            if ($response->getStatusCode() >= 500) {
+                return Inertia::render('Errors/ServerError', [])->toResponse($request)->setStatusCode(500);
+            }
+
+            return $response;
+        });
     })->create();
