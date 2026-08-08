@@ -21,6 +21,9 @@ use Inertia\Inertia;
 Route::get('/', function () {
     $featuredQuery = Vehicle::where('status', 'available')->latest()->take(4);
     $featuredQuery = FilterRegistry::apply('vehicle.listQuery', $featuredQuery);
+    // Approved-review count + average rating in one aggregate query (rule 8);
+    // no-ops when the reviews plugin is disabled.
+    $featuredQuery = $featuredQuery->withReviewSummary();
 
     return Inertia::render('Home', [
         'featuredVehicles' => $featuredQuery->get(),

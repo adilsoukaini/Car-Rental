@@ -96,6 +96,20 @@ export default function PublicLayout({ children }: PropsWithChildren) {
         </div>
     );
 
+    // Currency indicator (GAP-3). A static "MAD" badge styled like the
+    // language switcher — signals international readiness without inventing a
+    // conversion engine. Full multi-currency switching is a larger, deferred
+    // feature (mirror the ?lang= whitelist pattern when it's built).
+    const currencyBadge = (
+        <span
+            className="flex items-center rounded-pill border border-border px-2 py-1 text-xs font-semibold text-textMuted"
+            role="text"
+            aria-label="Currency: MAD"
+        >
+            MAD
+        </span>
+    );
+
     return (
         <div className="flex min-h-screen flex-col bg-background font-body text-text">
             <a
@@ -114,6 +128,10 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                     <nav className="hidden items-center gap-8 md:flex">
                         <Link href={route('vehicles.index')} className="text-sm font-semibold text-textMuted transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing">
                             {t('Our Fleet')}
+                        </Link>
+
+                        <Link href={route('bookings.track')} className="text-sm font-semibold text-textMuted transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing">
+                            {t('Manage my booking')}
                         </Link>
 
                         {auth.user ? (
@@ -139,7 +157,10 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                             </>
                         )}
 
-                        {localeSwitcher}
+                        <div className="flex items-center gap-1">
+                            {currencyBadge}
+                            {localeSwitcher}
+                        </div>
                     </nav>
 
                     <button
@@ -158,6 +179,9 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                     <nav className="flex flex-col gap-1 border-t border-border bg-surface px-4 py-3 md:hidden">
                         <Link href={route('vehicles.index')} className="rounded-interactive px-2 py-2 text-sm font-semibold text-textMuted hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing">
                             {t('Our Fleet')}
+                        </Link>
+                        <Link href={route('bookings.track')} className="rounded-interactive px-2 py-2 text-sm font-semibold text-textMuted hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing">
+                            {t('Manage my booking')}
                         </Link>
                         {auth.user ? (
                             <>
@@ -178,7 +202,10 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                                 </Link>
                             </>
                         )}
-                        <div className="pt-2">{localeSwitcher}</div>
+                        <div className="flex items-center gap-1 pt-2">
+                            {currencyBadge}
+                            {localeSwitcher}
+                        </div>
                     </nav>
                 )}
             </header>

@@ -63,6 +63,10 @@ class VehicleController extends Controller
         $query = $query->with('location');
         $query = FilterRegistry::apply('vehicle.listQuery', $query);
 
+        // Approved-review count + average rating in one aggregate query (rule 8).
+        // No-ops (and hides the card snippet) when the reviews plugin is disabled.
+        $query = $query->withReviewSummary();
+
         $vehicles = $query->paginate(12)->withQueryString();
 
         // Only expose what's registered — the frontend renders every entry

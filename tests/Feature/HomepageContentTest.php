@@ -23,7 +23,7 @@ class HomepageContentTest extends TestCase
 
         $this->assertSame(1, $content->id);
         $this->assertSame("L'excellence de la location de voitures.", $content->hero_title);
-        $this->assertSame('Pourquoi choisir Project Atlas ?', $content->features_title);
+        $this->assertSame('Pourquoi choisir '.config('app.name', 'Location de voitures').' ?', $content->features_title);
         $this->assertSame("Prêt pour l'aventure ?", $content->cta_band_title);
 
         // Exactly one row, always.
@@ -59,6 +59,6 @@ class HomepageContentTest extends TestCase
             ->where('homepageContent.hero_title', 'Admin title')
             ->where('homepageContent.hero_subtitle', 'Admin subtitle')
             ->where('homepageContent.cta_band_title', 'Admin CTA band')
-            ->where('homepageContent.features_title', 'Pourquoi choisir Project Atlas ?'));
+            ->where('homepageContent.features_title', 'Pourquoi choisir '.config('app.name', 'Location de voitures').' ?'));
     }
 }

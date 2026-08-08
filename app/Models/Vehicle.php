@@ -4,10 +4,12 @@ namespace App\Models;
 
 use Database\Factories\VehicleFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Schema;
 use Laravel\Scout\Searchable;
 
 /**
@@ -70,5 +72,39 @@ class Vehicle extends Model
     public function bookings(): HasMany
     {
         return $this->hasMany(Booking::class);
+    }
+
+    /**
+     * Reviews are a core model too (same precedent as DriverVerification:
+     * the reviews plugin owns the migration/logic/Filament resource, but
+     * both models live in App\Models). Defined here so any fleet query can
+     * aggregate review data without referencing the plugin's namespace.
+     */
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    /**
+     * Batch-load a review summary (approved count + average rating) for a
+     * whole fleet listing in ONE query — no per-card N+1 (rule 8). Both
+     * aggregates are constrained to approved reviews, matching the detail
+     * page's GetVehicleReviewsPipe exactly (an unapproved review is
+     * invisible to everyone except staff).
+     *
+     * Guarded by Schema::hasTable so the query never hard-crashes when the
+     * reviews plugin is disabled and its table doesn't exist (same "core
+     * must not hard-crash over one optional feature" principle as the
+     * driver-verification middleware guard). Degrades to no summary —
+     * the cards hide the snippet when reviews_count is absent.
+     */
+    public function scopeWithReviewSummary(Builder $query): Builder
+    {
+        if (Schema::hasTable('reviews')) {
+            $query->withCount(['reviews' => fn ($q) => $q->where('is_approved', true)])
+                ->withAvg(['reviews' => fn ($q) => $q->where('is_approved', true)], 'rating');
+        }
+
+        return $query;
     }
 }

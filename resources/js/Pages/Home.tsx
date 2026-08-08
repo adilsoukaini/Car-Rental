@@ -4,7 +4,7 @@ import { PageProps, Vehicle } from '@/types';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Head, Link, usePage } from '@inertiajs/react';
 import {
-    Calendar, Car, FileText, Hand, Headphones,
+    Calendar, Car, Clock, FileText, Hand, Headphones,
     Lock, MapPin, Search, Shield,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -45,6 +45,10 @@ export default function Home({
     const [locationQuery, setLocationQuery] = useState('');
     const [pickupDate, setPickupDate] = useState('');
     const [returnDate, setReturnDate] = useState('');
+    // 30-min time pickers (GAP-1). Default 10:00 pickup / 11:00 return like
+    // DiscoverCars; only sent to the fleet URL when a matching date is set.
+    const [pickupTime, setPickupTime] = useState('10:00');
+    const [returnTime, setReturnTime] = useState('11:00');
 
     // Honest, data-driven stats — the vehicle/location counts come from the
     // route's real queries, not hardcoded marketing numbers.
@@ -58,7 +62,7 @@ export default function Home({
     const heroTitle = homepageContent?.hero_title ?? t('Excellence in car rental.');
     const heroSubtitle = homepageContent?.hero_subtitle ?? t('Discover a premium fleet for uncompromising travel. Fast booking, immaculate vehicles, impeccable service.');
     const heroCtaText = homepageContent?.hero_cta_text ?? t('Find a vehicle');
-    const featuresTitle = homepageContent?.features_title ?? t('Why choose Project Atlas?');
+    const featuresTitle = homepageContent?.features_title ?? t('Why choose us?');
     const featuresSubtitle = homepageContent?.features_subtitle ?? t("We're redefining car rental with streamlined processes and a carefully maintained fleet.");
     const ctaBandTitle = homepageContent?.cta_band_title ?? t('Ready for adventure?');
     const ctaBandSubtitle = homepageContent?.cta_band_subtitle ?? t('Book now and enjoy Morocco with total freedom.');
@@ -69,6 +73,8 @@ export default function Home({
         if (locationQuery) params.set('location', locationQuery);
         if (pickupDate) params.set('pickup', pickupDate);
         if (returnDate) params.set('return', returnDate);
+        if (pickupDate && pickupTime) params.set('pickup_time', pickupTime);
+        if (returnDate && returnTime) params.set('return_time', returnTime);
         window.location.href = route('vehicles.index') + (params.toString() ? '?' + params.toString() : '');
     };
 
@@ -101,7 +107,7 @@ export default function Home({
             <div className="relative z-10 mx-auto -mt-12 max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="rounded-container bg-surface p-6 shadow-overlay">
                     <form onSubmit={handleSearch}>
-                        <div className="grid grid-cols-1 items-end gap-4 md:grid-cols-[1fr_1fr_1fr_auto]">
+                        <div className="grid grid-cols-1 items-end gap-4 lg:grid-cols-[1fr_1.3fr_1.3fr_auto]">
                             <div className="flex flex-col gap-1">
                                 <label htmlFor="home-location" className="text-xs font-semibold text-textMuted">
                                     {t('Pickup location')}
@@ -120,22 +126,42 @@ export default function Home({
                             </div>
                             <div className="flex flex-col gap-1">
                                 <label htmlFor="home-pickup" className="text-xs font-semibold text-textMuted">{t('Pickup date')}</label>
-                                <div className="relative">
-                                    <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
-                                    <input id="home-pickup" type="date" value={pickupDate}
-                                        onChange={(e) => setPickupDate(e.target.value)} min={today}
-                                        className="w-full rounded-interactive border border-border bg-background py-2.5 pl-9 pr-3 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                                    />
+                                <div className="flex gap-2">
+                                    <div className="relative min-w-0 flex-1">
+                                        <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
+                                        <input id="home-pickup" type="date" value={pickupDate}
+                                            onChange={(e) => setPickupDate(e.target.value)} min={today}
+                                            className="w-full rounded-interactive border border-border bg-background py-2.5 pl-9 pr-3 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                                        />
+                                    </div>
+                                    <div className="relative">
+                                        <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
+                                        <input id="home-pickup-time" type="time" value={pickupTime}
+                                            onChange={(e) => setPickupTime(e.target.value)}
+                                            aria-label={t('Pickup time')}
+                                            className="rounded-interactive border border-border bg-background py-2.5 pl-9 pr-3 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                                        />
+                                    </div>
                                 </div>
                             </div>
                             <div className="flex flex-col gap-1">
                                 <label htmlFor="home-return" className="text-xs font-semibold text-textMuted">{t('Return date')}</label>
-                                <div className="relative">
-                                    <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
-                                    <input id="home-return" type="date" value={returnDate}
-                                        onChange={(e) => setReturnDate(e.target.value)} min={pickupDate || today}
-                                        className="w-full rounded-interactive border border-border bg-background py-2.5 pl-9 pr-3 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                                    />
+                                <div className="flex gap-2">
+                                    <div className="relative min-w-0 flex-1">
+                                        <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
+                                        <input id="home-return" type="date" value={returnDate}
+                                            onChange={(e) => setReturnDate(e.target.value)} min={pickupDate || today}
+                                            className="w-full rounded-interactive border border-border bg-background py-2.5 pl-9 pr-3 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                                        />
+                                    </div>
+                                    <div className="relative">
+                                        <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
+                                        <input id="home-return-time" type="time" value={returnTime}
+                                            onChange={(e) => setReturnTime(e.target.value)}
+                                            aria-label={t('Return time')}
+                                            className="rounded-interactive border border-border bg-background py-2.5 pl-9 pr-3 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                                        />
+                                    </div>
                                 </div>
                             </div>
                             <button type="submit"

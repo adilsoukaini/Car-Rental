@@ -2,7 +2,7 @@ import VehiclePlaceholderIcon from '@/Components/VehiclePlaceholderIcon';
 import { Vehicle } from '@/types';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Link } from '@inertiajs/react';
-import { Cog, Gauge, Users } from 'lucide-react';
+import { Cog, Gauge, Star, Users } from 'lucide-react';
 
 /**
  * Image on top, details below — matches the Stitch design source's "Nos
@@ -31,17 +31,22 @@ export default function Vertical({
     const { t } = useTranslation();
     const HeadingTag = headingLevel;
 
-    // Carry any pickup/return dates from the URL (set on the fleet page's date
-    // bar, or sent by a homepage search as ?pickup=...&return=...) through to
-    // the vehicle detail page as ?pickup_at=...&return_at=... so its booking
-    // form pre-fills. No dates in the URL (homepage featured cards, shared
-    // plain links) means no query string at all.
+    // Carry any pickup/return dates (and optional 30-min times, GAP-1) from
+    // the URL — set on the fleet page's date bar, or sent by a homepage search
+    // as ?pickup=...&return=...&pickup_time=...&return_time=... — through to
+    // the vehicle detail page as ?pickup_at=YYYY-MM-DDTHH:mm so its
+    // datetime-local booking form pre-fills. No dates in the URL (homepage
+    // featured cards, shared plain links) means no query string at all.
     const dateParams = new URLSearchParams(window.location.search);
     const pickup = dateParams.get('pickup') || '';
     const returnDate = dateParams.get('return') || '';
+    const pickupTime = dateParams.get('pickup_time') || '';
+    const returnTime = dateParams.get('return_time') || '';
+    const pickupAt = pickup ? `${pickup}T${pickupTime || '00:00'}` : '';
+    const returnAt = returnDate ? `${returnDate}T${returnTime || '00:00'}` : '';
     const vehicleHref =
         route('vehicles.show', vehicle.id) +
-        (pickup ? `?pickup_at=${pickup}${returnDate ? `&return_at=${returnDate}` : ''}` : '');
+        (pickupAt ? `?pickup_at=${pickupAt}${returnAt ? `&return_at=${returnAt}` : ''}` : '');
 
     return (
         <Link
@@ -70,6 +75,18 @@ export default function Vertical({
                 <HeadingTag className="mt-1 font-display text-lg font-semibold text-text">
                     {vehicle.make} {vehicle.model}
                 </HeadingTag>
+
+                {/* Approved-review count + average, batch-loaded by the fleet
+                    query's withReviewSummary scope (rule 8 — one aggregate
+                    subquery for the whole page, not per-card). Hidden when the
+                    vehicle has no approved reviews or the plugin is disabled. */}
+                {vehicle.reviews_count ? (
+                    <p className="mt-1 flex items-center gap-1 text-sm text-textMuted">
+                        <Star className="h-3.5 w-3.5 fill-secondary text-secondary" aria-hidden="true" />
+                        <span className="font-medium text-text">{Number(vehicle.reviews_avg_rating ?? 0).toFixed(1)}</span>
+                        <span>({vehicle.reviews_count} {t('reviews')})</span>
+                    </p>
+                ) : null}
 
                 <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-textMuted">
                     {vehicle.transmission_type && (

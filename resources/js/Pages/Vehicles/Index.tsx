@@ -95,6 +95,16 @@ export default function Index({
     const [returnDate, setReturnDate] = useState(
         () => new URLSearchParams(window.location.search).get('return') ?? '',
     );
+    // 30-min time pickers (GAP-1), threaded through the URL as
+    // ?pickup_time=...&return_time=... alongside the date-only values, and
+    // carried to the detail page by the card links as ?pickup_at=T... . They
+    // pre-fill from a homepage search; default 10:00/11:00 like DiscoverCars.
+    const [pickupTime, setPickupTime] = useState(
+        () => new URLSearchParams(window.location.search).get('pickup_time') ?? '10:00',
+    );
+    const [returnTime, setReturnTime] = useState(
+        () => new URLSearchParams(window.location.search).get('return_time') ?? '11:00',
+    );
     const today = new Date().toISOString().slice(0, 10);
 
     /**
@@ -151,9 +161,17 @@ export default function Index({
 
     const handleDateUpdate = () => {
         // Only persist a valid range — both dates present and return on/after
-        // pickup. An invalid combo is simply not written to the URL.
+        // pickup. An invalid combo is simply not written to the URL. Times are
+        // carried alongside (only when the matching date is set), so the
+        // vehicle-detail booking form pre-fills pickup/return times too.
         if (!pickupDate || !returnDate || returnDate < pickupDate) return;
-        applyParams({ ...getUrlParams(), pickup: pickupDate, return: returnDate });
+        applyParams({
+            ...getUrlParams(),
+            pickup: pickupDate,
+            return: returnDate,
+            ...(pickupTime ? { pickup_time: pickupTime } : {}),
+            ...(returnTime ? { return_time: returnTime } : {}),
+        });
     };
 
     const isFiltered =
@@ -185,27 +203,47 @@ export default function Index({
                 <label htmlFor="fleet-pickup" className="text-xs font-semibold text-textMuted">
                     {t('Pickup date')}
                 </label>
-                <input
-                    id="fleet-pickup"
-                    type="date"
-                    value={pickupDate}
-                    min={today}
-                    onChange={(e) => setPickupDate(e.target.value)}
-                    className="rounded-interactive border border-border bg-surface px-3 py-2 text-text focus:border-focusRing focus:outline-none focus:ring-focusRing"
-                />
+                <div className="flex gap-2">
+                    <input
+                        id="fleet-pickup"
+                        type="date"
+                        value={pickupDate}
+                        min={today}
+                        onChange={(e) => setPickupDate(e.target.value)}
+                        className="rounded-interactive border border-border bg-surface px-3 py-2 text-text focus:border-focusRing focus:outline-none focus:ring-focusRing"
+                    />
+                    <input
+                        id="fleet-pickup-time"
+                        type="time"
+                        value={pickupTime}
+                        onChange={(e) => setPickupTime(e.target.value)}
+                        aria-label={t('Pickup time')}
+                        className="rounded-interactive border border-border bg-surface px-3 py-2 text-text focus:border-focusRing focus:outline-none focus:ring-focusRing"
+                    />
+                </div>
             </div>
             <div className="flex flex-col gap-1">
                 <label htmlFor="fleet-return" className="text-xs font-semibold text-textMuted">
                     {t('Return date')}
                 </label>
-                <input
-                    id="fleet-return"
-                    type="date"
-                    value={returnDate}
-                    min={pickupDate || today}
-                    onChange={(e) => setReturnDate(e.target.value)}
-                    className="rounded-interactive border border-border bg-surface px-3 py-2 text-text focus:border-focusRing focus:outline-none focus:ring-focusRing"
-                />
+                <div className="flex gap-2">
+                    <input
+                        id="fleet-return"
+                        type="date"
+                        value={returnDate}
+                        min={pickupDate || today}
+                        onChange={(e) => setReturnDate(e.target.value)}
+                        className="rounded-interactive border border-border bg-surface px-3 py-2 text-text focus:border-focusRing focus:outline-none focus:ring-focusRing"
+                    />
+                    <input
+                        id="fleet-return-time"
+                        type="time"
+                        value={returnTime}
+                        onChange={(e) => setReturnTime(e.target.value)}
+                        aria-label={t('Return time')}
+                        className="rounded-interactive border border-border bg-surface px-3 py-2 text-text focus:border-focusRing focus:outline-none focus:ring-focusRing"
+                    />
+                </div>
             </div>
             <button
                 type="button"

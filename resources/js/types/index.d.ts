@@ -41,6 +41,9 @@ export interface Vehicle {
     /** Optional spec fields — only present once a vehicle actually carries them. The detail page's specs grid hides a cell when the value is unavailable. */
     air_conditioning?: boolean | null;
     door_count?: number | null;
+    /** Approved-review count + average rating, batch-loaded by the fleet/homepage query's withReviewSummary scope (rule 8 — one aggregate subquery for the whole page). Absent when the reviews plugin is disabled or no approved reviews exist. */
+    reviews_count?: number;
+    reviews_avg_rating?: number | null;
 }
 
 export interface VehicleImage {
