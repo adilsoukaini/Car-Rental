@@ -5,7 +5,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { Head, Link, usePage } from '@inertiajs/react';
 import {
     Calendar, Car, Clock, FileText, Hand, Headphones,
-    Lock, MapPin, Search, Shield,
+    Lock, MapPin, Search, Shield, ShieldCheck,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -191,6 +191,34 @@ export default function Home({
                             </div>
                         ))}
                     </div>
+                </div>
+            </section>
+
+            {/* Trust strip — the DiscoverCars/Hertz pattern: small icons,
+                muted text, centered, one line under the value props. Real,
+                honest signals only (secure payment, verified fleet, airport
+                pickup, 24/7 assistance). */}
+            <section className="border-y border-border bg-background px-4 py-6 sm:px-6 lg:px-8">
+                <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm text-textMuted">
+                    <span className="flex items-center gap-2">
+                        <Lock className="h-4 w-4 text-primary" aria-hidden="true" />
+                        {t('Secure payment')}
+                    </span>
+                    <span className="text-border" aria-hidden="true">·</span>
+                    <span className="flex items-center gap-2">
+                        <ShieldCheck className="h-4 w-4 text-primary" aria-hidden="true" />
+                        {t('Verified vehicles')}
+                    </span>
+                    <span className="text-border" aria-hidden="true">·</span>
+                    <span className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-primary" aria-hidden="true" />
+                        {t('Airport pickup')}
+                    </span>
+                    <span className="text-border" aria-hidden="true">·</span>
+                    <span className="flex items-center gap-2">
+                        <Headphones className="h-4 w-4 text-primary" aria-hidden="true" />
+                        {t('24/7 assistance')}
+                    </span>
                 </div>
             </section>
 

@@ -3,6 +3,7 @@ import SiteLogo from '@/Components/SiteLogo';
 import { PageProps } from '@/types';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Link, router, usePage } from '@inertiajs/react';
+import { MessageCircle } from 'lucide-react';
 import { PropsWithChildren, useEffect, useState } from 'react';
 
 /**
@@ -103,7 +104,6 @@ export default function PublicLayout({ children }: PropsWithChildren) {
     const currencyBadge = (
         <span
             className="flex items-center rounded-pill border border-border px-2 py-1 text-xs font-semibold text-textMuted"
-            role="text"
             aria-label="Currency: MAD"
         >
             MAD
@@ -217,12 +217,12 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                 >
                     <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
                         <p className="text-sm text-textMuted">
-                            {t('Complete your profile')} —{' '}
+                            {t('Skip the line at pickup')} —{' '}
                             <Link
                                 href={route('profile.edit')}
                                 className="font-semibold text-primary underline underline-offset-2 hover:text-primaryHover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing"
                             >
-                                {t('add your driver’s license to access all vehicle categories')}
+                                {t('pre-verify your driver’s license (optional)')}
                             </Link>
                         </p>
                         <button
@@ -252,6 +252,9 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                     <Link href={route('vehicles.index')} className="text-sm text-onPrimary/80 transition-colors hover:text-onPrimary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-onPrimary">
                         {t('Our Fleet')}
                     </Link>
+                    <Link href={route('info.driving-in-morocco')} className="text-sm text-onPrimary/80 transition-colors hover:text-onPrimary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-onPrimary">
+                        {t('Driving in Morocco')}
+                    </Link>
                 </div>
 
                 <div className="flex flex-col gap-3">
@@ -279,6 +282,20 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                     © {new Date().getFullYear()} {siteIdentity?.siteName ?? 'Car Rental'}. {t('All rights reserved.')}
                 </div>
             </footer>
+
+            {/* Floating WhatsApp button — fixed bottom-right, the way Moroccan
+                customers actually reach out (Medloc's #1 pattern). Uses
+                WhatsApp brand green; sits above the cookie banner (bottom-20). */}
+            <a
+                href="https://wa.me/212600000000"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={t('Chat on WhatsApp')}
+                title={t('Chat on WhatsApp')}
+                className="fixed bottom-20 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-green-500 text-white shadow-raised transition-colors hover:bg-green-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing"
+            >
+                <MessageCircle className="h-6 w-6" aria-hidden="true" />
+            </a>
 
             {/* Cookie consent banner — fixed bottom, shown on every
                 storefront page until the visitor accepts (localStorage). */}

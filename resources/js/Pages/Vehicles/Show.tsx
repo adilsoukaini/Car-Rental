@@ -8,7 +8,7 @@ import Breadcrumbs from '@/Components/Breadcrumbs';
 import EmptyState from '@/Components/EmptyState';
 import Text from '@/Components/Text';
 import VehicleRecommendations from '@/Widgets/VehicleRecommendations';
-import { Car, Check, Cog, DoorOpen, Gauge, Star, Users, Wind } from 'lucide-react';
+import { Car, Check, ChevronDown, Cog, DoorOpen, Gauge, Info, MapPin, Plane, ShieldCheck, Star, Users, Wind } from 'lucide-react';
 import { FormEventHandler, useState } from 'react';
 
 /**
@@ -36,6 +36,36 @@ const INCLUDED_FEATURES = [
     '24/7 assistance',
     'Flexible cancellation (full refund up to 7 days before)',
 ];
+
+// What the customer must present at pickup. These are standard industry
+// requirements (checked by the rental agent on-site, not online) — mirrors
+// config('driver-verification.minimum_age_by_category').
+const RENTAL_REQUIREMENTS = [
+    'Valid driver\'s license held for at least 1 year',
+    'Original passport or national ID card',
+    'Credit card in the driver\'s name for the deposit',
+];
+
+const MIN_AGE_BY_CATEGORY: Record<string, number> = {
+    economy: 21,
+    suv: 21,
+    van: 21,
+    luxury: 25,
+};
+
+// Placeholder protections/insurance upsell — displayed at the counter, not
+// charged here. The real insurance add-on plugin (CDW/SCDW buy-down, theft,
+// glass, PAI) is a larger feature; this signals the option exists without
+// building the upsell engine yet (DEEP-ANALYSIS Week-1 trust fix).
+const PROTECTIONS = [
+    'Collision damage waiver (zero deductible) — from 150 DH/day',
+    'Theft and vandalism insurance — from 80 DH/day',
+    'Full deductible buy-back — from 200 DH/day',
+] as const;
+
+/** True when a location is an airport (seeded names carry "Airport"/"Aéroport"). */
+const isAirportLocation = (name: string | null | undefined): boolean =>
+    name ? /airport|aéroport/i.test(name) : false;
 
 const formatLabel = (value: string): string =>
     value.charAt(0).toUpperCase() + value.slice(1);
@@ -68,6 +98,7 @@ export default function Show({
 
     const [pickupAt, setPickupAt] = useState(urlPickupAt ? toDateTimeLocal(urlPickupAt) : tomorrow);
     const [returnAt, setReturnAt] = useState(urlReturnAt ? toDateTimeLocal(urlReturnAt) : dayAfter);
+    const [requirementsOpen, setRequirementsOpen] = useState(false);
     const { t } = useTranslation();
 
     if (!vehicle) {
@@ -189,6 +220,77 @@ export default function Show({
                             </div>
                         </div>
 
+                        {/* Standard rental requirements — disclosed here (and at
+                            checkout), verified by the rental agent at pickup.
+                            Clear but not alarming: this is standard industry
+                            practice, not a blocker. */}
+                        <div className="rounded-container border border-border bg-surface p-6 shadow-resting">
+                            <button
+                                type="button"
+                                onClick={() => setRequirementsOpen((open) => !open)}
+                                aria-expanded={requirementsOpen}
+                                aria-controls="rental-requirements"
+                                className="flex w-full items-center justify-between gap-3 rounded-interactive text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing"
+                            >
+                                <span className="flex items-center gap-2">
+                                    <Info className="h-5 w-5 text-textMuted" aria-hidden="true" />
+                                    <span className="font-display text-lg font-semibold text-text">
+                                        {t('Requirements for this vehicle')}
+                                    </span>
+                                </span>
+                                <ChevronDown
+                                    className={`h-5 w-5 text-textMuted transition-transform ${requirementsOpen ? 'rotate-180' : ''}`}
+                                    aria-hidden="true"
+                                />
+                            </button>
+                            {requirementsOpen && (
+                                <ul id="rental-requirements" className="mt-4 space-y-3">
+                                    <li className="flex items-start gap-3">
+                                        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                            <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden="true" />
+                                        </span>
+                                        <span className="text-sm text-text">
+                                            {t('Minimum age')}:{' '}
+                                            <strong>{MIN_AGE_BY_CATEGORY[vehicle.category] ?? 21}</strong>
+                                        </span>
+                                    </li>
+                                    {RENTAL_REQUIREMENTS.map((requirement) => (
+                                        <li key={requirement} className="flex items-start gap-3">
+                                            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                                <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden="true" />
+                                            </span>
+                                            <span className="text-sm text-text">{t(requirement)}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+
+                        {/* Placeholder protections/insurance upsell — signals we
+                            offer CDW/SCDW buy-down + theft coverage (every
+                            competitor does) without building the full insurance
+                            plugin yet. Display-only; these are settled at the
+                            counter. */}
+                        <div className="rounded-container border border-border bg-surface p-6 shadow-resting">
+                            <div className="flex items-center gap-2">
+                                <ShieldCheck className="h-5 w-5 text-primary" aria-hidden="true" />
+                                <Text variant="h2">{t('Additional protections (available at pickup)')}</Text>
+                            </div>
+                            <ul className="mt-4 space-y-3">
+                                {PROTECTIONS.map((protection) => (
+                                    <li key={protection} className="flex items-start gap-3">
+                                        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                            <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden="true" />
+                                        </span>
+                                        <span className="text-sm text-text">{t(protection)}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                            <p className="mt-4 text-xs text-textMuted">
+                                {t('These options are available at the counter when you pick up your vehicle.')}
+                            </p>
+                        </div>
+
                         <div className="rounded-container border border-border bg-surface p-6 shadow-resting">
                             <Text variant="h2">{t('Book')}</Text>
                             <form onSubmit={submit} className="mt-4 space-y-4">
@@ -261,6 +363,22 @@ export default function Show({
                                     <span className="font-semibold text-text">{reviewsData.averageRating.toFixed(1)}</span>
                                     <span>({reviewsData.reviewCount} {t('reviews')})</span>
                                 </p>
+                            ) : null}
+
+                            {vehicle.location ? (
+                                <p className="mt-3 flex items-center gap-1.5 text-sm text-textMuted">
+                                    <MapPin className="h-4 w-4 text-primary" aria-hidden="true" />
+                                    <span>
+                                        {t('Pickup location')}: <span className="font-medium text-text">{vehicle.location.name}</span>
+                                    </span>
+                                </p>
+                            ) : null}
+
+                            {vehicle.location && isAirportLocation(vehicle.location.name) ? (
+                                <div className="mt-3 flex items-start gap-2 rounded-interactive border border-border bg-background p-3 text-sm text-text">
+                                    <Plane className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                                    <span>{t('Airport pickup available — your vehicle will be waiting at arrivals. Counter open 24/7.')}</span>
+                                </div>
                             ) : null}
                         </div>
 

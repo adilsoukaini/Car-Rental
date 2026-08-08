@@ -66,6 +66,17 @@ class VehicleSeeder extends Seeder
         ['Renault', 'Trafic', 2022, 'van', 550, 8, 'manual', 'diesel', 47000, 'available'],
         ['Peugeot', 'Expert', 2021, 'van', 520, 9, 'manual', 'diesel', 61000, 'maintenance'],
         ['Volkswagen', 'Transporter', 2022, 'van', 580, 9, 'manual', 'diesel', 33000, 'available'],
+
+        // Popular Moroccan utility/work vehicles — Dacia/Fiat/Renault commercial vans.
+        // Appended at the END so existing entries keep their index-derived
+        // license plates (the seeder is idempotent on license_plate — inserting
+        // mid-array would shift every subsequent plate and create duplicates on
+        // re-seed against an already-seeded dev DB).
+        ['Dacia', 'Dokker', 2021, 'van', 480, 5, 'manual', 'diesel', 55000, 'available'],
+        ['Renault', 'Express', 2022, 'van', 460, 5, 'manual', 'diesel', 41000, 'available'],
+        ['Fiat', 'Doblo', 2021, 'van', 470, 5, 'manual', 'diesel', 58000, 'available'],
+        // Economy sedan — very common as a Moroccan rental/taxi
+        ['Dacia', 'Logan', 2022, 'economy', 230, 5, 'manual', 'diesel', 34000, 'available'],
     ];
 
     public function run(): void

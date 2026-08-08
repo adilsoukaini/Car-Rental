@@ -70,6 +70,12 @@ Route::get('/theme-test', function () {
     ]);
 })->name('theme-test');
 
+// "Conduire au Maroc" — French informational/SEO page (DEEP-ANALYSIS Week-2
+// trust + organic acquisition). Static content page; no server data needed.
+Route::get('/conduire-au-maroc', function () {
+    return Inertia::render('Info/DrivingInMorocco');
+})->name('info.driving-in-morocco');
+
 // Search autocomplete — rate-limited so the debounced suggestions fetch can't
 // be hammered. Returns a JSON array of at most 5 matching available vehicles.
 Route::get('/search/suggestions', [SearchController::class, 'suggestions'])
