@@ -1,5 +1,7 @@
 import { Vehicle } from '@/types';
+import { useCurrency } from '@/hooks/useCurrency';
 import { useTranslation } from '@/hooks/useTranslation';
+import { convertPrice, formatCurrency } from '@/lib/exchangeRates';
 import { Calendar, Check, Lock, MapPin } from 'lucide-react';
 import VehiclePlaceholderIcon from '@/Components/VehiclePlaceholderIcon';
 import {
@@ -43,6 +45,10 @@ export default function CheckoutSummary({
     processing,
 }: CheckoutSummaryProps) {
     const { t } = useTranslation();
+    const { currency } = useCurrency();
+    // All stored prices are in MAD — convert for display only. The charge is
+    // still in MAD (surfaced to the customer via the note below).
+    const fmt = (amountMAD: number) => formatCurrency(convertPrice(amountMAD, currency), currency);
     return (
         <div className="overflow-hidden rounded-container border border-border bg-surface shadow-raised">
             {/* Vehicle image + name */}
@@ -112,31 +118,24 @@ export default function CheckoutSummary({
                 <h3 className="mb-2 text-sm font-semibold text-text">{t('Price details')}</h3>
                 <div className="flex justify-between text-sm">
                     <span className="text-textMuted">
-                        {priceBreakdown.dailyRate.toFixed(0)} DH × {priceBreakdown.days} {priceBreakdown.days > 1 ? t('days') : t('day')}
+                        {fmt(priceBreakdown.dailyRate)} × {priceBreakdown.days} {priceBreakdown.days > 1 ? t('days') : t('day')}
                     </span>
                     <span className="text-text">
-                        {(priceBreakdown.dailyRate * priceBreakdown.days).toFixed(0)} DH
+                        {fmt(priceBreakdown.dailyRate * priceBreakdown.days)}
                     </span>
                 </div>
                 {priceBreakdown.discountPercent > 0 && (
                     <div className="flex justify-between text-sm text-success">
                         <span>{t('Discount')} ({priceBreakdown.discountPercent}%)</span>
                         <span>
-                            -
-                            {(
-                                (priceBreakdown.dailyRate *
-                                    priceBreakdown.days *
-                                    priceBreakdown.discountPercent) /
-                                100
-                            ).toFixed(0)}{' '}
-                            DH
+                            -{fmt((priceBreakdown.dailyRate * priceBreakdown.days * priceBreakdown.discountPercent) / 100)}
                         </span>
                     </div>
                 )}
                 {priceBreakdown.promoDiscount > 0 && (
                     <div className="flex justify-between text-sm text-success">
                         <span>{t('Promo code')}</span>
-                        <span>-{priceBreakdown.promoDiscount.toFixed(0)} DH</span>
+                        <span>-{fmt(priceBreakdown.promoDiscount)}</span>
                     </div>
                 )}
                 <div className="flex justify-between text-sm">
@@ -148,7 +147,7 @@ export default function CheckoutSummary({
                 </div>
                 <div className="flex justify-between text-sm">
                     <span className="text-textMuted">{t('Deposit')}</span>
-                    <span className="text-text">{priceBreakdown.depositAmount.toFixed(0)} DH</span>
+                    <span className="text-text">{fmt(priceBreakdown.depositAmount)}</span>
                 </div>
             </div>
 
@@ -157,9 +156,11 @@ export default function CheckoutSummary({
                 <div className="flex items-baseline justify-between">
                     <span className="text-sm text-textMuted">{t('Total')}</span>
                     <span className="font-display text-3xl font-bold text-text">
-                        {priceBreakdown.totalPrice.toFixed(0)} DH
+                        {fmt(priceBreakdown.totalPrice)}
                     </span>
                 </div>
+                {/* Display currency note — the charge is always in MAD. */}
+                <p className="mt-1 text-xs text-textMuted">{t('Payment in MAD')}</p>
                 <p className="mt-1 text-xs text-textMuted">{t('Taxes included')}</p>
                 <button
                     type="submit"

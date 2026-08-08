@@ -1,12 +1,15 @@
 <?php
 
+use App\Core\Support\FilterRegistry;
+use App\Filament\Pages\BulkVehicleImport;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SearchController;
+use App\Http\Controllers\UserPreferenceController;
 use App\Models\HomepageContent;
-use App\Core\Support\FilterRegistry;
 use App\Models\Location;
 use App\Models\Vehicle;
+use GuzzleHttp\Client;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
@@ -93,10 +96,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    // Logged-in currency preference — POST /preferences/currency with
+    // { currency: MAD|EUR|USD }. The storefront fires this optimistically
+    // when a signed-in user changes currency in the header dropdown.
+    Route::post('/preferences/currency', [UserPreferenceController::class, 'updateCurrency'])->name('preferences.currency');
 });
 
 require __DIR__.'/auth.php';
-Route::get('/admin/vehicle-import-template', [App\Filament\Pages\BulkVehicleImport::class, 'downloadTemplate'])
+Route::get('/admin/vehicle-import-template', [BulkVehicleImport::class, 'downloadTemplate'])
     ->middleware(['web', 'auth'])->name('filament.admin.vehicle-import-template');
 
 // Health check — reports status of all external dependencies. Used by
@@ -111,16 +118,20 @@ Route::get('/health', function () {
     ];
 
     // Database
-    try { DB::connection()->getPdo(); } catch (\Throwable $e) {
-        $checks['database'] = 'error: ' . $e->getMessage();
+    try {
+        DB::connection()->getPdo();
+    } catch (Throwable $e) {
+        $checks['database'] = 'error: '.$e->getMessage();
     }
 
     // Meilisearch
     try {
-        $meili = new \GuzzleHttp\Client(['timeout' => 2]);
+        $meili = new Client(['timeout' => 2]);
         $resp = $meili->get('http://localhost:7700/health');
-        if ($resp->getStatusCode() !== 200) $checks['meilisearch'] = 'unhealthy';
-    } catch (\Throwable) {
+        if ($resp->getStatusCode() !== 200) {
+            $checks['meilisearch'] = 'unhealthy';
+        }
+    } catch (Throwable) {
         $checks['meilisearch'] = 'unreachable';
     }
 
@@ -128,10 +139,13 @@ Route::get('/health', function () {
     $checks['stripe'] = (config('payments-stripe.secret_key') ?: env('STRIPE_SECRET')) ? 'configured' : 'missing';
 
     // Storage
-    try { Storage::disk('public')->exists('.'); } catch (\Throwable $e) {
-        $checks['storage'] = 'error: ' . $e->getMessage();
+    try {
+        Storage::disk('public')->exists('.');
+    } catch (Throwable $e) {
+        $checks['storage'] = 'error: '.$e->getMessage();
     }
 
-    $allOk = !array_filter($checks, fn($v) => $v !== 'ok' && $v !== 'configured');
+    $allOk = ! array_filter($checks, fn ($v) => $v !== 'ok' && $v !== 'configured');
+
     return response()->json(['status' => $allOk ? 'healthy' : 'degraded', 'checks' => $checks]);
 })->name('health');

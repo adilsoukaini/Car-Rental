@@ -1,6 +1,8 @@
 import CheckoutLayout from '@/Layouts/CheckoutLayout';
 import { PageProps, Vehicle } from '@/types';
+import { useCurrency } from '@/hooks/useCurrency';
 import { useTranslation } from '@/hooks/useTranslation';
+import { convertPrice, formatCurrency } from '@/lib/exchangeRates';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { FormEventHandler, useMemo, useState } from 'react';
 import { AlertCircle, Lock } from 'lucide-react';
@@ -47,6 +49,7 @@ export default function Checkout({
 }) {
     const { auth, activeLayoutVariants } = usePage<PageProps>().props;
     const { t } = useTranslation();
+    const { currency } = useCurrency();
     const user = auth.user;
 
     // Info-only minimum-age disclosure: when the logged-in user's date of
@@ -219,7 +222,7 @@ export default function Checkout({
                             <div>
                                 <p className="text-xs text-textMuted">{t('Total')}</p>
                                 <p className="font-display text-lg font-bold text-text">
-                                    {priceBreakdown.totalPrice.toFixed(0)} DH
+                                    {formatCurrency(convertPrice(priceBreakdown.totalPrice, currency), currency)}
                                 </p>
                             </div>
                             <button

@@ -2,7 +2,9 @@ import PublicLayout from '@/Layouts/PublicLayout';
 import { LayoutSlot } from '@/layoutComponentRegistry';
 import { ReviewsData } from '@/Widgets/VehicleReviewsCardList';
 import { Vehicle, VehicleAttribute, VehicleGalleryImage } from '@/types';
+import { useCurrency } from '@/hooks/useCurrency';
 import { useTranslation } from '@/hooks/useTranslation';
+import { convertPrice, formatCurrency } from '@/lib/exchangeRates';
 import { Head, Link, router } from '@inertiajs/react';
 import Breadcrumbs from '@/Components/Breadcrumbs';
 import EmptyState from '@/Components/EmptyState';
@@ -100,6 +102,7 @@ export default function Show({
     const [returnAt, setReturnAt] = useState(urlReturnAt ? toDateTimeLocal(urlReturnAt) : dayAfter);
     const [requirementsOpen, setRequirementsOpen] = useState(false);
     const { t } = useTranslation();
+    const { currency } = useCurrency();
 
     if (!vehicle) {
         return (
@@ -431,7 +434,8 @@ export default function Show({
 
                         <div className="rounded-container border border-border bg-surface p-6 shadow-raised">
                             <p className="font-mono text-3xl font-bold text-text">
-                                {price} <span className="text-base font-semibold text-textMuted">{t('DH / day')}</span>
+                                {formatCurrency(convertPrice(Number(vehicle.daily_rate), currency), currency)}{' '}
+                                <span className="text-base font-semibold text-textMuted">{t('/ day')}</span>
                             </p>
 
                             <Link

@@ -1,4 +1,5 @@
 import CookieBanner from '@/Components/CookieBanner';
+import CurrencySelector from '@/Components/CurrencySelector';
 import SiteLogo from '@/Components/SiteLogo';
 import { PageProps } from '@/types';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -127,20 +128,6 @@ export default function PublicLayout({ children }: PropsWithChildren) {
         </div>
     );
 
-    // Static "MAD" badge — signals international readiness without inventing a
-    // conversion engine (full multi-currency switching is a larger, deferred
-    // feature; mirror the ?lang= whitelist pattern when it's built). On desktop
-    // it only survives inside the authenticated profile dropdown; this badge is
-    // what the mobile hamburger renders (guests have no profile menu).
-    const currencyBadge = (
-        <span
-            className="flex items-center rounded-pill border border-border px-2 py-1 text-xs font-semibold text-textMuted"
-            aria-label="Currency: MAD"
-        >
-            MAD
-        </span>
-    );
-
     // Authenticated profile dropdown — a circular avatar (User icon, or the
     // user's initial) opening a Headless UI Menu. Replaces the "My Account" +
     // "Log Out" text links and the header-bar language/currency controls:
@@ -246,9 +233,7 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                                 <Wallet className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                                 {t('Currency')}
                             </span>
-                            <span className="rounded-pill border border-border px-2 py-1 text-xs font-semibold text-textMuted">
-                                MAD
-                            </span>
+                            <CurrencySelector mode="inline" />
                         </div>
                     </div>
 
@@ -313,6 +298,7 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                                 >
                                     {t('Sign Up')}
                                 </Link>
+                                <CurrencySelector />
                                 {localeSwitcher}
                             </>
                         )}
@@ -363,7 +349,7 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                             </>
                         )}
                         <div className="flex items-center gap-1 pt-2">
-                            {currencyBadge}
+                            <CurrencySelector align="left" />
                             {localeSwitcher}
                         </div>
                     </nav>

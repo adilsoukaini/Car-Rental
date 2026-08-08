@@ -54,6 +54,13 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'locale' => app()->getLocale(),
+            // Logged-in user's saved display-currency preference (stored in
+            // the users.metadata JSON column — rule 6), or null for guests /
+            // users who never chose one. The frontend useCurrency hook falls
+            // back to localStorage, then MAD, when this is null. Mirrors the
+            // locale prop: guests get a per-device (localStorage) preference,
+            // logged-in users get their persisted cross-session preference.
+            'currency' => $user instanceof User ? ($user->metadata['currency'] ?? null) : null,
             'auth' => [
                 'user' => $user,
             ],

@@ -1,6 +1,8 @@
 import VehiclePlaceholderIcon from '@/Components/VehiclePlaceholderIcon';
 import { Vehicle } from '@/types';
+import { useCurrency } from '@/hooks/useCurrency';
 import { useTranslation } from '@/hooks/useTranslation';
+import { convertPrice, formatCurrency } from '@/lib/exchangeRates';
 import { Link } from '@inertiajs/react';
 import { Cog, Gauge, Star, Users } from 'lucide-react';
 
@@ -29,6 +31,7 @@ export default function HorizontalSplit({
     headingLevel?: 'h2' | 'h3';
 }) {
     const { t } = useTranslation();
+    const { currency } = useCurrency();
     const HeadingTag = headingLevel;
 
     // Carry any pickup/return dates (and optional 30-min times, GAP-1) from
@@ -110,7 +113,8 @@ export default function HorizontalSplit({
                 </div>
 
                 <p className="mt-3 font-display text-xl font-bold text-text">
-                    {Number(vehicle.daily_rate).toFixed(0)} {t('DH / day')}
+                    {formatCurrency(convertPrice(Number(vehicle.daily_rate), currency), currency)}{' '}
+                    {t('/ day')}
                 </p>
 
                 <span className="mt-3 w-full rounded-interactive bg-primary py-2.5 text-center text-sm font-semibold text-onPrimary group-hover:bg-primaryHover">

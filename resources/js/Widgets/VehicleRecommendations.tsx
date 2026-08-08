@@ -1,5 +1,7 @@
 import VehiclePlaceholderIcon from '@/Components/VehiclePlaceholderIcon';
+import { useCurrency } from '@/hooks/useCurrency';
 import { useTranslation } from '@/hooks/useTranslation';
+import { convertPrice, formatCurrency } from '@/lib/exchangeRates';
 import { Link } from '@inertiajs/react';
 
 /**
@@ -28,6 +30,7 @@ function capitalize(value: string): string {
  */
 export default function VehicleRecommendations({ vehicles }: { vehicles: VehicleRecommendation[] }) {
     const { t } = useTranslation();
+    const { currency } = useCurrency();
 
     if (!vehicles || vehicles.length === 0) {
         return null;
@@ -79,8 +82,8 @@ export default function VehicleRecommendations({ vehicles }: { vehicles: Vehicle
                             </h3>
 
                             <p className="mt-2 font-display text-lg font-bold text-text">
-                                {Number(v.daily_rate).toFixed(0)}{' '}
-                                <span className="text-xs font-semibold text-textMuted">DH / jour</span>
+                                {formatCurrency(convertPrice(Number(v.daily_rate), currency), currency)}{' '}
+                                <span className="text-xs font-semibold text-textMuted">{t('/ day')}</span>
                             </p>
                         </div>
                     </Link>
