@@ -4,6 +4,7 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SearchController;
 use App\Models\HomepageContent;
+use App\Core\Support\FilterRegistry;
 use App\Models\Location;
 use App\Models\Vehicle;
 use Illuminate\Support\Facades\DB;
@@ -18,11 +19,11 @@ use Inertia\Inertia;
 // operator-editable without a deploy. Passed only here, not shared globally,
 // since no other page consumes it.
 Route::get('/', function () {
+    $featuredQuery = Vehicle::where('status', 'available')->latest()->take(4);
+    $featuredQuery = FilterRegistry::apply('vehicle.listQuery', $featuredQuery);
+
     return Inertia::render('Home', [
-        'featuredVehicles' => Vehicle::where('status', 'available')
-            ->latest()
-            ->take(4)
-            ->get(),
+        'featuredVehicles' => $featuredQuery->get(),
         'homepageContent' => HomepageContent::current()->only([
             'hero_title',
             'hero_subtitle',
