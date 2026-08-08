@@ -7,6 +7,7 @@ use App\Core\Events\BookingConfirmed;
 use App\Core\Events\VehicleCheckedOut;
 use App\Core\Events\VehicleReturned;
 use App\Core\Filters\VehicleCategoryFilter;
+use App\Core\Filters\VehicleLocationFilter;
 use App\Core\Filters\VehicleTransmissionFilter;
 use App\Core\Listeners\SendBookingCancelledEmail;
 use App\Core\Listeners\SendBookingCheckedOutEmail;
@@ -84,6 +85,7 @@ class AppServiceProvider extends ServiceProvider
         // its own ServiceProvider, never by editing this file.
         VehicleFilterRegistry::register(new VehicleCategoryFilter);
         VehicleFilterRegistry::register(new VehicleTransmissionFilter);
+        VehicleFilterRegistry::register(new VehicleLocationFilter);
 
         // Fleet-listing sorts — same rationale as the filters above.
         VehicleSortRegistry::register(new VehiclePriceAscending);

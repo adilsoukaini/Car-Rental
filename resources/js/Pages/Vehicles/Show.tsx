@@ -56,8 +56,18 @@ export default function Show({
     const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
     const dayAfter = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
 
-    const [pickupAt, setPickupAt] = useState(tomorrow);
-    const [returnAt, setReturnAt] = useState(dayAfter);
+    // Pre-fill from ?pickup_at=...&return_at=... when the user clicked through
+    // from the fleet page with dates selected. The vehicle card links send
+    // date-only values (YYYY-MM-DD); the form inputs are datetime-local, so a
+    // date-only value is padded to midnight (T00:00) to stay a valid value.
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlPickupAt = urlParams.get('pickup_at');
+    const urlReturnAt = urlParams.get('return_at');
+    const toDateTimeLocal = (value: string): string =>
+        value.length === 10 ? `${value}T00:00` : value;
+
+    const [pickupAt, setPickupAt] = useState(urlPickupAt ? toDateTimeLocal(urlPickupAt) : tomorrow);
+    const [returnAt, setReturnAt] = useState(urlReturnAt ? toDateTimeLocal(urlReturnAt) : dayAfter);
     const { t } = useTranslation();
 
     if (!vehicle) {

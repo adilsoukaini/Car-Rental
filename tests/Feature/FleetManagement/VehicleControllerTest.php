@@ -121,6 +121,116 @@ class VehicleControllerTest extends TestCase
             ->where('activeFilters.transmission', 'automatic'));
     }
 
+    public function test_index_filters_by_location_city(): void
+    {
+        $casablanca = Location::factory()->create(['city' => 'Casablanca']);
+        $fes = Location::factory()->create(['city' => 'Fes']);
+        $toyota = Vehicle::factory()->create([
+            'status' => 'available',
+            'make' => 'Toyota',
+            'location_id' => $casablanca->id,
+        ]);
+        Vehicle::factory()->create([
+            'status' => 'available',
+            'make' => 'Dacia',
+            'location_id' => $fes->id,
+        ]);
+
+        $response = $this->get('/vehicles?location=Casablanca');
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Vehicles/Index')
+            ->has('vehicles.data', 1)
+            // The joined `locations` row must not clobber the vehicles' own
+            // columns (PDO resolves duplicate names like `id` to the last
+            // one seen) — this assertion guards the `select('vehicles.*')`
+            // in VehicleLocationFilter::apply().
+            ->where('vehicles.data.0.id', $toyota->id)
+            ->where('vehicles.data.0.make', 'Toyota')
+            ->where('activeFilters.location', 'Casablanca'));
+    }
+
+    public function test_index_location_filter_is_case_insensitive(): void
+    {
+        $casablanca = Location::factory()->create(['city' => 'Casablanca']);
+        $fes = Location::factory()->create(['city' => 'Fes']);
+        Vehicle::factory()->create([
+            'status' => 'available',
+            'make' => 'Toyota',
+            'location_id' => $casablanca->id,
+        ]);
+        Vehicle::factory()->create([
+            'status' => 'available',
+            'make' => 'Dacia',
+            'location_id' => $fes->id,
+        ]);
+
+        // Hand-typed ?location=CASABLANCA must match the stored 'Casablanca'.
+        $response = $this->get('/vehicles?location=CASABLANCA');
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Vehicles/Index')
+            ->has('vehicles.data', 1)
+            ->where('vehicles.data.0.make', 'Toyota'));
+    }
+
+    public function test_index_location_filter_exposes_only_active_cities_as_options(): void
+    {
+        $casablanca = Location::factory()->create(['city' => 'Casablanca', 'is_active' => true]);
+        Location::factory()->create(['city' => 'Fes', 'is_active' => true]);
+        Location::factory()->create(['city' => 'Rabat', 'is_active' => false]);
+        // Pin the vehicle to an existing location so the Vehicle factory's
+        // default nested Location::factory() doesn't add a 3rd active city.
+        Vehicle::factory()->create(['status' => 'available', 'location_id' => $casablanca->id]);
+
+        $response = $this->get('/vehicles');
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Vehicles/Index')
+            ->where('availableFilters.2.id', 'location')
+            ->where('availableFilters.2.uiType', 'select')
+            ->has('availableFilters.2.options', 2)
+            ->where('availableFilters.2.options.0.value', 'Casablanca')
+            ->where('availableFilters.2.options.0.label', 'Casablanca')
+            ->where('availableFilters.2.options.1.value', 'Fes')
+            ->where('availableFilters.2.options.1.label', 'Fes'));
+    }
+
+    public function test_index_combines_location_with_category_filter(): void
+    {
+        $casablanca = Location::factory()->create(['city' => 'Casablanca']);
+        $fes = Location::factory()->create(['city' => 'Fes']);
+        Vehicle::factory()->create([
+            'status' => 'available',
+            'category' => 'suv',
+            'make' => 'Toyota',
+            'location_id' => $casablanca->id,
+        ]);
+        Vehicle::factory()->create([
+            'status' => 'available',
+            'category' => 'economy',
+            'make' => 'Dacia',
+            'location_id' => $casablanca->id,
+        ]);
+        Vehicle::factory()->create([
+            'status' => 'available',
+            'category' => 'suv',
+            'make' => 'Renault',
+            'location_id' => $fes->id,
+        ]);
+
+        $response = $this->get('/vehicles?location=Casablanca&category=suv');
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Vehicles/Index')
+            ->has('vehicles.data', 1)
+            ->where('vehicles.data.0.make', 'Toyota'));
+    }
+
     public function test_index_combines_search_and_filters(): void
     {
         Vehicle::factory()->create(['status' => 'available', 'category' => 'suv', 'make' => 'Toyota', 'model' => 'RAV4']);
@@ -202,11 +312,13 @@ class VehicleControllerTest extends TestCase
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
             ->component('Vehicles/Index')
-            ->has('availableFilters', 2)
+            ->has('availableFilters', 3)
             ->where('availableFilters.0.id', 'category')
             ->where('availableFilters.0.uiType', 'select')
             ->where('availableFilters.1.id', 'transmission')
             ->where('availableFilters.1.uiType', 'select')
+            ->where('availableFilters.2.id', 'location')
+            ->where('availableFilters.2.uiType', 'select')
             ->has('availableSorts', 3)
             ->where('availableSorts.0.id', 'price_asc')
             ->where('availableSorts.1.id', 'price_desc')
@@ -232,9 +344,10 @@ class VehicleControllerTest extends TestCase
         // means RefreshDatabase transactions aren't visible to the HTTP kernel
         // — the full-request assertions live in CatalogControlSettingsTest).
         $enabled = VehicleFilterRegistry::enabled();
-        $this->assertCount(1, $enabled);
+        $this->assertCount(2, $enabled);
         $this->assertArrayHasKey('category', $enabled);
         $this->assertArrayNotHasKey('transmission', $enabled);
+        $this->assertArrayHasKey('location', $enabled);
     }
 
     public function test_index_restores_a_re_enabled_filter(): void
@@ -262,7 +375,7 @@ class VehicleControllerTest extends TestCase
             ->component('Vehicles/Index')
             ->has('vehicles.data', 1)
             ->where('vehicles.data.0.transmission_type', 'automatic')
-            ->has('availableFilters', 2)
+            ->has('availableFilters', 3)
             ->where('activeFilters.transmission', 'automatic'));
     }
 

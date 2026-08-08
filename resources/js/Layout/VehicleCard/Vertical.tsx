@@ -30,9 +30,22 @@ export default function Vertical({
 }) {
     const { t } = useTranslation();
     const HeadingTag = headingLevel;
+
+    // Carry any pickup/return dates from the URL (set on the fleet page's date
+    // bar, or sent by a homepage search as ?pickup=...&return=...) through to
+    // the vehicle detail page as ?pickup_at=...&return_at=... so its booking
+    // form pre-fills. No dates in the URL (homepage featured cards, shared
+    // plain links) means no query string at all.
+    const dateParams = new URLSearchParams(window.location.search);
+    const pickup = dateParams.get('pickup') || '';
+    const returnDate = dateParams.get('return') || '';
+    const vehicleHref =
+        route('vehicles.show', vehicle.id) +
+        (pickup ? `?pickup_at=${pickup}${returnDate ? `&return_at=${returnDate}` : ''}` : '');
+
     return (
         <Link
-            href={route('vehicles.show', vehicle.id)}
+            href={vehicleHref}
             className="group flex flex-col overflow-hidden rounded-container border border-border bg-surface shadow-resting transition hover:shadow-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing"
         >
             <div className="relative h-48 w-full overflow-hidden bg-background">

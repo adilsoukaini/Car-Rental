@@ -10,6 +10,7 @@ import Text from '@/Components/Text';
 import { LayoutSlot } from '@/layoutComponentRegistry';
 import { Car } from 'lucide-react';
 import { AvailableFilter, AvailableSort } from '@/types/filters';
+import { useState } from 'react';
 
 /**
  * Clean URLs — Option A. The free-text search query is truncated to this length
@@ -63,6 +64,19 @@ export default function Index({
     const isSidebarLayout = fleetLayout === 'fleet-layout-sidebar';
     const { t } = useTranslation();
 
+    // Date bar state — initialized from the URL so a homepage search with
+    // ?pickup=...&return=... pre-fills here (date-only YYYY-MM-DD values,
+    // matching the homepage's type="date" inputs). The Update button writes
+    // them back into the URL, where they persist alongside search/filters and
+    // get carried through to the vehicle detail page by the card links.
+    const [pickupDate, setPickupDate] = useState(
+        () => new URLSearchParams(window.location.search).get('pickup') ?? '',
+    );
+    const [returnDate, setReturnDate] = useState(
+        () => new URLSearchParams(window.location.search).get('return') ?? '',
+    );
+    const today = new Date().toISOString().slice(0, 10);
+
     /**
      * The query params currently reflected in the URL. Read live from the
      * address bar (not from props) so a rapid sequence of filter changes —
@@ -115,6 +129,13 @@ export default function Index({
         applyParams({});
     };
 
+    const handleDateUpdate = () => {
+        // Only persist a valid range — both dates present and return on/after
+        // pickup. An invalid combo is simply not written to the URL.
+        if (!pickupDate || !returnDate || returnDate < pickupDate) return;
+        applyParams({ ...getUrlParams(), pickup: pickupDate, return: returnDate });
+    };
+
     const isFiltered =
         search !== '' ||
         currentSort !== '' ||
@@ -132,6 +153,49 @@ export default function Index({
         onSortChange: handleSortChange,
         onClear: clearFilters,
     };
+
+    // Date bar — pickup/return pickers + an Update button, shared by both
+    // layouts (it wraps onto its own rows in the narrow sidebar). Rendered
+    // above the search/filter controls. Dates persist in the URL as
+    // `?pickup=...&return=...`; the vehicle cards carry them through to the
+    // detail page as ?pickup_at=...&return_at=... when the user clicks one.
+    const dateBar = (
+        <div className="flex flex-wrap items-end gap-3">
+            <div className="flex flex-col gap-1">
+                <label htmlFor="fleet-pickup" className="text-xs font-semibold text-textMuted">
+                    {t('Pickup date')}
+                </label>
+                <input
+                    id="fleet-pickup"
+                    type="date"
+                    value={pickupDate}
+                    min={today}
+                    onChange={(e) => setPickupDate(e.target.value)}
+                    className="rounded-interactive border border-border bg-surface px-3 py-2 text-text focus:border-focusRing focus:outline-none focus:ring-focusRing"
+                />
+            </div>
+            <div className="flex flex-col gap-1">
+                <label htmlFor="fleet-return" className="text-xs font-semibold text-textMuted">
+                    {t('Return date')}
+                </label>
+                <input
+                    id="fleet-return"
+                    type="date"
+                    value={returnDate}
+                    min={pickupDate || today}
+                    onChange={(e) => setReturnDate(e.target.value)}
+                    className="rounded-interactive border border-border bg-surface px-3 py-2 text-text focus:border-focusRing focus:outline-none focus:ring-focusRing"
+                />
+            </div>
+            <button
+                type="button"
+                onClick={handleDateUpdate}
+                className="rounded-interactive bg-primary px-4 py-2 text-sm font-semibold text-onPrimary transition-colors hover:bg-primaryHover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing"
+            >
+                {t('Update')}
+            </button>
+        </div>
+    );
 
     // Shared results summary, card grid, empty state, and pagination — the
     // same blocks both layouts render, in the same order. `total` is the
@@ -232,6 +296,7 @@ export default function Index({
                             the sticky site header). */}
                         <aside className="w-full shrink-0 md:sticky md:top-24 md:w-1/4">
                             <div className="space-y-6 rounded-container border border-border bg-surface p-5 shadow-resting">
+                                {dateBar}
                                 <SearchBox
                                     defaultValue={search}
                                     onSearch={handleSearch}
@@ -250,6 +315,8 @@ export default function Index({
                 ) : (
                     <>
                         <div className="mb-6 space-y-4">
+                            {dateBar}
+
                             <SearchBox
                                 defaultValue={search}
                                 onSearch={handleSearch}
