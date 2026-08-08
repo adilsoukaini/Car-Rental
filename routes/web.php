@@ -4,6 +4,7 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SearchController;
 use App\Models\HomepageContent;
+use App\Models\Location;
 use App\Models\Vehicle;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -32,6 +33,9 @@ Route::get('/', function () {
             'cta_band_title',
             'cta_band_subtitle',
         ]),
+        'locations' => Location::where('is_active', true)
+            ->select('id', 'name', 'city')
+            ->get(),
     ]);
 })->name('home');
 
