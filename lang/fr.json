@@ -34,14 +34,12 @@
     "Wide Selection": "Large choix",
     "Best Prices": "Meilleurs prix",
     "24/7 Support": "Assistance 24/7",
-
     "Driver Verification": "Vérification conducteur",
     "Toggle menu": "Ouvrir le menu",
     "Your trusted partner for premium, hassle-free mobility.": "Votre partenaire de confiance pour une mobilité premium et sans tracas.",
     "Browse": "Explorer",
     "Account": "Compte",
     "All rights reserved.": "Tous droits réservés.",
-
     "Home": "Accueil",
     "NEW STANDARD": "NOUVEAU STANDARD",
     "Excellence in car rental.": "L'excellence de la location de voitures.",
@@ -73,7 +71,6 @@
     "Discover our vehicles": "Découvrir nos véhicules",
     "Browse all vehicles": "Voir tout le catalogue",
     "You might also like": "Vous aimerez peut-être aussi",
-
     "Try adjusting your filters or search terms.": "Essayez d'ajuster vos filtres ou vos termes de recherche.",
     "Check back soon — we update our fleet regularly.": "Revenez bientôt — nous mettons régulièrement à jour notre flotte.",
     "Clear all": "Tout effacer",
@@ -82,7 +79,6 @@
     "Min": "Min",
     "Max": "Max",
     "Clear search": "Effacer la recherche",
-
     "Vehicle not found": "Véhicule introuvable",
     "This vehicle may no longer be available.": "Ce véhicule n'est peut-être plus disponible.",
     "Back to fleet": "Retour à la flotte",
@@ -110,14 +106,12 @@
     "Diesel": "Diesel",
     "Electric": "Électrique",
     "Hybrid": "Hybride",
-
     "Finalize booking": "Finaliser la réservation",
     "This vehicle is no longer available for these dates.": "Ce véhicule n'est plus disponible pour ces dates.",
     "Go back and choose different dates": "Retourner et choisir d'autres dates",
     "Total": "Total",
     "Processing...": "Traitement...",
     "Pay now": "Payer maintenant",
-
     "Personal information": "Informations personnelles",
     "You are logged in as": "Vous êtes connecté(e) en tant que",
     "First name": "Prénom",
@@ -136,7 +130,6 @@
     "Promo code applied": "Code promo appliqué",
     "Enter promo code": "Entrez votre code promo",
     "This code is not valid or is inactive.": "Ce code n'est pas valide ou est inactif.",
-
     "Duration": "Durée",
     "day": "jour",
     "days": "jours",
@@ -149,7 +142,6 @@
     "Confirm and pay": "Confirmer et payer",
     "By confirming, you accept the terms and conditions": "En confirmant, vous acceptez les conditions générales",
     "Skip to content": "Aller au contenu",
-
     "Page not found": "Page non trouvée",
     "The page you're looking for doesn't exist": "La page que vous recherchez n'existe pas",
     "Server Error": "Erreur du serveur",
@@ -157,11 +149,9 @@
     "Back to homepage": "Retour à l'accueil",
     "We use cookies to improve your experience. By using our site, you agree to our use of cookies.": "Nous utilisons des cookies pour améliorer votre expérience. En utilisant notre site, vous acceptez notre utilisation des cookies.",
     "Accept": "Accepter",
-
     "Complete your profile": "Complétez votre profil",
     "add your driver’s license to access all vehicle categories": "ajoutez votre permis de conduire pour accéder à toutes les catégories de véhicules",
     "Dismiss": "Fermer",
-
     "Driver’s License": "Permis de conduire",
     "Not verified": "Non vérifié",
     "Verify now to access all vehicle categories.": "Vérifiez maintenant pour accéder à toutes les catégories de véhicules.",
@@ -175,7 +165,6 @@
     "Not provided": "Non fourni",
     "Submit a new verification to continue.": "Soumettez une nouvelle vérification pour continuer.",
     "Resubmit": "Soumettre à nouveau",
-
     "Add your driver’s license to access all vehicle categories.": "Ajoutez votre permis de conduire pour accéder à toutes les catégories de véhicules.",
     "Current status": "Statut actuel",
     "Pending review": "Examen en attente",
@@ -196,10 +185,8 @@
     "Back to profile": "Retour au profil",
     "You already have a verified verification. No further action is needed right now.": "Vous avez déjà une vérification vérifiée. Aucune action supplémentaire n'est nécessaire pour le moment.",
     "You already have a pending verification. No further action is needed right now.": "Vous avez déjà une vérification en attente. Aucune action supplémentaire n'est nécessaire pour le moment.",
-
     "Driver verification required": "Vérification du conducteur requise",
     "Verify your license": "Vérifier votre permis",
-
     "Log in": "Se connecter",
     "Password": "Mot de passe",
     "Remember me": "Se souvenir de moi",
@@ -219,7 +206,6 @@
     "Thanks for signing up! Before getting started, could you verify your email address by clicking on the link we just emailed to you? If you didn't receive the email, we will gladly send you another.": "Merci de vous être inscrit ! Avant de commencer, pourriez-vous vérifier votre adresse e-mail en cliquant sur le lien que nous venons de vous envoyer ? Si vous n'avez pas reçu l'e-mail, nous vous en enverrons un autre avec plaisir.",
     "A new verification link has been sent to the email address you provided during registration.": "Un nouveau lien de vérification a été envoyé à l'adresse e-mail fournie lors de l'inscription.",
     "Resend Verification Email": "Renvoyer l'e-mail de vérification",
-
     "Profile": "Profil",
     "Profile Information": "Informations du profil",
     "Update your account's profile information and email address.": "Mettez à jour les informations de votre compte et votre adresse e-mail.",
@@ -237,7 +223,6 @@
     "Are you sure you want to delete your account?": "Êtes-vous sûr de vouloir supprimer votre compte ?",
     "Once your account is deleted, all of its resources and data will be permanently deleted. Please enter your password to confirm you would like to permanently delete your account.": "Une fois votre compte supprimé, toutes ses ressources et données seront définitivement supprimées. Veuillez saisir votre mot de passe pour confirmer la suppression définitive de votre compte.",
     "Cancel": "Annuler",
-
     "Your reservation hold expires in": "Votre réservation expire dans",
     "Your reservation hold has expired": "Votre réservation a expiré",
     "Complete payment before the hold expires to secure this vehicle. If the hold expires, the vehicle becomes available to others.": "Finalisez le paiement avant expiration pour sécuriser ce véhicule. Si le délai expire, le véhicule redevient disponible pour d'autres clients.",
