@@ -41,7 +41,7 @@ Route::get('/', function () {
 })->name('home');
 
 Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
+    return redirect()->route('profile.edit');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 // Dynamic XML sitemap — homepage, fleet listing, and every available
