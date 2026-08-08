@@ -3,7 +3,8 @@ import SiteLogo from '@/Components/SiteLogo';
 import { PageProps } from '@/types';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Link, router, usePage } from '@inertiajs/react';
-import { MessageCircle } from 'lucide-react';
+import { Menu, Transition } from '@headlessui/react';
+import { CarFront, Globe, IdCard, LogOut, MessageCircle, User, Wallet } from 'lucide-react';
 import { PropsWithChildren, useEffect, useState } from 'react';
 
 /**
@@ -24,6 +25,14 @@ import { PropsWithChildren, useEffect, useState } from 'react';
  * with a `?lang=` param (preserving any existing query — search, filters,
  * etc.), which HandleInertiaRequests resolves into the shared `locale` prop
  * the useTranslation hook keys off.
+ *
+ * Auth pattern (competitor-informed — Hertz/Sixt/DiscoverCars all collapse
+ * account actions behind one trigger while keeping "Manage my booking" a
+ * visible link): authenticated users get a circular-avatar Headless UI Menu
+ * (user initial, else a User icon) holding My Reservations, pre-verification,
+ * the FR|EN switcher, the currency display and Sign Out. Guests keep the
+ * Log In / Sign Up links plus the language switcher. On mobile everything
+ * auth-related lives in the hamburger menu.
  */
 export default function PublicLayout({ children }: PropsWithChildren) {
     // `auth` defaults to a logged-out shape because custom error pages
@@ -44,7 +53,28 @@ export default function PublicLayout({ children }: PropsWithChildren) {
     const { t } = useTranslation();
     const currentLocale = locale ?? 'fr';
 
-    const userId = auth.user?.id ?? null;
+    // Avatar fallback: first letter of the user's name, else their email's
+    // first letter, else the generic User icon (avatar circle only exists for
+    // authenticated users, so name/email are always present in practice).
+    const userInitial =
+        auth.user?.name?.trim().charAt(0).toUpperCase() ||
+        auth.user?.email?.trim().charAt(0).toUpperCase() ||
+        null;
+    // "Pre-verification" only makes sense before the user is verified. The
+    // shared prop degrades to null when the plugin's table is missing (the same
+    // guard HandleInertiaRequests uses), so hide the item both for approved
+    // users and when the plugin is absent — referencing a route that wouldn't
+    // be registered would otherwise throw.
+    const showPreVerificationItem =
+        driverVerificationStatus !== null && driverVerificationStatus !== 'approved';
+
+    // Local const so the profile dropdown's nested render-prop closure keeps
+    // the null-narrowing TypeScript applies inside the `user ? ... : null`
+    // ternary (property accesses like `auth.user` don't stay narrowed inside
+    // nested arrow functions).
+    const user = auth.user;
+
+    const userId = user?.id ?? null;
     const bannerStorageKey = userId ? `driver-verification-banner-dismissed-${userId}` : null;
     const showCompleteProfileBanner =
         auth.user !== null && driverVerificationStatus === 'none';
@@ -97,10 +127,11 @@ export default function PublicLayout({ children }: PropsWithChildren) {
         </div>
     );
 
-    // Currency indicator (GAP-3). A static "MAD" badge styled like the
-    // language switcher — signals international readiness without inventing a
-    // conversion engine. Full multi-currency switching is a larger, deferred
-    // feature (mirror the ?lang= whitelist pattern when it's built).
+    // Static "MAD" badge — signals international readiness without inventing a
+    // conversion engine (full multi-currency switching is a larger, deferred
+    // feature; mirror the ?lang= whitelist pattern when it's built). On desktop
+    // it only survives inside the authenticated profile dropdown; this badge is
+    // what the mobile hamburger renders (guests have no profile menu).
     const currencyBadge = (
         <span
             className="flex items-center rounded-pill border border-border px-2 py-1 text-xs font-semibold text-textMuted"
@@ -109,6 +140,141 @@ export default function PublicLayout({ children }: PropsWithChildren) {
             MAD
         </span>
     );
+
+    // Authenticated profile dropdown — a circular avatar (User icon, or the
+    // user's initial) opening a Headless UI Menu. Replaces the "My Account" +
+    // "Log Out" text links and the header-bar language/currency controls:
+    // those now live inside this menu for signed-in users.
+    // switchLocale() navigates with preserveState: true, which keeps this
+    // component mounted after a language switch — so the language pills call
+    // the Menu render-prop `close` first to avoid leaving the panel open.
+    const profileMenu = user ? (
+        <Menu as="div" className="relative">
+            {({ close }) => (
+                <>
+                    <Menu.Button
+                        type="button"
+                        aria-label={t('Account menu')}
+                        className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing"
+                    >
+                        {userInitial ? (
+                            <span className="text-sm font-semibold leading-none">{userInitial}</span>
+                        ) : (
+                            <User className="h-4 w-4" aria-hidden="true" />
+                        )}
+                    </Menu.Button>
+
+                    <Transition
+                        enter="transition ease-out duration-100"
+                        enterFrom="transform opacity-0 scale-95"
+                        enterTo="transform opacity-100 scale-100"
+                        leave="transition ease-in duration-75"
+                        leaveFrom="transform opacity-100 scale-100"
+                        leaveTo="transform opacity-0 scale-95"
+                    >
+                        <Menu.Items className="absolute right-0 z-50 mt-2 w-60 origin-top-right rounded-interactive bg-surface shadow-raised ring-1 ring-black ring-opacity-5 focus:outline-none">
+                    <div className="border-b border-border px-4 py-3">
+                        <p className="truncate text-sm font-semibold text-text">{user.name}</p>
+                        <p className="truncate text-xs text-textMuted">{user.email}</p>
+                    </div>
+
+                    <div className="py-1">
+                        <Menu.Item>
+                            {({ active }) => (
+                                <Link
+                                    href={route('profile.edit')}
+                                    className={`flex w-full items-center gap-2.5 px-4 py-2 text-sm text-text transition-colors focus:outline-none ${
+                                        active ? 'bg-background' : ''
+                                    }`}
+                                >
+                                    <CarFront className="h-4 w-4 shrink-0 text-textMuted" aria-hidden="true" />
+                                    {t('My Reservations')}
+                                </Link>
+                            )}
+                        </Menu.Item>
+
+                        {showPreVerificationItem && (
+                            <Menu.Item>
+                                {({ active }) => (
+                                    <Link
+                                        href={route('driver-verification.show')}
+                                        className={`flex w-full items-center gap-2.5 px-4 py-2 text-sm text-text transition-colors focus:outline-none ${
+                                            active ? 'bg-background' : ''
+                                        }`}
+                                    >
+                                        <IdCard className="h-4 w-4 shrink-0 text-textMuted" aria-hidden="true" />
+                                        {t('Pre-verification')}
+                                    </Link>
+                                )}
+                            </Menu.Item>
+                        )}
+                    </div>
+
+                    <div className="border-t border-border px-4 py-3">
+                        <div className="flex items-center justify-between gap-3">
+                            <span className="flex items-center gap-2 text-xs font-medium text-textMuted">
+                                <Globe className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                {t('Language')}
+                            </span>
+                            <div
+                                className="flex items-center rounded-pill border border-border p-0.5 text-xs font-semibold"
+                                role="group"
+                                aria-label={t('Language')}
+                            >
+                                {(['fr', 'en'] as const).map((code) => (
+                                    <button
+                                        key={code}
+                                        type="button"
+                                        onClick={() => {
+                                            close();
+                                            switchLocale(code);
+                                        }}
+                                        aria-pressed={currentLocale === code}
+                                        className={`rounded-pill px-2 py-0.5 uppercase transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing ${
+                                            currentLocale === code
+                                                ? 'bg-primary text-onPrimary'
+                                                : 'text-textMuted hover:text-text'
+                                        }`}
+                                    >
+                                        {code}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="mt-2.5 flex items-center justify-between gap-3">
+                            <span className="flex items-center gap-2 text-xs font-medium text-textMuted">
+                                <Wallet className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                {t('Currency')}
+                            </span>
+                            <span className="rounded-pill border border-border px-2 py-1 text-xs font-semibold text-textMuted">
+                                MAD
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="border-t border-border py-1">
+                        <Menu.Item>
+                            {({ active }) => (
+                                <Link
+                                    href={route('logout')}
+                                    method="post"
+                                    as="button"
+                                    className={`flex w-full items-center gap-2.5 px-4 py-2 text-sm text-text transition-colors focus:outline-none ${
+                                        active ? 'bg-background' : ''
+                                    }`}
+                                >
+                                    <LogOut className="h-4 w-4 shrink-0 text-textMuted" aria-hidden="true" />
+                                    {t('Log Out')}
+                                </Link>
+                            )}
+                        </Menu.Item>
+                    </div>
+                    </Menu.Items>
+                    </Transition>
+                </>
+            )}
+        </Menu>
+    ) : null;
 
     return (
         <div className="flex min-h-screen flex-col bg-background font-body text-text">
@@ -135,14 +301,7 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                         </Link>
 
                         {auth.user ? (
-                            <>
-                                <Link href={route('profile.edit')} className="text-sm font-semibold text-textMuted transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing">
-                                    {t('My Account')}
-                                </Link>
-                                <Link href={route('logout')} method="post" as="button" className="text-sm font-semibold text-textMuted transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing">
-                                    {t('Log Out')}
-                                </Link>
-                            </>
+                            profileMenu
                         ) : (
                             <>
                                 <Link href={route('login')} className="text-sm font-semibold text-textMuted transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing">
@@ -154,13 +313,9 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                                 >
                                     {t('Sign Up')}
                                 </Link>
+                                {localeSwitcher}
                             </>
                         )}
-
-                        <div className="flex items-center gap-1">
-                            {currencyBadge}
-                            {localeSwitcher}
-                        </div>
                     </nav>
 
                     <button
@@ -186,8 +341,13 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                         {auth.user ? (
                             <>
                                 <Link href={route('profile.edit')} className="rounded-interactive px-2 py-2 text-sm font-semibold text-textMuted hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing">
-                                    {t('My Account')}
+                                    {t('My Reservations')}
                                 </Link>
+                                {showPreVerificationItem && (
+                                    <Link href={route('driver-verification.show')} className="rounded-interactive px-2 py-2 text-sm font-semibold text-textMuted hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing">
+                                        {t('Pre-verification')}
+                                    </Link>
+                                )}
                                 <Link href={route('logout')} method="post" as="button" className="rounded-interactive px-2 py-2 text-left text-sm font-semibold text-textMuted hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing">
                                     {t('Log Out')}
                                 </Link>
