@@ -5,7 +5,7 @@ import { PageProps } from '@/types';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Link, router, usePage } from '@inertiajs/react';
 import { Menu, Transition } from '@headlessui/react';
-import { CarFront, Globe, IdCard, LogOut, MessageCircle, User, Wallet } from 'lucide-react';
+import { CarFront, IdCard, LogOut, MessageCircle, User } from 'lucide-react';
 import { PropsWithChildren, useEffect, useState } from 'react';
 
 /**
@@ -128,13 +128,10 @@ export default function PublicLayout({ children }: PropsWithChildren) {
         </div>
     );
 
-    // Authenticated profile dropdown — a circular avatar (User icon, or the
-    // user's initial) opening a Headless UI Menu. Replaces the "My Account" +
-    // "Log Out" text links and the header-bar language/currency controls:
-    // those now live inside this menu for signed-in users.
-    // switchLocale() navigates with preserveState: true, which keeps this
-    // component mounted after a language switch — so the language pills call
-    // the Menu render-prop `close` first to avoid leaving the panel open.
+    // Authenticated profile dropdown — circular avatar opening a Headless UI
+    // Menu with My Reservations, optional Pre-verification, and Sign Out.
+    // Language + Currency stay visible in the header bar for everyone (guest
+    // and logged-in), matching the DiscoverCars/Hertz pattern.
     const profileMenu = user ? (
         <Menu as="div" className="relative">
             {({ close }) => (
@@ -197,46 +194,6 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                         )}
                     </div>
 
-                    <div className="border-t border-border px-4 py-3">
-                        <div className="flex items-center justify-between gap-3">
-                            <span className="flex items-center gap-2 text-xs font-medium text-textMuted">
-                                <Globe className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                                {t('Language')}
-                            </span>
-                            <div
-                                className="flex items-center rounded-pill border border-border p-0.5 text-xs font-semibold"
-                                role="group"
-                                aria-label={t('Language')}
-                            >
-                                {(['fr', 'en'] as const).map((code) => (
-                                    <button
-                                        key={code}
-                                        type="button"
-                                        onClick={() => {
-                                            close();
-                                            switchLocale(code);
-                                        }}
-                                        aria-pressed={currentLocale === code}
-                                        className={`rounded-pill px-2 py-0.5 uppercase transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing ${
-                                            currentLocale === code
-                                                ? 'bg-primary text-onPrimary'
-                                                : 'text-textMuted hover:text-text'
-                                        }`}
-                                    >
-                                        {code}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                        <div className="mt-2.5 flex items-center justify-between gap-3">
-                            <span className="flex items-center gap-2 text-xs font-medium text-textMuted">
-                                <Wallet className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                                {t('Currency')}
-                            </span>
-                            <CurrencySelector mode="inline" />
-                        </div>
-                    </div>
-
                     <div className="border-t border-border py-1">
                         <Menu.Item>
                             {({ active }) => (
@@ -276,7 +233,7 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                         <SiteLogo />
                     </Link>
 
-                    <nav className="hidden items-center gap-8 md:flex">
+                    <nav className="hidden items-center gap-6 md:flex">
                         <Link href={route('vehicles.index')} className="text-sm font-semibold text-textMuted transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing">
                             {t('Our Fleet')}
                         </Link>
@@ -286,9 +243,15 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                         </Link>
 
                         {auth.user ? (
-                            profileMenu
+                            <>
+                                <CurrencySelector />
+                                {localeSwitcher}
+                                {profileMenu}
+                            </>
                         ) : (
                             <>
+                                <CurrencySelector />
+                                {localeSwitcher}
                                 <Link href={route('login')} className="text-sm font-semibold text-textMuted transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing">
                                     {t('Log In')}
                                 </Link>
@@ -298,8 +261,6 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                                 >
                                     {t('Sign Up')}
                                 </Link>
-                                <CurrencySelector />
-                                {localeSwitcher}
                             </>
                         )}
                     </nav>
