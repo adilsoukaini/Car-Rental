@@ -30,6 +30,17 @@ export default function VehicleRecommendations({ vehicles }: { vehicles: Vehicle
         return null;
     }
 
+    // Carry the detail page's ?pickup_at=...&return_at=... through to each
+    // recommendation card so the user's selected dates survive the click
+    // (same pattern as the fleet vehicle card links). No dates in the URL
+    // (shared plain link) means no query string at all.
+    const dateParams = new URLSearchParams(window.location.search);
+    const pickupAt = dateParams.get('pickup_at') || '';
+    const returnAt = dateParams.get('return_at') || '';
+    const toHref = (id: number) =>
+        route('vehicles.show', id) +
+        (pickupAt ? `?pickup_at=${pickupAt}${returnAt ? `&return_at=${returnAt}` : ''}` : '');
+
     return (
         <section className="mt-8">
             <h2 className="font-display text-lg font-medium text-text">You might also like</h2>
@@ -38,7 +49,7 @@ export default function VehicleRecommendations({ vehicles }: { vehicles: Vehicle
                 {vehicles.map((v) => (
                     <Link
                         key={v.id}
-                        href={route('vehicles.show', v.id)}
+                        href={toHref(v.id)}
                         className="group flex flex-col overflow-hidden rounded-container border border-border bg-surface shadow-resting transition hover:shadow-raised"
                     >
                         <div className="relative h-36 w-full overflow-hidden bg-background">

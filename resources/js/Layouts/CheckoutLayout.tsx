@@ -8,7 +8,7 @@ import { PropsWithChildren } from 'react';
  * The checkout and payment pages render Stripe Elements and real money
  * decisions, so they deliberately drop PublicLayout's full header/nav/footer
  * in favour of a bare centered shell. Matches the Stitch "Project Atlas"
- * checkout design: a back button + brand on the left, a 3-step progress
+ * checkout design: a back button + brand on the left, a 2-step progress
  * stepper (desktop only) in the middle, and a "Paiement sécurisé" badge on
  * the right. Every color/spacing value goes through this project's own theme
  * tokens (Hard Rule 3); the brand name comes from the shared site identity.
@@ -72,19 +72,20 @@ export default function CheckoutLayout({
 }
 
 /**
- * The 3-step checkout progress indicator from the Stitch design:
- * ① Véhicule —— ② Options —— ③ Paiement. Hidden on mobile (the flow is
- * already shallow enough that the stepper adds noise on small screens).
+ * The 2-step checkout progress indicator from the Stitch design:
+ * ① Véhicule —— ② Paiement. Hidden on mobile (the flow is already shallow
+ * enough that the stepper adds noise on small screens). There are no extras
+ * (GPS, child seat, insurance tiers) yet, so the old "Options" step was
+ * dropped rather than left as a placeholder for a feature that doesn't exist.
  *
- * Steps 1–2 are "completed" (Electric Blue secondary), step 3 is "current"
+ * Step 1 is "completed" (Electric Blue secondary), step 2 is "current"
  * (Navy primary). The connector is a thin 8×1px line in the outline/border
  * color. All colors come from theme tokens.
  */
 function Stepper() {
     const steps = [
         { number: 1, label: 'Véhicule', state: 'done' as const },
-        { number: 2, label: 'Options', state: 'done' as const },
-        { number: 3, label: 'Paiement', state: 'current' as const },
+        { number: 2, label: 'Paiement', state: 'current' as const },
     ];
 
     return (

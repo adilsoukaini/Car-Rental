@@ -2,6 +2,7 @@ import PublicLayout from '@/Layouts/PublicLayout';
 import { Head, useForm } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
 import Text from '@/Components/Text';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const inputClass =
     'w-full rounded-interactive border border-border bg-background px-4 py-3 text-sm text-text placeholder:text-textMuted focus:border-secondary focus:ring-1 focus:ring-secondary outline-none transition-all';
@@ -13,6 +14,7 @@ const inputClass =
  * is what grants access, no login required.
  */
 export default function Track() {
+    const { t } = useTranslation();
     const { data, setData, post, processing, errors } = useForm({
         booking_number: '',
         email: '',
@@ -25,21 +27,21 @@ export default function Track() {
 
     return (
         <PublicLayout>
-            <Head title="Track your booking" />
+            <Head title={t('Track your booking')} />
 
             <div className="mx-auto flex min-h-[60vh] w-full max-w-md items-center px-4 py-12 sm:px-6">
                 <div className="w-full">
                     <Text variant="h1" className="mb-2">
-                        Find your booking
+                        {t('Find your booking')}
                     </Text>
                     <p className="mb-6 text-sm text-textMuted">
-                        Enter your booking reference and the email address you used to book.
+                        {t('Enter your booking reference and the email address you used to book.')}
                     </p>
 
                     <form onSubmit={submit} noValidate className="space-y-4 rounded-container border border-border bg-surface p-6 shadow-resting">
                         <div>
                             <label htmlFor="booking_number" className="mb-1 block text-sm font-medium text-text">
-                                Booking reference
+                                {t('Booking reference')}
                             </label>
                             <input
                                 id="booking_number"
@@ -51,13 +53,13 @@ export default function Track() {
                                 autoComplete="off"
                             />
                             {errors.booking_number && (
-                                <p className="mt-1 text-sm text-danger">{errors.booking_number}</p>
+                                <p className="mt-1 text-sm text-danger">{t(errors.booking_number)}</p>
                             )}
                         </div>
 
                         <div>
                             <label htmlFor="email" className="mb-1 block text-sm font-medium text-text">
-                                Email
+                                {t('Email')}
                             </label>
                             <input
                                 id="email"
@@ -78,7 +80,7 @@ export default function Track() {
                             disabled={processing}
                             className="w-full rounded-interactive bg-primary px-4 py-3 text-sm font-semibold text-onPrimary transition active:scale-[0.98] disabled:opacity-50"
                         >
-                            {processing ? 'Searching...' : 'Find my booking'}
+                            {processing ? t('Searching...') : t('Find my booking')}
                         </button>
                     </form>
                 </div>

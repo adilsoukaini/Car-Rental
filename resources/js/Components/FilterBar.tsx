@@ -60,7 +60,7 @@ export default function FilterBar({
                             htmlFor={`filter-${filter.id}`}
                             className="text-xs font-semibold text-textMuted"
                         >
-                            {filter.label}
+                            {t(filter.label)}
                         </label>
 
                         {filter.uiType === 'select' && (
@@ -112,7 +112,7 @@ export default function FilterBar({
                             <div className="flex items-center gap-2">
                                 <input
                                     type="number"
-                                    aria-label={`${filter.label} minimum`}
+                                    aria-label={`${t(filter.label)} minimum`}
                                     placeholder={t('Min')}
                                     min={filter.min}
                                     max={filter.max}
@@ -128,7 +128,7 @@ export default function FilterBar({
                                 <span className="text-textMuted">–</span>
                                 <input
                                     type="number"
-                                    aria-label={`${filter.label} maximum`}
+                                    aria-label={`${t(filter.label)} maximum`}
                                     placeholder={t('Max')}
                                     min={filter.min}
                                     max={filter.max}

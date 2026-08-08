@@ -102,6 +102,16 @@ export default function Login({
                     </PrimaryButton>
                 </div>
             </form>
+
+            <div className="mt-6 text-center">
+                <span className="text-sm text-gray-600">Pas encore de compte ?{' '}</span>
+                <Link
+                    href={route('register')}
+                    className="rounded-md text-sm font-medium text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                >
+                    S'inscrire
+                </Link>
+            </div>
         </GuestLayout>
     );
 }

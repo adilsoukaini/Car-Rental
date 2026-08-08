@@ -266,7 +266,7 @@ export default function CheckoutForm({
                         value={data.promo_code}
                         onChange={(e) => onDataChange('promo_code', e.target.value)}
                         className={inputClass}
-                        placeholder={t('e.g. WELCOME10 (optional)')}
+                        placeholder={t('Enter promo code')}
                         aria-label={t('Promo code')}
                         aria-invalid={promoError ? 'true' : 'false'}
                         aria-describedby={promoError ? 'promo-error' : undefined}
@@ -280,7 +280,7 @@ export default function CheckoutForm({
                     </button>
                 </div>
                 {promoError && (
-                    <p id="promo-error" className="mt-2 text-sm text-danger">{promoError}</p>
+                    <p id="promo-error" className="mt-2 text-sm text-danger">{t(promoError)}</p>
                 )}
                 {promoApplied && !promoError && (
                     <p className="mt-2 text-sm text-success">{t('Promo code applied')}</p>
