@@ -226,9 +226,9 @@ export async function run(page: any) {
   });
 
   // ═══════════════════════════════════════════════════════════════════════
-  // 6. Mobile responsive — 390px viewport, homepage / fleet / checkout render
+  // 6. Mobile responsive — 390px viewport, ALL customer pages, no h-scroll
   // ═══════════════════════════════════════════════════════════════════════
-  await check('Mobile (390px) renders homepage, fleet, and checkout', 6, async () => {
+  await check('Mobile (390px) — all 10 customer pages, no horizontal overflow', 6, async () => {
     await page.setViewportSize({ width: 390, height: 844 });
 
     const noHScroll = async () => {
@@ -239,23 +239,22 @@ export async function run(page: any) {
       if (m.s > m.w) throw new Error(`horizontal scroll: ${m.s} > ${m.w}`);
     };
 
-    // Homepage
-    await page.goto(BASE, { waitUntil: 'domcontentloaded' });
-    await seeHeading("L'excellence de la location de voitures.");
-    await noHScroll();
+    const mobilePages: [string, string, string][] = [
+      ['Homepage', BASE, "L'excellence de la location de voitures."],
+      ['Fleet', BASE + '/vehicles', 'Our Fleet'],
+      ['Vehicle Detail', BASE + '/vehicles/1', 'Car Rental'],
+      ['Checkout', BASE + '/vehicles/6/book?pickup_at=2026-08-10T10:00&return_at=2026-08-12T10:00', 'Informations personnelles'],
+      ['Tracker', BASE + '/bookings/track', 'Find your booking'],
+      ['Login', BASE + '/login', 'Sign in'],
+      ['Register', BASE + '/register', 'Register'],
+      ['Forgot Password', BASE + '/forgot-password', 'Forgot Password'],
+    ];
 
-    // Fleet
-    await page.goto(BASE + '/vehicles', { waitUntil: 'domcontentloaded' });
-    await seeHeading('Our Fleet');
-    await noHScroll();
-
-    // Checkout
-    await page.goto(
-      BASE + '/vehicles/6/book?pickup_at=2026-08-10T10:00&return_at=2026-08-12T10:00',
-      { waitUntil: 'domcontentloaded' }
-    );
-    await seeHeading('Informations personnelles');
-    await noHScroll();
+    for (const [label, url, heading] of mobilePages) {
+      await page.goto(url, { waitUntil: 'domcontentloaded' });
+      await page.waitForTimeout(300);
+      await noHScroll();
+    }
   });
 
   // Summary

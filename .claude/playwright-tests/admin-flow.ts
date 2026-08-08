@@ -221,6 +221,34 @@ export async function run(page: any) {
     await page.getByText(/Demo Rentals/).first().waitFor({ state: 'visible' });
   });
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // 11. Mobile admin — key pages at 390px
+  // ═══════════════════════════════════════════════════════════════════════
+  await check('Mobile admin — 390px, no horizontal overflow', 11, async () => {
+    await page.setViewportSize({ width: 390, height: 844 });
+
+    const noHScroll = async () => {
+      const m = await page.evaluate(() => ({
+        w: window.innerWidth,
+        s: document.documentElement.scrollWidth,
+      }));
+      if (m.s > m.w) throw new Error(`horizontal scroll: ${m.s} > ${m.w}`);
+    };
+
+    for (const url of [
+      '/admin',
+      '/admin/layout-settings',
+      '/admin/plugins',
+      '/admin/themes',
+    ]) {
+      await page.goto(BASE + url, { waitUntil: 'domcontentloaded' });
+      await page.waitForTimeout(300);
+      await noHScroll();
+    }
+  });
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+
   // Summary
   const passed = results.filter((r) => r.startsWith('PASS')).length;
   results.push(`SUMMARY: ${passed}/${results.length} checks passed`);
