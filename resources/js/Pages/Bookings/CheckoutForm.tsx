@@ -203,12 +203,14 @@ export default function CheckoutForm({
                                 <p className="font-display text-base font-semibold text-danger">
                                     {t('Driver verification required')}
                                 </p>
-                                <p className="mt-1 text-sm text-danger">{errors.pickup_at}</p>
+                                <p className="mt-1 text-sm text-danger">
+                                    {t("Your account is not yet verified for this vehicle category. Please verify your driver's license in your profile.")}
+                                </p>
                                 <Link
                                     href={route('profile.edit')}
                                     className="mt-3 inline-flex items-center gap-2 rounded-interactive bg-danger px-4 py-2 text-sm font-semibold text-white shadow-resting transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing"
                                 >
-                                    {t('Verify your license')}
+                                    {t('Verify my license')}
                                 </Link>
                             </div>
                         </div>

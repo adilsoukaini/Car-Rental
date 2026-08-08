@@ -1,4 +1,5 @@
 import VehiclePlaceholderIcon from '@/Components/VehiclePlaceholderIcon';
+import { useTranslation } from '@/hooks/useTranslation';
 import { Link } from '@inertiajs/react';
 
 /**
@@ -26,6 +27,8 @@ function capitalize(value: string): string {
  * interactive elements. Colors/spacing come exclusively from theme tokens.
  */
 export default function VehicleRecommendations({ vehicles }: { vehicles: VehicleRecommendation[] }) {
+    const { t } = useTranslation();
+
     if (!vehicles || vehicles.length === 0) {
         return null;
     }
@@ -43,7 +46,7 @@ export default function VehicleRecommendations({ vehicles }: { vehicles: Vehicle
 
     return (
         <section className="mt-8">
-            <h2 className="font-display text-lg font-medium text-text">You might also like</h2>
+            <h2 className="font-display text-lg font-medium text-text">{t('You might also like')}</h2>
 
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {vehicles.map((v) => (
@@ -76,7 +79,7 @@ export default function VehicleRecommendations({ vehicles }: { vehicles: Vehicle
                             </h3>
 
                             <p className="mt-2 font-display text-lg font-bold text-text">
-                                {String(Number(v.daily_rate))}{' '}
+                                {Number(v.daily_rate).toFixed(0)}{' '}
                                 <span className="text-xs font-semibold text-textMuted">DH / jour</span>
                             </p>
                         </div>

@@ -1,4 +1,5 @@
 import CheckoutLayout from '@/Layouts/CheckoutLayout';
+import { useTranslation } from '@/hooks/useTranslation';
 import { Head, router } from '@inertiajs/react';
 import {
     Elements,
@@ -7,7 +8,7 @@ import {
     useStripe,
 } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
-import { FormEventHandler, useState } from 'react';
+import { FormEventHandler, useEffect, useState } from 'react';
 
 interface VehicleSummary {
     make: string;
@@ -17,6 +18,7 @@ interface VehicleSummary {
 
 interface PaymentProps {
     bookingId: number;
+    vehicleId: number;
     vehicle: VehicleSummary;
     pickupAt: string;
     returnAt: string;
@@ -98,6 +100,7 @@ function PaymentForm({ bookingId }: { bookingId: number }) {
 
 export default function Payment({
     bookingId,
+    vehicleId,
     vehicle,
     pickupAt,
     returnAt,
@@ -107,10 +110,28 @@ export default function Payment({
     clientSecret,
     stripePublishableKey,
 }: PaymentProps) {
+    const { t } = useTranslation();
     const [stripePromise] = useState(() => loadStripe(stripePublishableKey));
 
+    // Live countdown for the reservation hold. Ticks every second so the
+    // "expires in N minutes" figure visibly counts down instead of sitting
+    // static until the page is reloaded.
+    const [now, setNow] = useState(() => Date.now());
+
+    useEffect(() => {
+        if (!holdExpiresAt) {
+            return;
+        }
+        const timer = setInterval(() => setNow(Date.now()), 1000);
+        return () => clearInterval(timer);
+    }, [holdExpiresAt]);
+
+    const holdExpiryMs = holdExpiresAt ? new Date(holdExpiresAt).getTime() : null;
+    const remainingMs = holdExpiryMs !== null ? holdExpiryMs - now : null;
+    const remainingMinutes = remainingMs !== null ? Math.max(0, Math.ceil(remainingMs / 60000)) : null;
+
     return (
-        <CheckoutLayout>
+        <CheckoutLayout backHref={route('vehicles.show', vehicleId)}>
             <Head title="Complete your payment" />
 
             <div className="mx-auto max-w-lg p-8">
@@ -153,10 +174,17 @@ export default function Payment({
                         </div>
                     </div>
 
-                    {holdExpiresAt && (
-                        <p className="text-xs text-textMuted">
-                            This vehicle is reserved for you until {formatDateTime(holdExpiresAt)}.
-                        </p>
+                    {holdExpiresAt && remainingMinutes !== null && (
+                        <div className="border-t border-border pt-4 text-xs">
+                            <p className="font-semibold text-text">
+                                {remainingMinutes > 0
+                                    ? `${t('Your reservation hold expires in')} ${remainingMinutes} ${t('minutes')}`
+                                    : t('Your reservation hold has expired')}
+                            </p>
+                            <p className="mt-1 text-textMuted">
+                                {t('Complete payment before the hold expires to secure this vehicle. If the hold expires, the vehicle becomes available to others.')}
+                            </p>
+                        </div>
                     )}
                 </div>
 

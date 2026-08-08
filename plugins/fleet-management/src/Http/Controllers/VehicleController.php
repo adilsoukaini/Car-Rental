@@ -155,8 +155,8 @@ class VehicleController extends Controller
         // Per-page SEO — overrides the shared `seo` default shared by
         // HandleInertiaRequests so this page's og:title is vehicle-specific
         // (page props merge over shared props). The price formatting mirrors
-        // Show.tsx's `String(Number(vehicle.daily_rate))` ("550.00" → "550").
-        $price = (string) (float) $vehicle->daily_rate;
+        // Show.tsx's `Number(vehicle.daily_rate).toFixed(0)` ("550.00" → "550").
+        $price = (string) round((float) $vehicle->daily_rate);
 
         return Inertia::render('Vehicles/Show', [
             'vehicle' => $vehicle,

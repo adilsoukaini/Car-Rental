@@ -76,12 +76,17 @@ export interface Paginated<T> {
     links: PaginationLink[];
     current_page: number;
     last_page: number;
+    /** 1-based index of the first item on this page (null when the page is empty). */
+    from: number | null;
+    /** 1-based index of the last item on this page (null when the page is empty). */
+    to: number | null;
     total: number;
 }
 
 export interface Booking {
     id: number;
     booking_number: string | null;
+    guest_email: string | null;
     status: string;
     pickup_at: string;
     return_at: string;

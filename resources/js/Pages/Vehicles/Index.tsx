@@ -6,11 +6,12 @@ import SearchBox from '@/Components/SearchBox';
 import FilterBar from '@/Components/FilterBar';
 import Breadcrumbs from '@/Components/Breadcrumbs';
 import EmptyState from '@/Components/EmptyState';
+import Skeleton from '@/Components/Skeleton';
 import Text from '@/Components/Text';
 import { LayoutSlot } from '@/layoutComponentRegistry';
 import { Car } from 'lucide-react';
 import { AvailableFilter, AvailableSort } from '@/types/filters';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 /**
  * Clean URLs — Option A. The free-text search query is truncated to this length
@@ -63,6 +64,25 @@ export default function Index({
     const fleetLayout = activeLayoutVariants?.fleetLayout ?? 'fleet-layout-default';
     const isSidebarLayout = fleetLayout === 'fleet-layout-sidebar';
     const { t } = useTranslation();
+
+    // Loading state for the card grid. Inertia swaps the whole page during a
+    // full navigation (covered by its built-in top progress bar, configured in
+    // app.tsx), but this page's filter/sort/date navigations use preserveState,
+    // which keeps this component mounted — so we subscribe to Inertia's
+    // start/finish events and swap the grid for Skeleton.Card placeholders
+    // while the server round-trip is in flight. Without this, the stale grid
+    // lingers and is easily mistaken for the new results.
+    const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        const offStart = router.on('start', () => setIsLoading(true));
+        const offFinish = router.on('finish', () => setIsLoading(false));
+
+        return () => {
+            offStart();
+            offFinish();
+        };
+    }, []);
 
     // Date bar state — initialized from the URL so a homepage search with
     // ?pickup=...&return=... pre-fills here (date-only YYYY-MM-DD values,
@@ -198,43 +218,61 @@ export default function Index({
     );
 
     // Shared results summary, card grid, empty state, and pagination — the
-    // same blocks both layouts render, in the same order. `total` is the
-    // server-filtered count across all pages.
+    // same blocks both layouts render, in the same order. The summary shows a
+    // range — "1–12 sur 20 véhicules" — not a bare total, so the user always
+    // knows which slice of the result set the current page shows. `from`/`to`
+    // come from Laravel's paginator (null on an empty page).
     const resultsSummary =
-        vehicles.total > 0 ? (
+        vehicles.total > 0 && vehicles.from != null && vehicles.to != null ? (
             <p className="mb-4 text-sm text-textMuted">
-                {t('Showing')} {vehicles.total} {vehicles.total === 1 ? t('vehicle') : t('vehicles')}
+                {vehicles.from}–{vehicles.to} {t('of')} {vehicles.total}{' '}
+                {vehicles.total === 1 ? t('vehicle') : t('vehicles')}
             </p>
         ) : null;
 
-    const vehicleGrid =
-        vehicles.data.length === 0 ? (
-            <div className="rounded-container border border-border bg-surface">
-                <EmptyState
-                    icon={<Car className="h-10 w-10" />}
-                    title={
-                        isFiltered
-                            ? t('No vehicles match your search')
-                            : t('No vehicles available right now')
-                    }
-                    description={
-                        isFiltered
-                            ? t('Try adjusting your filters or search terms.')
-                            : t('Check back soon — we update our fleet regularly.')
-                    }
-                    action={
-                        isFiltered ? (
-                            <button
-                                onClick={clearFilters}
-                                className="text-sm font-medium text-primary hover:text-primaryHover"
-                            >
-                                {t('Clear filters')}
-                            </button>
-                        ) : undefined
-                    }
-                />
-            </div>
-        ) : (
+    const vehicleGrid = isLoading ? (
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true">
+            {Array.from({ length: 6 }, (_, i) => (
+                <div
+                    key={i}
+                    className="flex flex-col overflow-hidden rounded-container border border-border bg-surface"
+                >
+                    <Skeleton.Card />
+                    <div className="space-y-3 p-4">
+                        <Skeleton.Text className="w-1/3" />
+                        <Skeleton.Title />
+                        <Skeleton.Text className="w-2/3" />
+                    </div>
+                </div>
+            ))}
+        </div>
+    ) : vehicles.data.length === 0 ? (
+        <div className="rounded-container border border-border bg-surface">
+            <EmptyState
+                icon={<Car className="h-10 w-10" />}
+                title={
+                    isFiltered
+                        ? t('No vehicles match your search')
+                        : t('No vehicles available right now')
+                }
+                description={
+                    isFiltered
+                        ? t('Try adjusting your filters or search terms.')
+                        : t('Check back soon — we update our fleet regularly.')
+                }
+                action={
+                    isFiltered ? (
+                        <button
+                            onClick={clearFilters}
+                            className="text-sm font-medium text-primary hover:text-primaryHover"
+                        >
+                            {t('Clear filters')}
+                        </button>
+                    ) : undefined
+                }
+            />
+        </div>
+    ) : (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {vehicles.data.map((vehicle) => (
                     <LayoutSlot key={vehicle.id} name="vehicleCard" vehicle={vehicle} headingLevel="h2" />

@@ -93,7 +93,7 @@ export default function Vertical({
                 </div>
 
                 <p className="mt-3 font-display text-xl font-bold text-text">
-                    {vehicle.daily_rate} {t('DH / day')}
+                    {Number(vehicle.daily_rate).toFixed(0)} {t('DH / day')}
                 </p>
 
                 <span className="mt-3 w-full rounded-interactive bg-primary py-2.5 text-center text-sm font-semibold text-onPrimary group-hover:bg-primaryHover">

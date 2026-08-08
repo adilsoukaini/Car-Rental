@@ -1,6 +1,7 @@
 import PublicLayout from '@/Layouts/PublicLayout';
-import { Booking } from '@/types';
-import { Head } from '@inertiajs/react';
+import { useTranslation } from '@/hooks/useTranslation';
+import { Booking, PageProps } from '@/types';
+import { Head, Link, usePage } from '@inertiajs/react';
 import Breadcrumbs from '@/Components/Breadcrumbs';
 import Text from '@/Components/Text';
 
@@ -28,8 +29,13 @@ function formatDateTime(iso: string): string {
 }
 
 export default function Show({ booking }: { booking: Booking }) {
+    const { t } = useTranslation();
+    const { auth } = usePage<PageProps>().props;
     // Fall back to the numeric id for pre-booking_number rows (legacy dev data).
     const reference = booking.booking_number ?? String(booking.id);
+    // The confirmation email goes to the guest email, or the account email for
+    // an authenticated booking — same resolution as SendBookingConfirmationEmail.
+    const confirmationEmail = booking.guest_email ?? auth.user?.email;
 
     return (
         <PublicLayout>
@@ -88,6 +94,41 @@ export default function Show({ booking }: { booking: Booking }) {
                                 <span className="text-text">{formatAmount(booking.security_deposit_amount)}</span>
                             </div>
                         )}
+                    </div>
+                </div>
+
+                {/* Next steps — what happens now that the booking is confirmed. */}
+                <div className="mt-8 rounded-container border border-border bg-surface p-6 shadow-resting">
+                    <h2 className="font-display text-lg font-semibold text-text">{t('Next steps')}</h2>
+                    <ul className="mt-4 space-y-3 text-sm text-text">
+                        <li className="flex items-start gap-2">
+                            <span aria-hidden="true">✅</span>
+                            <span>{t('Booking confirmed — your reference is')} <strong>{reference}</strong></span>
+                        </li>
+                        {confirmationEmail && (
+                            <li className="flex items-start gap-2">
+                                <span aria-hidden="true">📧</span>
+                                <span>{t('A confirmation email has been sent to')} <strong>{confirmationEmail}</strong></span>
+                            </li>
+                        )}
+                        <li className="flex items-start gap-2">
+                            <span aria-hidden="true">📍</span>
+                            <span>{t('Pick up your vehicle at')} <strong>{booking.pickup_location.name}</strong> {t('on')} {formatDateTime(booking.pickup_at)}</span>
+                        </li>
+                    </ul>
+                    <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                        <Link
+                            href={route('bookings.track')}
+                            className="inline-flex items-center justify-center rounded-interactive border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-text transition hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing"
+                        >
+                            {t('Track my booking')}
+                        </Link>
+                        <Link
+                            href={route('vehicles.index')}
+                            className="inline-flex items-center justify-center rounded-interactive bg-primary px-4 py-2.5 text-sm font-semibold text-onPrimary shadow-resting transition hover:bg-primaryHover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing"
+                        >
+                            {t('Browse more vehicles')}
+                        </Link>
                     </div>
                 </div>
             </div>
