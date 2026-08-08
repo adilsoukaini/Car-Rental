@@ -14,7 +14,7 @@ use Illuminate\Support\Collection;
  * / SimilarPriceStrategy) and selected from config — see
  * RecommendationStrategyResolver. A future cross-plugin strategy would need
  * this interface moved to core (same precedent as
- * DriverEligibilityCheckRequest), but nothing requires that yet.
+ * `CancellationPolicyRequest`), but nothing requires that yet.
  */
 interface RecommendationStrategy
 {

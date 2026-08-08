@@ -15,7 +15,7 @@ use Plugins\Recommendations\Strategies\SimilarPriceStrategy;
  * strategies live inside this plugin, so there's nothing for a separate
  * plugin to register into yet. If a cross-plugin strategy is ever needed,
  * the interface (and the registry) moves to core — same precedent as
- * DriverEligibilityCheckRequest — but building that now would serve a
+ * `CancellationPolicyRequest` — but building that now would serve a
  * hypothetical need (rule 6).
  */
 class RecommendationStrategyResolver

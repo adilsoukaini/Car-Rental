@@ -7,8 +7,8 @@ import { PropsWithChildren } from 'react';
  *
  * The checkout and payment pages render Stripe Elements and real money
  * decisions, so they deliberately drop PublicLayout's full header/nav/footer
- * in favour of a bare centered shell. Matches the Stitch "Project Atlas"
- * checkout design: a back button + brand on the left, a 2-step progress
+ * in favour of a bare centered shell. Matches the Stitch checkout design:
+ * a back button + brand on the left, a 2-step progress
  * stepper (desktop only) in the middle, and a "Paiement sécurisé" badge on
  * the right. Every color/spacing value goes through this project's own theme
  * tokens (Hard Rule 3); the brand name comes from the shared site identity.

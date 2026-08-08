@@ -110,7 +110,7 @@ export async function run(page: any): Promise<Result[]> {
         if (featuredCards < 1) throw new Error('No featured vehicle cards rendered');
 
         // Trust / value-props section
-        await seeHeading('Pourquoi choisir Project Atlas ?');
+        await seeHeading('Pourquoi nous choisir ?');
         await see('Réservation facile');
         await see('Paiement sécurisé');
         await see('Contrat digital');

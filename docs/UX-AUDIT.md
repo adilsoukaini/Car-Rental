@@ -61,13 +61,11 @@ No P0 (blocking) defects were found — every page loads, the booking/checkout/p
 
 ---
 
-### C4. Driver-verification error leaks an internal user ID and is English (P1)
+### C4. Driver-verification error leaks an internal user ID and is English (P1) — RESOLVED 2026-08-08
 
-**Current behavior.** A registered, unverified user attempting checkout sees the validation error **"User #12 is not eligible to book a 'economy' category vehicle."** (seen live in the checkout alert). It exposes the internal `User::id` to the customer and is in English inside a French page. (Screenshot: `audit-11-checkout-dv-error.png`.)
+**Current behavior (historical).** A registered, unverified user attempting checkout saw the validation error **"User #12 is not eligible to book a 'economy' category vehicle."** (seen live in the checkout alert). It exposed the internal `User::id` to the customer and was in English inside a French page. (Screenshot: `audit-11-checkout-dv-error.png`.)
 
-**Expected.** A customer-facing message like "Votre permis de conduire doit être vérifié pour réserver cette catégorie. [Vérifier votre permis]" — no internal identifiers.
-
-**Implementation.** The eligibility pipe (`CoreDriverEligibilityCheckPipe`) / `BookingCheckoutController` currently returns a raw English string. Return a stable error *key* (e.g. `driver_verification_required`) and map it to a localized, non-identifying message in `CheckoutForm.tsx` (which already has a dedicated French alert block with a CTA).
+**Resolution.** The online verification gate no longer exists (2026-08-08): driver verification is now optional "pre-verification" and never blocks a booking, so this error can no longer surface. Minimum-age requirements are disclosed info-only on the vehicle detail / checkout pages and verified by the rental agent at pickup.
 
 ---
 

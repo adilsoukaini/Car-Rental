@@ -23,7 +23,7 @@ attribute values live in plugin-owned tables
 (`Plugins\VehicleMedia\Models\VehicleImage`,
 `Plugins\VehicleAttributes\Models\VehicleAttributeValue`). Neither plugin's
 controller can import the other plugin's classes directly — the same Hard Rule #1
-that needed a `DriverEligibilityCheckRequest` DTO in Phase 9. Rather than
+that put `CancellationPolicyRequest` in core. Rather than
 inventing a third one-off DTO pattern, this doc uses the **filter pipeline** for
 this instead: core (or the fleet plugin) asks
 `FilterRegistry::applyWithContext('vehicle.gallery', [], [Vehicle::class => $vehicle])`

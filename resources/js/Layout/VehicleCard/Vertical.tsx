@@ -6,7 +6,7 @@ import { Cog, Gauge, Star, Users } from 'lucide-react';
 
 /**
  * Image on top, details below — matches the Stitch design source's "Nos
- * Véhicules - Project Atlas" card structure exactly: a full-bleed image
+ * Véhicules" card structure exactly: a full-bleed image
  * (no overlay badge), category label above the name, inline icon+text specs
  * (no chips), the price in "DH / jour", and a full-width "Réserver
  * maintenant" CTA.

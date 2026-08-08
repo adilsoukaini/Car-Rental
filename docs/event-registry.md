@@ -247,7 +247,6 @@ Registered via `App\Core\Support\FilterRegistry::register()`, run via `FilterReg
 | `booking.priceCalculation` | Base daily rate → duration/loyalty discounts → deposit (extras not yet built) | booking-engine plugin (`CoreDurationDiscountPipe` + `CoreLoyaltyDiscountPipe` + `CoreDepositPipe`) |
 | `booking.availabilityCheck` | Is this vehicle actually available for this date range + pickup location | booking-engine plugin (`CoreAvailabilityCheckPipe`, Phase 5) |
 | `booking.cancellationPolicy` | How much of a held deposit is refunded given how close to pickup | booking-engine plugin (`CoreCancellationPolicyPipe`, added 2026-08-05) |
-| `booking.driverEligibilityCheck` | Is this driver eligible (age/category) to book this vehicle | driver-verification plugin (`CoreDriverEligibilityCheckPipe`, Phase 9) |
 | `vehicle.listQuery` | Fleet listing query — filters/sorts applied to the base query | fleet-management plugin (Phase 4) |
 | `vehicle.reviews` | Approved reviews + average rating for a vehicle's detail page | reviews plugin (`GetVehicleReviewsPipe`, added 2026-08-05) |
 | `vehicle.attributes` | Custom EAV spec attributes for a vehicle's detail page | vehicle-attributes plugin (`GetVehicleAttributesPipe`, added 2026-08-07) |
@@ -372,8 +371,7 @@ A normal transform-and-pass filter (like `booking.priceCalculation`, not
 short-circuiting). The value is `App\Core\Support\CancellationPolicyRequest`
 (moved here 2026-08-05 from `Plugins\BookingEngine\Support` — it's
 consumed by both a core class, `ViewBooking`, and this plugin's filter
-pipe, the same shape `DriverEligibilityCheckRequest` already exists to
-solve; the original plugin-namespaced placement was a real Hard Rule 1
+pipe; the original plugin-namespaced placement was a real Hard Rule 1
 violation, see CLAUDE.md) — booking id, `pickupAt`, `cancelledAt`, mutable `refundPercent` defaulting
 to 100). **`CoreCancellationPolicyPipe`** applies a cliff/threshold refund
 percentage by whole days remaining until pickup — the highest threshold
@@ -402,38 +400,24 @@ explicitly flagged as placeholder business numbers**, unlike
 `duration_discount_tiers`/`deposit_percentage_of_subtotal` (which had real
 numbers from day one) — retune anytime, no code change needed.
 
-### `booking.driverEligibilityCheck` — result convention
+### `booking.driverEligibilityCheck` — REMOVED 2026-08-08
 
-Same short-circuit convention as `booking.availabilityCheck` (not
-transform-and-pass): the value is `App\Core\Support\DriverEligibilityCheckRequest`
-(`userId` nullable, `vehicleCategory`, `pickupAt`). A pipe that finds the
-driver ineligible returns `false` directly; a pipe that finds no issue
-calls `$next($request)`. Deliberately defined in **core**, not inside
-either plugin that uses it — `booking-engine`'s `BookingCreator`
-constructs the request and calls this filter, `driver-verification`'s pipe
-consumes it, and neither plugin may import the other's classes directly
-(Hard Rule 2). Core is the only namespace both may depend on.
+Online driver-license verification no longer gates any booking. The filter,
+its pipe (`CoreDriverEligibilityCheckPipe`, driver-verification plugin,
+Phase 9), and the core DTO (`DriverEligibilityCheckRequest`) were removed
+together — no competitor in Morocco or internationally does online license
+verification before booking; the legal requirement is to check the physical
+license at pickup. `BookingCreator` no longer runs any eligibility check;
+minimum-age/license requirements are now **disclosed** on the vehicle detail
+and checkout pages and verified by the rental agent at pickup.
 
-**`CoreDriverEligibilityCheckPipe`** (driver-verification plugin, Phase 9):
-guest bookings (`userId === null`) are exempt — see
-`docs/03-DOMAIN-REQUIREMENTS.md` and CLAUDE.md's driver-verification
-section for the full reasoning (enforcing this for guests would require
-either forcing account creation or a pending-then-admin-review booking
-workflow that doesn't exist yet). A registered user booking a category
-with no configured minimum age (`config('driver-verification.minimum_age_by_category')`)
-is always eligible. A category WITH a minimum age requires an `approved`
-`DriverVerification` whose age **at the booking's `pickup_at` date, not
-"today"** meets that minimum — a driver who turns 21 the week after
-booking but before pickup is correctly eligible; one who's 21 today but
-the rental starts before their birthday is not.
-
-**Verification is per-User, not per-Booking** (confirmed 2026-08-03) —
-uploaded once, reviewed once, reused for every future booking. This was a
-real fork: per-Booking would work for guests too, but requires an async
-admin-review step to happen *before* a booking can be confirmed, which
-conflicts with `BookingCreator`'s current immediate-confirm design (no
-pending→reviewed→confirmed workflow exists). Per-User composes cleanly
-with what's already built, at the cost of guest exemption above.
+- `config('driver-verification.minimum_age_by_category')` still powers the
+  storefront's **info-only** age disclosure (vehicle-detail "Requirements"
+  section + checkout warning) — it never blocks a booking.
+- The `DriverVerification` model, table, admin Filament resource, and the
+  profile status card remain for **admin/internal use**: verification is
+  now optional **"pre-verification"** (skip the line at pickup), per-User
+  (uploaded once, reviewed once), and reused for every future booking.
 
 ### `vehicle.listQuery` — result convention
 
@@ -593,11 +577,10 @@ core-owned `Vehicle` model):
   design" below, added 2026-08-04 "Phase B"), authorizes a real Stripe
   deposit hold against the resulting pending booking, and renders
   `Bookings/Payment` with a Stripe `client_secret` for the frontend to
-  collect payment via Stripe Elements. Catches `VehicleNotAvailableException`/
-  `DriverNotEligibleException` and turns them into real Laravel validation
-  errors (not a 500); if hold authorization itself fails, the pending
-  booking row is deleted rather than left as an orphaned, payment-less
-  pending row.
+  collect payment via Stripe Elements. Catches `VehicleNotAvailableException`
+  and turns it into a real Laravel validation error (not a 500); if hold
+  authorization itself fails, the pending booking row is deleted rather
+  than left as an orphaned, payment-less pending row.
 - `GET /bookings/{booking}/confirm` (`bookings.confirm`) — the second step
   of Phase B's two-step flow, called once the customer has completed
   payment client-side (or Stripe redirects back here after a step like 3D
