@@ -178,7 +178,7 @@
 **Clickable elements:**
 - "Car Rental" (logo) → `/`
 - "Forgot your password?" → `/forgot-password`
-- "Log in" button → authenticates; verified a bad password renders inline error "These credentials do not match our records." (correct redirect for a verified user is `/dashboard`, which in turn bounces unverified emails to `/verify-email`)
+- "Log in" button → authenticates; verified a bad password renders inline error "These credentials do not match our records." Post-login redirect: if the user was sent to login from a protected page (e.g. checkout), Breeze's `intended` redirect returns them there. Otherwise, the fallback `dashboard` route redirects to `/vehicles` (fleet search — the app's main action).
 - "Pas encore de compte ?" / "S'inscrire" → `/register`
 - "Remember me" checkbox
 
@@ -327,3 +327,10 @@ graph TD
 11. **Guests see no login prompt next to the review form** — the "Leave a review" form is auth-gated and simply hidden for guests.
 12. **Fleet date-bar button is labeled "Update" (English)** inside an otherwise-French page; the Booking Tracker is the only guest booking entry point in the footer, not the header.
 13. **Stripe Payment Element emits test-mode console warnings** (non-activated `link` payment method, unregistered domain for Apple Pay, HTTP-in-test) — expected in this environment, but should be resolved (activate methods, register domain, serve HTTPS) before production.
+
+## Updates (2026-08-08)
+
+- **Post-login redirect**: Dashboard now redirects to `/vehicles` (fleet search) instead of the bare Breeze "You're logged in!" page. If the user was redirected to login from a protected page (e.g. checkout), Laravel's `intended` redirect returns them there automatically.
+- **Homepage images**: Featured vehicle cards now show actual photos (fixed `vehicle.listQuery` filter pipeline application in the route).
+- **Homepage carousel**: Featured vehicles section is now an admin-switchable layout variant (grid ↔ carousel) via the Layout Variants page.
+- **UX fixes**: Search→location mapping, payment back-link, i18n completion, promo placeholder, recommendation dates, login register-link, stepper cleanup all applied.
