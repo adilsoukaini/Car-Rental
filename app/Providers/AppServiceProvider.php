@@ -159,6 +159,10 @@ class AppServiceProvider extends ServiceProvider
         LayoutVariantRegistry::register('vehicle-gallery', 'single-hero', 'Single Hero', 'Components/VehicleGallery', 'vehicle-media');
         LayoutVariantRegistry::register('vehicle-gallery', 'carousel', 'Carousel', 'Components/VehicleGalleryCarousel', 'vehicle-media');
 
+        // homepage featured vehicles — grid (default) or carousel
+        LayoutVariantRegistry::register('homepageFeatured', 'grid', 'Grid', 'Components/VehicleGrid', 'core');
+        LayoutVariantRegistry::register('homepageFeatured', 'carousel', 'Carousel', 'Components/VehicleCarousel', 'core');
+
         // Plugins may call ThemeSchemaRegistry::registerField() from their own
         // boot() to add their own token fields — matches the Semantic interface
         // in resources/theme/semantic.ts. Keyed by dot-path, not appended to a

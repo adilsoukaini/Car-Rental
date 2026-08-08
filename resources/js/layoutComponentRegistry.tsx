@@ -21,6 +21,9 @@ const registry: Record<string, React.ComponentType<any>> = {
     // to LayoutVariantRegistry::register() in AppServiceProvider::boot().
     'Components/VehicleGallery': lazy(() => import('@/Components/VehicleGallery')),
     'Components/VehicleGalleryCarousel': lazy(() => import('@/Components/VehicleGalleryCarousel')),
+    // homepageFeatured variants — admin can switch between grid and carousel
+    'Components/VehicleGrid': lazy(() => import('@/Components/VehicleGrid')),
+    'Components/VehicleCarousel': lazy(() => import('@/Components/VehicleCarousel')),
 };
 
 /**
