@@ -54,7 +54,7 @@ class BookingController extends Controller
             ->where('booking_number', $validated['booking_number'])
             ->where(function ($query) use ($validated) {
                 $query->where('guest_email', $validated['email'])
-                    ->orWhereHas('user', fn ($query) => $query->where('email', $validated['email']));
+                    ->orWhereHas('user', fn ($q) => $q->where('email', $validated['email']));
             })
             ->first();
 

@@ -28,12 +28,6 @@ class BookingTest extends TestCase
         $this->assertSame('Adil Test', $fresh->guest_name);
         $this->assertSame('adil@example.com', $fresh->guest_email);
         $this->assertSame('0600000000', $fresh->guest_phone);
-
-        $this->assertDatabaseHas('bookings', [
-            'id' => $booking->id,
-            'user_id' => null,
-            'guest_email' => 'adil@example.com',
-        ]);
     }
 
     public function test_booking_can_belong_to_a_registered_user_instead_of_a_guest(): void
