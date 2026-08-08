@@ -60,7 +60,7 @@ export default function Home({
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         const params = new URLSearchParams();
-        if (locationQuery) params.set('search', locationQuery);
+        if (locationQuery) params.set('location', locationQuery);
         if (pickupDate) params.set('pickup', pickupDate);
         if (returnDate) params.set('return', returnDate);
         window.location.href = route('vehicles.index') + (params.toString() ? '?' + params.toString() : '');

@@ -230,6 +230,7 @@ class BookingCheckoutController extends Controller
 
         return Inertia::render('Bookings/Payment', [
             'bookingId' => $booking->id,
+            'vehicleId' => $vehicle->id,
             'vehicle' => $vehicle->only(['make', 'model', 'year']),
             'pickupAt' => $booking->pickup_at->toDateTimeString(),
             'returnAt' => $booking->return_at->toDateTimeString(),
