@@ -131,6 +131,29 @@ export default function Show({ booking }: { booking: Booking }) {
                         </Link>
                     </div>
                 </div>
+
+                {/* What the customer must bring at pickup — standard industry
+                    requirements, verified by the rental agent on-site (not
+                    online). */}
+                <div className="mt-8 rounded-container border border-border bg-surface p-6 shadow-resting">
+                    <h2 className="font-display text-lg font-semibold text-text">
+                        {t('What to bring at pickup')}
+                    </h2>
+                    <ul className="mt-4 space-y-3 text-sm text-text">
+                        <li className="flex items-start gap-2">
+                            <span aria-hidden="true">🪪</span>
+                            <span>{t('Original driver\'s license (valid, held for 1+ year)')}</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span aria-hidden="true">🆔</span>
+                            <span>{t('Original ID card (passport or national ID)')}</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span aria-hidden="true">💳</span>
+                            <span>{t('Credit card in the main driver\'s name')}</span>
+                        </li>
+                    </ul>
+                </div>
             </div>
         </PublicLayout>
     );

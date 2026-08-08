@@ -57,9 +57,9 @@ export default function DriverVerificationCard({
     }[status ?? 'none'];
 
     const description = {
-        none: t('Verify now to access all vehicle categories.'),
-        pending: t('We are reviewing your driver’s license. You will be notified once it is approved.'),
-        approved: t('Your driver’s license has been verified.'),
+        none: t('Optional pre-verification — skip the line at pickup. You can still book without it.'),
+        pending: t('We are reviewing your license. Optional — you can still book while it is pending.'),
+        approved: t('Your license is pre-verified — skip the line at pickup.'),
         rejected: (
             <span>
                 <span>
@@ -68,7 +68,7 @@ export default function DriverVerificationCard({
                         {verification?.rejection_reason ?? t('Not provided')}
                     </span>
                 </span>
-                <span className="block">{t('Submit a new verification to continue.')}</span>
+                <span className="block">{t('You can resubmit if you’d like — verification is optional.')}</span>
             </span>
         ),
     }[status ?? 'none'];
@@ -81,9 +81,14 @@ export default function DriverVerificationCard({
                         {icon}
                     </div>
                     <div>
-                        <p className="text-sm font-semibold uppercase tracking-wide text-textMuted">
-                            {t('Driver’s License')}
-                        </p>
+                        <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold uppercase tracking-wide text-textMuted">
+                                {t('Driver’s License')}
+                            </p>
+                            <span className="rounded-pill bg-background px-2 py-0.5 text-xs font-medium text-textMuted">
+                                {t('Optional')}
+                            </span>
+                        </div>
                         <p className="mt-0.5 font-display text-lg font-bold">{title}</p>
                         <p className="mt-1 max-w-lg text-sm text-textMuted">{description}</p>
                     </div>
@@ -94,7 +99,7 @@ export default function DriverVerificationCard({
                         href={route('driver-verification.show')}
                         className="inline-flex shrink-0 items-center justify-center gap-2 rounded-interactive bg-primary px-4 py-2 text-sm font-semibold text-onPrimary shadow-resting transition-colors hover:bg-primaryHover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing"
                     >
-                        {status === 'rejected' ? t('Resubmit') : t('Verify')}
+                        {status === 'rejected' ? t('Resubmit') : t('Pre-verify')}
                     </Link>
                 )}
             </div>

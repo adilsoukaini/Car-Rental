@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace Plugins\DriverVerification;
 
-use App\Core\Support\FilterRegistry;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Plugins\DriverVerification\Filament\Resources\DriverVerifications\DriverVerificationResource;
-use Plugins\DriverVerification\Filters\CoreDriverEligibilityCheckPipe;
 
 class DriverVerificationServiceProvider extends ServiceProvider
 {
@@ -23,8 +21,12 @@ class DriverVerificationServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/driver-verification.php');
 
-        FilterRegistry::register('booking.driverEligibilityCheck', CoreDriverEligibilityCheckPipe::class);
-
+        // The `booking.driverEligibilityCheck` filter is intentionally NOT
+        // registered anymore — online license verification is optional
+        // ("pre-verification") and never gates a booking. The
+        // minimum_age_by_category config below still powers the storefront's
+        // info-only age disclosure (vehicle detail requirements + checkout
+        // warning), but nothing blocks a booking on it.
         $this->registerFilamentResource();
     }
 

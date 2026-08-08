@@ -1,8 +1,7 @@
-import { PageProps, User, Vehicle } from '@/types';
+import { User, Vehicle } from '@/types';
 import { useTranslation } from '@/hooks/useTranslation';
-import { Link } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
-import { Calendar, MapPin, ShieldAlert, Tag, User as UserIcon } from 'lucide-react';
+import { Calendar, MapPin, Tag, User as UserIcon } from 'lucide-react';
 import {
     formatDateTime,
     inputClass,
@@ -32,7 +31,6 @@ export interface CheckoutFormData {
 interface CheckoutFormProps {
     vehicle: Vehicle;
     user: User | null;
-    driverVerificationStatus: PageProps['driverVerificationStatus'];
     firstName: string;
     lastName: string;
     onFirstNameChange: (value: string) => void;
@@ -51,7 +49,6 @@ interface CheckoutFormProps {
 export default function CheckoutForm({
     vehicle,
     user,
-    driverVerificationStatus,
     firstName,
     lastName,
     onFirstNameChange,
@@ -184,38 +181,7 @@ export default function CheckoutForm({
                 <input type="hidden" name="pickup_at" value={data.pickup_at} />
                 <input type="hidden" name="return_at" value={data.return_at} />
 
-                {errors.pickup_at && user && driverVerificationStatus !== 'approved' ? (
-                    // A logged-in user whose driver verification is missing /
-                    // not yet approved hit a driver-eligibility failure — show
-                    // a prominent banner with a CTA into the profile page
-                    // (where the verification status card now lives).
-                    <div
-                        role="alert"
-                        className="mt-4 rounded-container border border-danger p-4"
-                        style={tintDanger}
-                    >
-                        <div className="flex items-start gap-3">
-                            <ShieldAlert
-                                className="mt-0.5 h-5 w-5 flex-shrink-0 text-danger"
-                                aria-hidden="true"
-                            />
-                            <div className="flex-1">
-                                <p className="font-display text-base font-semibold text-danger">
-                                    {t('Driver verification required')}
-                                </p>
-                                <p className="mt-1 text-sm text-danger">
-                                    {t("Your account is not yet verified for this vehicle category. Please verify your driver's license in your profile.")}
-                                </p>
-                                <Link
-                                    href={route('profile.edit')}
-                                    className="mt-3 inline-flex items-center gap-2 rounded-interactive bg-danger px-4 py-2 text-sm font-semibold text-white shadow-resting transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing"
-                                >
-                                    {t('Verify my license')}
-                                </Link>
-                            </div>
-                        </div>
-                    </div>
-                ) : errors.pickup_at ? (
+                {errors.pickup_at && (
                     <div
                         role="alert"
                         className="mt-4 rounded-interactive border border-danger p-3 text-sm text-danger"
@@ -223,7 +189,7 @@ export default function CheckoutForm({
                     >
                         <p>{errors.pickup_at}</p>
                     </div>
-                ) : null}
+                )}
             </section>
 
             {/* Dates card — read-only trip summary (inside the form) */}

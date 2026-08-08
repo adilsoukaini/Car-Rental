@@ -66,14 +66,14 @@ export default function Show({ verification }: { verification: DriverVerificatio
 
     return (
         <PublicLayout>
-            <Head title={t('Driver Verification')} />
+            <Head title={t('Pre-verification')} />
 
             <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6 lg:px-8">
                 <h1 className="font-display text-3xl font-bold text-text">
-                    {t('Driver Verification')}
+                    {t('Pre-verification')}
                 </h1>
                 <p className="mt-2 text-sm text-textMuted">
-                    {t('Add your driver’s license to access all vehicle categories.')}
+                    {t('Skip the line at pickup — pre-verify your license. Optional.')}
                 </p>
 
                 {/* Prominent status card when a submission already exists */}

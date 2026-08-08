@@ -2,7 +2,7 @@ import CheckoutLayout from '@/Layouts/CheckoutLayout';
 import { PageProps, Vehicle } from '@/types';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { FormEventHandler, useState } from 'react';
+import { FormEventHandler, useMemo, useState } from 'react';
 import { AlertCircle, Lock } from 'lucide-react';
 import CheckoutForm, { CheckoutFormData } from '@/Pages/Bookings/CheckoutForm';
 import CheckoutSummary, { PriceBreakdown } from '@/Pages/Bookings/CheckoutSummary';
@@ -32,6 +32,8 @@ export default function Checkout({
     priceBreakdown,
     promoError,
     dateError,
+    minAgeForCategory,
+    driverDateOfBirth,
 }: {
     vehicle: Vehicle;
     pickupAt: string;
@@ -40,10 +42,41 @@ export default function Checkout({
     priceBreakdown: PriceBreakdown;
     promoError: string | null;
     dateError?: string | null;
+    minAgeForCategory?: number | null;
+    driverDateOfBirth?: string | null;
 }) {
-    const { auth, driverVerificationStatus, activeLayoutVariants } = usePage<PageProps>().props;
+    const { auth, activeLayoutVariants } = usePage<PageProps>().props;
     const { t } = useTranslation();
     const user = auth.user;
+
+    // Info-only minimum-age disclosure: when the logged-in user's date of
+    // birth is known (from their driver verification) and they would be
+    // under the vehicle category's minimum age at pickup, show a WARNING —
+    // never a block. The rental agent verifies age at pickup. Guests and
+    // users without a DOB on file simply see nothing.
+    const ageAtPickup = useMemo(() => {
+        if (!driverDateOfBirth) {
+            return null;
+        }
+        const dob = new Date(driverDateOfBirth);
+        const pickup = new Date(pickupAt);
+        if (Number.isNaN(dob.getTime()) || Number.isNaN(pickup.getTime())) {
+            return null;
+        }
+        let age = pickup.getFullYear() - dob.getFullYear();
+        const monthDiff = pickup.getMonth() - dob.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && pickup.getDate() < dob.getDate())) {
+            age -= 1;
+        }
+        return age;
+    }, [driverDateOfBirth, pickupAt]);
+
+    const isUnderMinAge =
+        typeof minAgeForCategory === 'number' &&
+        ageAtPickup !== null &&
+        ageAtPickup < minAgeForCategory;
+
+    const categoryLabel = vehicle.category.charAt(0).toUpperCase() + vehicle.category.slice(1);
 
     // Which checkout layout is active, shared from HandleInertiaRequests.
     // Defaults to the sidebar-flow layout when no DB row is set for this slot.
@@ -90,7 +123,6 @@ export default function Checkout({
     const formProps = {
         vehicle,
         user,
-        driverVerificationStatus,
         firstName,
         lastName,
         onFirstNameChange: setFirstName,
@@ -131,6 +163,25 @@ export default function Checkout({
                         <Link href={route('vehicles.show', vehicle.id)} className="mt-1 inline-block underline">
                             {t('Go back and choose different dates')}
                         </Link>
+                    </div>
+                </div>
+            )}
+
+            {isUnderMinAge && (
+                <div
+                    role="status"
+                    className="mb-6 flex items-start gap-3 rounded-container border border-warning bg-warning/10 p-4 text-sm"
+                >
+                    <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-warning" aria-hidden="true" />
+                    <div>
+                        <p className="font-semibold text-text">
+                            {t('You must be {minAge} years old to rent a {category} vehicle.')
+                                .replace('{minAge}', String(minAgeForCategory))
+                                .replace('{category}', categoryLabel)}
+                        </p>
+                        <p className="mt-1 text-textMuted">
+                            {t('Please ensure you meet this requirement before pickup. The rental agent will verify your age at pickup.')}
+                        </p>
                     </div>
                 </div>
             )}

@@ -10,17 +10,18 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Location;
 use App\Models\Payment;
+use App\Models\User;
 use App\Models\Vehicle;
 use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
-use Plugins\BookingEngine\Exceptions\DriverNotEligibleException;
 use Plugins\BookingEngine\Exceptions\VehicleNotAvailableException;
 use Plugins\BookingEngine\Support\AvailabilityCheckRequest;
 use Plugins\BookingEngine\Support\BookingCreator;
@@ -109,6 +110,9 @@ class BookingCheckoutController extends Controller
                 'locations' => $locations,
                 'pickupLocationId' => $pickupLocationId,
                 'returnLocationId' => $returnLocationId,
+                // Info-only age disclosure — see minimumAgeForCategory().
+                'minAgeForCategory' => $this->minimumAgeForCategory($vehicle->category),
+                'driverDateOfBirth' => $this->driverDateOfBirth($request->user()),
             ]);
         }
 
@@ -154,6 +158,9 @@ class BookingCheckoutController extends Controller
             'locations' => $locations,
             'pickupLocationId' => $pickupLocationId,
             'returnLocationId' => $returnLocationId,
+            // Info-only age disclosure — see minimumAgeForCategory().
+            'minAgeForCategory' => $this->minimumAgeForCategory($vehicle->category),
+            'driverDateOfBirth' => $this->driverDateOfBirth($request->user()),
         ]);
     }
 
@@ -201,10 +208,6 @@ class BookingCheckoutController extends Controller
         } catch (VehicleNotAvailableException) {
             throw ValidationException::withMessages([
                 'pickup_at' => 'This vehicle is no longer available for the selected dates.',
-            ]);
-        } catch (DriverNotEligibleException $e) {
-            throw ValidationException::withMessages([
-                'pickup_at' => $e->getMessage(),
             ]);
         }
 
@@ -331,6 +334,45 @@ class BookingCheckoutController extends Controller
         }
 
         return route('bookings.show', ['booking' => $booking->id]);
+    }
+
+    /**
+     * The minimum driver age for a vehicle category, shown as an info-only
+     * disclosure (never a booking gate). Lives in the driver-verification
+     * plugin's config (`minimum_age_by_category`), which is merged whenever
+     * that plugin is loaded; the local fallback map keeps the disclosure
+     * working even if the plugin is ever disabled — the age rule is a real
+     * business requirement, not tied to the optional online verification.
+     */
+    private function minimumAgeForCategory(string $category): ?int
+    {
+        $map = config('driver-verification.minimum_age_by_category') ?: [
+            'economy' => 21,
+            'suv' => 21,
+            'van' => 21,
+            'luxury' => 25,
+        ];
+
+        return isset($map[$category]) ? (int) $map[$category] : null;
+    }
+
+    /**
+     * The logged-in user's date of birth, taken from their latest driver
+     * verification (the only place the system stores it) so the checkout can
+     * calculate their age at pickup for the info-only warning. null for
+     * guests, users with no verification, or when the plugin-owned table
+     * doesn't exist (same "core must not hard-crash over one optional
+     * feature" guard as HandleInertiaRequests).
+     */
+    private function driverDateOfBirth(?User $user): ?string
+    {
+        if ($user === null || ! Schema::hasTable('driver_verifications')) {
+            return null;
+        }
+
+        $latest = $user->driverVerifications()->latest('id')->first();
+
+        return $latest?->date_of_birth?->toDateString();
     }
 
     /** @return array<string, array<int, string>> */

@@ -5,13 +5,11 @@ declare(strict_types=1);
 namespace Plugins\BookingEngine\Support;
 
 use App\Core\Events\BookingConfirmed;
-use App\Core\Support\DriverEligibilityCheckRequest;
 use App\Core\Support\FilterRegistry;
 use App\Models\Booking;
 use App\Models\Vehicle;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use Plugins\BookingEngine\Exceptions\DriverNotEligibleException;
 use Plugins\BookingEngine\Exceptions\VehicleNotAvailableException;
 
 /**
@@ -41,12 +39,11 @@ use Plugins\BookingEngine\Exceptions\VehicleNotAvailableException;
  * caller-supplied price would bypass the pricing engine entirely, which
  * is not acceptable for financial data (CLAUDE.md rule 5).
  *
- * Driver eligibility (`booking.driverEligibilityCheck`) is only checked
- * for a registered user (`$attributes['user_id']` present) — guest
- * bookings are exempt in this phase. See CLAUDE.md's driver-verification
- * section for the full reasoning (enforcing this for guests would either
- * force account creation or require a pending-then-admin-review workflow
- * that doesn't exist yet).
+ * Driver eligibility is NOT checked here — online driver-license
+ * verification is optional ("pre-verification") and never gates a booking.
+ * Minimum-age and license requirements are disclosed to the customer on
+ * the vehicle detail / checkout pages and verified by the rental agent at
+ * pickup, per standard industry practice.
  *
  * `create()` (immediate confirm, no payment gate) still exists unchanged
  * for callers that genuinely don't need one (tests, tinker, any future
@@ -63,7 +60,6 @@ class BookingCreator
      *                                            `security_deposit_amount` (all computed here).
      *
      * @throws VehicleNotAvailableException
-     * @throws DriverNotEligibleException
      */
     public function create(array $attributes): Booking
     {
@@ -95,7 +91,6 @@ class BookingCreator
      * @param  array<string, mixed>  $attributes  Same shape as create().
      *
      * @throws VehicleNotAvailableException
-     * @throws DriverNotEligibleException
      */
     public function createPending(array $attributes): Booking
     {
@@ -171,14 +166,13 @@ class BookingCreator
 
     /**
      * Shared by create() and createPending(): locks the vehicle, checks
-     * availability and (for a registered user) driver eligibility, and
-     * computes the price breakdown. Does not persist anything.
+     * availability, and computes the price breakdown. Does not persist
+     * anything. No driver-eligibility gate here — see the class docblock.
      *
      * @param  array<string, mixed>  $attributes
      * @return array{0: Vehicle, 1: PriceBreakdown}
      *
      * @throws VehicleNotAvailableException
-     * @throws DriverNotEligibleException
      */
     private function validateAndPrice(array $attributes): array
     {
@@ -203,20 +197,6 @@ class BookingCreator
         }
 
         $userId = $attributes['user_id'] ?? null;
-
-        if ($userId !== null) {
-            $eligibilityRequest = new DriverEligibilityCheckRequest(
-                userId: (int) $userId,
-                vehicleCategory: $vehicle->category,
-                pickupAt: $pickupAt,
-            );
-
-            $eligible = FilterRegistry::apply('booking.driverEligibilityCheck', $eligibilityRequest);
-
-            if ($eligible === false) {
-                throw DriverNotEligibleException::forUser((int) $userId, $vehicle->category);
-            }
-        }
 
         $priceRequest = new PriceCalculationRequest(
             vehicleId: $vehicle->id,

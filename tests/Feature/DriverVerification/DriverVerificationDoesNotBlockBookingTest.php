@@ -2,20 +2,29 @@
 
 namespace Tests\Feature\DriverVerification;
 
-use App\Core\Support\DriverEligibilityCheckRequest;
-use App\Core\Support\FilterRegistry;
 use App\Models\Location;
 use App\Models\User;
 use App\Models\Vehicle;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Plugins\BookingEngine\BookingEngineServiceProvider;
-use Plugins\BookingEngine\Exceptions\DriverNotEligibleException;
 use Plugins\BookingEngine\Support\BookingCreator;
 use Plugins\DriverVerification\DriverVerificationServiceProvider;
 use Tests\TestCase;
 
-class DriverEligibilityCheckTest extends TestCase
+/**
+ * Regression guard for the 2026-08-08 change: online driver-license
+ * verification is now OPTIONAL ("pre-verification") and never gates a
+ * booking. Minimum-age and license requirements are disclosed on the
+ * vehicle detail / checkout pages and verified by the rental agent at
+ * pickup — `BookingCreator` performs no eligibility check at all.
+ *
+ * Before this change, a registered user without an `approved` verification
+ * was blocked from booking an age-restricted category (DriverNotEligibleException).
+ * Every test here asserts the opposite: verification status never affects
+ * whether a booking can be created.
+ */
+class DriverVerificationDoesNotBlockBookingTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -53,12 +62,87 @@ class DriverEligibilityCheckTest extends TestCase
         ];
     }
 
-    public function test_guest_booking_is_exempt_from_driver_verification(): void
+    public function test_guest_can_book_a_luxury_vehicle_without_any_verification(): void
     {
         $vehicle = Vehicle::factory()->create(['location_id' => $this->location->id, 'category' => 'luxury']);
 
         $booking = app(BookingCreator::class)->create(
             $this->bookingAttributes($vehicle->id, null, '2026-09-01 10:00'),
+        );
+
+        $this->assertSame('confirmed', $booking->status);
+    }
+
+    public function test_registered_user_with_no_verification_can_book_any_category(): void
+    {
+        foreach (['economy', 'suv', 'van', 'luxury'] as $category) {
+            $vehicle = Vehicle::factory()->create(['location_id' => $this->location->id, 'category' => $category]);
+            $user = User::factory()->create(['role' => 'customer']);
+
+            $booking = app(BookingCreator::class)->create(
+                $this->bookingAttributes($vehicle->id, $user->id, '2026-09-01 10:00'),
+            );
+
+            $this->assertSame('confirmed', $booking->status, "Failed for category {$category}");
+        }
+    }
+
+    public function test_registered_user_with_a_pending_verification_can_book(): void
+    {
+        $vehicle = Vehicle::factory()->create(['location_id' => $this->location->id, 'category' => 'economy']);
+        $user = User::factory()->create(['role' => 'customer']);
+        $user->driverVerifications()->create([
+            'license_number' => 'X123',
+            'license_country' => 'Morocco',
+            'date_of_birth' => '1990-01-01',
+            'license_document_path' => 'x.jpg',
+            'status' => 'pending',
+        ]);
+
+        $booking = app(BookingCreator::class)->create(
+            $this->bookingAttributes($vehicle->id, $user->id, '2026-09-01 10:00'),
+        );
+
+        $this->assertSame('confirmed', $booking->status);
+    }
+
+    public function test_registered_user_under_the_minimum_age_is_still_allowed(): void
+    {
+        // economy requires 21 per config. Born such that they are 18 at pickup —
+        // previously blocked, now allowed (the agent verifies age at pickup).
+        $vehicle = Vehicle::factory()->create(['location_id' => $this->location->id, 'category' => 'economy']);
+        $user = User::factory()->create(['role' => 'customer']);
+        $user->driverVerifications()->create([
+            'license_number' => 'X123',
+            'license_country' => 'Morocco',
+            'date_of_birth' => '2007-09-02', // 18 at pickup
+            'license_document_path' => 'x.jpg',
+            'status' => 'approved',
+            'reviewed_at' => now(),
+        ]);
+
+        $booking = app(BookingCreator::class)->create(
+            $this->bookingAttributes($vehicle->id, $user->id, '2026-09-01 10:00'),
+        );
+
+        $this->assertSame('confirmed', $booking->status);
+    }
+
+    public function test_rejected_verification_does_not_block_booking(): void
+    {
+        $vehicle = Vehicle::factory()->create(['location_id' => $this->location->id, 'category' => 'luxury']);
+        $user = User::factory()->create(['role' => 'customer']);
+        $user->driverVerifications()->create([
+            'license_number' => 'X123',
+            'license_country' => 'Morocco',
+            'date_of_birth' => '1990-01-01',
+            'license_document_path' => 'x.jpg',
+            'status' => 'rejected',
+            'rejection_reason' => 'Blurry photo',
+        ]);
+
+        $booking = app(BookingCreator::class)->create(
+            $this->bookingAttributes($vehicle->id, $user->id, '2026-09-01 10:00'),
         );
 
         $this->assertSame('confirmed', $booking->status);
@@ -74,115 +158,5 @@ class DriverEligibilityCheckTest extends TestCase
         );
 
         $this->assertSame('confirmed', $booking->status);
-    }
-
-    public function test_registered_user_with_no_verification_is_blocked_from_an_age_restricted_category(): void
-    {
-        $vehicle = Vehicle::factory()->create(['location_id' => $this->location->id, 'category' => 'economy']);
-        $user = User::factory()->create(['role' => 'customer']);
-
-        $this->expectException(DriverNotEligibleException::class);
-
-        app(BookingCreator::class)->create(
-            $this->bookingAttributes($vehicle->id, $user->id, '2026-09-01 10:00'),
-        );
-    }
-
-    public function test_pending_unapproved_verification_does_not_grant_eligibility(): void
-    {
-        $vehicle = Vehicle::factory()->create(['location_id' => $this->location->id, 'category' => 'economy']);
-        $user = User::factory()->create(['role' => 'customer']);
-        $user->driverVerifications()->create([
-            'license_number' => 'X123',
-            'license_country' => 'Morocco',
-            'date_of_birth' => '1990-01-01',
-            'license_document_path' => 'x.jpg',
-            'status' => 'pending',
-        ]);
-
-        $this->expectException(DriverNotEligibleException::class);
-
-        app(BookingCreator::class)->create(
-            $this->bookingAttributes($vehicle->id, $user->id, '2026-09-01 10:00'),
-        );
-    }
-
-    public function test_approved_but_too_young_at_pickup_is_blocked(): void
-    {
-        // economy requires 21. Born such that they are 20 at pickup.
-        $vehicle = Vehicle::factory()->create(['location_id' => $this->location->id, 'category' => 'economy']);
-        $user = User::factory()->create(['role' => 'customer']);
-        $user->driverVerifications()->create([
-            'license_number' => 'X123',
-            'license_country' => 'Morocco',
-            'date_of_birth' => '2006-09-02', // turns 20 on 2026-09-02, still 19 on pickup
-            'license_document_path' => 'x.jpg',
-            'status' => 'approved',
-            'reviewed_at' => now(),
-        ]);
-
-        $this->expectException(DriverNotEligibleException::class);
-
-        app(BookingCreator::class)->create(
-            $this->bookingAttributes($vehicle->id, $user->id, '2026-09-01 10:00'),
-        );
-    }
-
-    public function test_approved_and_exactly_meets_minimum_age_at_pickup_is_allowed(): void
-    {
-        // economy requires 21. Born exactly 21 years before pickup date.
-        $vehicle = Vehicle::factory()->create(['location_id' => $this->location->id, 'category' => 'economy']);
-        $user = User::factory()->create(['role' => 'customer']);
-        $user->driverVerifications()->create([
-            'license_number' => 'X123',
-            'license_country' => 'Morocco',
-            'date_of_birth' => '2005-09-01', // turns exactly 21 on 2026-09-01, the pickup date
-            'license_document_path' => 'x.jpg',
-            'status' => 'approved',
-            'reviewed_at' => now(),
-        ]);
-
-        $booking = app(BookingCreator::class)->create(
-            $this->bookingAttributes($vehicle->id, $user->id, '2026-09-01 10:00'),
-        );
-
-        $this->assertSame('confirmed', $booking->status);
-    }
-
-    public function test_approved_and_old_enough_is_allowed_for_luxury_category(): void
-    {
-        // luxury requires 25.
-        $vehicle = Vehicle::factory()->create(['location_id' => $this->location->id, 'category' => 'luxury']);
-        $user = User::factory()->create(['role' => 'customer']);
-        $user->driverVerifications()->create([
-            'license_number' => 'X123',
-            'license_country' => 'Morocco',
-            'date_of_birth' => '1995-01-01',
-            'license_document_path' => 'x.jpg',
-            'status' => 'approved',
-            'reviewed_at' => now(),
-        ]);
-
-        $booking = app(BookingCreator::class)->create(
-            $this->bookingAttributes($vehicle->id, $user->id, '2026-09-01 10:00'),
-        );
-
-        $this->assertSame('confirmed', $booking->status);
-    }
-
-    public function test_eligibility_check_alone_respects_the_short_circuit_convention(): void
-    {
-        $vehicle = Vehicle::factory()->create(['location_id' => $this->location->id, 'category' => 'economy']);
-        $user = User::factory()->create(['role' => 'customer']);
-
-        $request = new DriverEligibilityCheckRequest(
-            userId: $user->id,
-            vehicleCategory: 'economy',
-            pickupAt: Carbon::parse('2026-09-01 10:00'),
-        );
-
-        $result = FilterRegistry::apply('booking.driverEligibilityCheck', $request);
-
-        $this->assertFalse($result);
     }
 }
