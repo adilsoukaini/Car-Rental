@@ -3,7 +3,7 @@ import SiteLogo from '@/Components/SiteLogo';
 import { PageProps } from '@/types';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Link, router, usePage } from '@inertiajs/react';
-import { PropsWithChildren, useState } from 'react';
+import { PropsWithChildren, useEffect, useState } from 'react';
 
 /**
  * The one real, fixed customer-facing layout — deliberately not a
@@ -34,11 +34,33 @@ export default function PublicLayout({ children }: PropsWithChildren) {
         PageProps & { siteIdentity?: { siteName?: string }; locale?: string }
     >().props;
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    // One-time, per-user dismissible "complete your profile" nudge — shown
+    // below the header only while a logged-in user has never submitted a
+    // driver verification (status 'none'). Reads dismissal from localStorage
+    // (keyed by user id) so SSR and the first paint are safe: `visible`
+    // starts false and is only flipped after mount, exactly like CookieBanner.
+    const [completeProfileBannerVisible, setCompleteProfileBannerVisible] = useState(false);
     const { t } = useTranslation();
     const currentLocale = locale ?? 'fr';
 
-    const needsDriverVerification =
-        auth.user !== null && driverVerificationStatus !== null && driverVerificationStatus !== 'approved';
+    const userId = auth.user?.id ?? null;
+    const bannerStorageKey = userId ? `driver-verification-banner-dismissed-${userId}` : null;
+    const showCompleteProfileBanner =
+        auth.user !== null && driverVerificationStatus === 'none';
+
+    useEffect(() => {
+        if (!showCompleteProfileBanner || !bannerStorageKey) {
+            return;
+        }
+        setCompleteProfileBannerVisible(window.localStorage.getItem(bannerStorageKey) !== '1');
+    }, [showCompleteProfileBanner, bannerStorageKey]);
+
+    const dismissCompleteProfileBanner = () => {
+        if (bannerStorageKey) {
+            window.localStorage.setItem(bannerStorageKey, '1');
+        }
+        setCompleteProfileBannerVisible(false);
+    };
 
     const switchLocale = (lang: string) => {
         const url = new URL(window.location.href);
@@ -99,14 +121,6 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                                 <Link href={route('profile.edit')} className="text-sm font-semibold text-textMuted transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing">
                                     {t('My Account')}
                                 </Link>
-                                {needsDriverVerification && (
-                                    <Link
-                                        href={route('driver-verification.show')}
-                                        className="text-sm font-semibold text-warning transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing"
-                                    >
-                                        {t('Driver Verification')}
-                                    </Link>
-                                )}
                                 <Link href={route('logout')} method="post" as="button" className="text-sm font-semibold text-textMuted transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing">
                                     {t('Log Out')}
                                 </Link>
@@ -150,11 +164,6 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                                 <Link href={route('profile.edit')} className="rounded-interactive px-2 py-2 text-sm font-semibold text-textMuted hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing">
                                     {t('My Account')}
                                 </Link>
-                                {needsDriverVerification && (
-                                    <Link href={route('driver-verification.show')} className="rounded-interactive px-2 py-2 text-sm font-semibold text-warning hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing">
-                                        {t('Driver Verification')}
-                                    </Link>
-                                )}
                                 <Link href={route('logout')} method="post" as="button" className="rounded-interactive px-2 py-2 text-left text-sm font-semibold text-textMuted hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing">
                                     {t('Log Out')}
                                 </Link>
@@ -173,6 +182,35 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                     </nav>
                 )}
             </header>
+
+            {showCompleteProfileBanner && completeProfileBannerVisible && (
+                <div
+                    role="status"
+                    className="border-b border-border bg-surface px-4 py-3 sm:px-6 lg:px-8"
+                >
+                    <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+                        <p className="text-sm text-textMuted">
+                            {t('Complete your profile')} —{' '}
+                            <Link
+                                href={route('profile.edit')}
+                                className="font-semibold text-primary underline underline-offset-2 hover:text-primaryHover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing"
+                            >
+                                {t('add your driver’s license to access all vehicle categories')}
+                            </Link>
+                        </p>
+                        <button
+                            type="button"
+                            onClick={dismissCompleteProfileBanner}
+                            aria-label={t('Dismiss')}
+                            className="flex-shrink-0 rounded-interactive p-1 text-textMuted transition-colors hover:bg-background hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing"
+                        >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <main id="main-content" className="flex-grow">{children}</main>
 

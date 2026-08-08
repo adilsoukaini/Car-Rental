@@ -10,6 +10,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -32,6 +33,17 @@ class ProfileController extends Controller
             'dashboardWidgets' => SlotRegistry::render('account.dashboardWidgets', [
                 'recentBookings' => $recentBookings,
             ]),
+            // The profile page now hosts the driver-verification status card
+            // (verification management moved out of the public navbar). The
+            // latest DriverVerification row is passed for the status card's
+            // detail (rejection_reason etc.); the shared `driverVerificationStatus`
+            // prop (guarded in HandleInertiaRequests) stays the authority for
+            // the status string. Guarded on the plugin-owned table existing —
+            // same "core middleware/controller must not hard-crash the whole
+            // site over one optional feature" lesson as HandleInertiaRequests.
+            'driverVerification' => Schema::hasTable('driver_verifications')
+                ? $request->user()->driverVerifications()->latest('id')->first()
+                : null,
         ]);
     }
 
