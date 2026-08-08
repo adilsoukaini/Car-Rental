@@ -37,6 +37,10 @@ Route::get('/', function () {
         'locations' => Location::where('is_active', true)
             ->select('id', 'name', 'city')
             ->get(),
+        // Real counts for the homepage stats bar — previously hardcoded
+        // "+100" vehicles / "+5000" customers regardless of actual data.
+        'vehicleCount' => Vehicle::where('status', 'available')->count(),
+        'locationCount' => Location::where('is_active', true)->count(),
     ]);
 })->name('home');
 

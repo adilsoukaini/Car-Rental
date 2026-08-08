@@ -177,10 +177,13 @@ export default function CheckoutSummary({
                     )}
                 </button>
                 <p className="mt-2 text-center text-xs text-textMuted">
-                    {t('No payment required now')}
+                    {t('This pre-authorization is not a charge — it will be released automatically when the vehicle is returned.')}
                 </p>
                 <p className="mt-1 text-center text-xs text-textMuted">
                     {t('By confirming, you accept the terms and conditions')}
+                </p>
+                <p className="mt-3 border-t border-dashed border-border pt-3 text-center text-xs text-textMuted">
+                    {t('Flexible cancellation')}: {t('full refund up to 7 days before pickup, 50% refund up to 2 days before, no refund within 48 hours of pickup.')}
                 </p>
             </div>
         </div>

@@ -34,7 +34,7 @@ const INCLUDED_FEATURES = [
     'Full coverage insurance',
     'Unlimited mileage',
     '24/7 assistance',
-    'Free cancellation (up to 48h)',
+    'Flexible cancellation (full refund up to 7 days before)',
 ];
 
 const formatLabel = (value: string): string =>
@@ -108,9 +108,9 @@ export default function Show({
         });
     };
 
-    // daily_rate arrives as "550.00" — trim the trailing zeros for display
+    // daily_rate arrives as "550.00" — display as a whole number
     // ("550 DH / jour"), matching the Stitch reference.
-    const price = String(Number(vehicle.daily_rate));
+    const price = Number(vehicle.daily_rate).toFixed(0);
 
     const specs = [
         { icon: Users, label: `${vehicle.seat_count} ${t('seats')}`, available: vehicle.seat_count != null },
@@ -163,8 +163,11 @@ export default function Show({
                 </Link>
 
                 <div className="grid gap-8 lg:grid-cols-[1.15fr_1fr]">
-                    {/* Left column: gallery + included + booking form */}
-                    <div className="space-y-6">
+                    {/* Left column: gallery + included + booking form. On
+                        mobile (single-column grid) this sits AFTER the title/
+                        price/specs column via order-2; lg resets to DOM order
+                        so the gallery stays on the left as designed. */}
+                    <div className="order-2 space-y-6 lg:order-none">
                         {/* Gallery renders through the vehicle-gallery layout
                             variant — LayoutSlot resolves
                             activeLayoutVariants['vehicle-gallery'] to either
@@ -227,8 +230,10 @@ export default function Show({
                         </div>
                     </div>
 
-                    {/* Right column: heading/tags/rating + specs + booking card */}
-                    <div className="space-y-6">
+                    {/* Right column: heading/tags/rating + specs + booking
+                        card. order-1 brings title/price/specs to the top on
+                        mobile, before the gallery and booking form. */}
+                    <div className="order-1 space-y-6 lg:order-none">
                         <div>
                             <Text variant="h1" className="mb-3">
                                 {vehicle.make} {vehicle.model} ({vehicle.year})
@@ -320,7 +325,7 @@ export default function Show({
                             </Link>
 
                             <p className="mt-2 text-center text-xs text-textMuted">
-                                {t('No payment required now')}
+                                {t('A security deposit will be pre-authorized, not charged, when you book.')}
                             </p>
                         </div>
                     </div>

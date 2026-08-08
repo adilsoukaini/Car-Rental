@@ -5,7 +5,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { Head, Link, usePage } from '@inertiajs/react';
 import {
     Calendar, Car, FileText, Hand, Headphones,
-    Lock, MapPin, Search, Shield, Star, Users,
+    Lock, MapPin, Search, Shield,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -14,13 +14,6 @@ const features = [
     { icon: Lock, title: 'Secure payment', description: 'Protected, transparent transactions with no hidden fees.' },
     { icon: FileText, title: 'Digital contract', description: 'No more paperwork. Sign your contract right from your smartphone.' },
     { icon: Car, title: 'Recent vehicles', description: 'A constantly renewed fleet for your comfort and safety.' },
-] as const;
-
-const stats = [
-    { icon: Star, value: '+5000', label: 'Satisfied customers' },
-    { icon: Car, value: '+100', label: 'Vehicles available' },
-    { icon: Headphones, value: '24/7', label: 'Support' },
-    { icon: Shield, value: 'Best prices', label: 'Guarantee' },
 ] as const;
 
 interface HomepageContentProps {
@@ -38,16 +31,29 @@ export default function Home({
     featuredVehicles,
     homepageContent,
     locations = [],
+    vehicleCount = 0,
+    locationCount = 0,
 }: {
     featuredVehicles: Vehicle[];
     homepageContent?: HomepageContentProps;
     locations?: { id: number; name: string; city: string }[];
+    vehicleCount?: number;
+    locationCount?: number;
 }) {
     const { t } = useTranslation();
     const today = new Date().toISOString().slice(0, 10);
     const [locationQuery, setLocationQuery] = useState('');
     const [pickupDate, setPickupDate] = useState('');
     const [returnDate, setReturnDate] = useState('');
+
+    // Honest, data-driven stats — the vehicle/location counts come from the
+    // route's real queries, not hardcoded marketing numbers.
+    const stats = [
+        { icon: Car, value: `+${vehicleCount}`, label: 'Vehicles available' },
+        { icon: MapPin, value: `${locationCount}`, label: 'Pickup locations' },
+        { icon: Headphones, value: '24/7', label: 'Support' },
+        { icon: Shield, value: 'Best prices', label: 'Guarantee' },
+    ];
 
     const heroTitle = homepageContent?.hero_title ?? t('Excellence in car rental.');
     const heroSubtitle = homepageContent?.hero_subtitle ?? t('Discover a premium fleet for uncompromising travel. Fast booking, immaculate vehicles, impeccable service.');
