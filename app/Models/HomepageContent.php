@@ -49,7 +49,7 @@ class HomepageContent extends Model
         'hero_subtitle' => 'Découvrez une flotte premium pour des voyages sans compromis. Réservation rapide, véhicules impeccables, service irréprochable.',
         'hero_cta_text' => 'Trouver un véhicule',
         'hero_cta_link' => '/vehicles',
-        'features_title' => 'Pourquoi choisir '.config('app.name', 'Location de voitures').' ?',
+        'features_title' => 'Pourquoi nous choisir ?',
         'features_subtitle' => 'Nous redéfinissons la location de voitures avec des processus simplifiés et une flotte soigneusement entretenue.',
         'cta_band_title' => "Prêt pour l'aventure ?",
         'cta_band_subtitle' => 'Réservez dès maintenant et profitez du Maroc en toute liberté.',
