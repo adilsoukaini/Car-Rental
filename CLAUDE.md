@@ -977,3 +977,20 @@ features:
 - ARIA: `aria-required`, `aria-describedby`, `aria-invalid`, `aria-label`
 - Proper heading hierarchy (h1→h2→h3), configurable `headingLevel` on cards
 - Alt text on vehicle images, `aria-hidden` on decorative icons
+
+## Production deployment checklist
+
+Before deploying to production, these settings MUST be changed:
+
+1. **`.env`**: `APP_DEBUG=false`, `APP_ENV=production`
+2. **`.env`**: Generate a new `APP_KEY` (`php artisan key:generate`)
+3. **`.env`**: Use real Stripe live keys (`sk_live_`/`pk_live_`)
+4. **`.env`**: Use real Mailtrap/SES/Mailgun credentials
+5. **`.env`**: Set `SCOUT_DRIVER=meilisearch` (with real Meilisearch server)
+6. **Server**: Enable HTTPS (TLS 1.3), redirect HTTP → HTTPS
+7. **Server**: Set `memory_limit=256M`, `max_execution_time=60`
+8. **Server**: Configure queue worker (`php artisan queue:work --daemon`)
+9. **Server**: Configure scheduler (`* * * * * php artisan schedule:run`)
+10. **Database**: Enable automated backups (daily minimum)
+11. **Stripe**: Configure production webhook endpoint + signing secret
+12. **CDN**: Serve `/storage` assets from CDN, not the app server
