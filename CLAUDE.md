@@ -18,6 +18,66 @@ Full architecture in `docs/01-SYSTEM-DESIGN.md`, domain requirements in
 working process in `docs/PROCESS-GUIDE.md`. Read `PROCESS-GUIDE.md` first —
 it governs how every phase gets built and verified, not just what gets built.
 
+## Mobile companion app
+
+A React Native (Expo) mobile app lives in `../car-rental-mobile/`
+(`github.com/adilsoukaini/car-rental-mobile`). It is a **pure frontend API
+consumer** — the same Laravel JSON APIs that power the Inertia web frontend
+serve the mobile app with zero backend changes. Architecture docs in
+`../car-rental-mobile/docs/`, following the same numbered-MD + PROCESS-GUIDE
+discipline as this project.
+
+Key facts:
+- **Stack**: Expo SDK (React Native) + TypeScript + NativeWind + Expo Router
+- **API client**: Single module (`lib/api.ts`) — typed, centralized, auth-aware
+- **Theme tokens**: Ported directly from `resources/theme/` (identical values,
+  NativeWind delivery instead of CSS custom properties)
+- **Testing**: Maestro (mobile E2E, equivalent of Playwright) — YAML flows,
+  screenshot verification, real emulator/device
+- **Build/Deploy**: EAS Build + EAS Submit (cloud builds, no local Xcode needed)
+- **Auth tokens**: `expo-secure-store` (encrypted), never `AsyncStorage`
+- **Hard rule**: The backend is immutable from mobile work. If an API gap is
+  found, flag it — never silently add endpoints or change backend behavior from
+  the mobile repo.
+
+## Available MCP servers
+
+This project has access to these MCP (Model Context Protocol) servers:
+
+| MCP Server | Purpose | Status |
+|---|---|---|
+| **playwright** | Web browser automation (screenshots, clicks, form fills, console checks) | ✔ Connected |
+| **scrapling** | Web fetching (stealthy browser, bulk GET, screenshots via session) | ✔ Connected |
+| **maestro** | Mobile UI automation (write/run YAML flows, control emulators, inspect view hierarchy, take screenshots) | ✔ Connected |
+| **mobile-agent** | React Native / Expo testing (Metro management, `run_flow_with_context`, tail logs, reload app) | ✔ Connected |
+| **stitch** | UI design generation (screens from text, variants, design systems) | ✔ Connected |
+
+### Maestro MCP (`maestro`)
+
+The mobile equivalent of Playwright MCP. Bundled inside the Maestro CLI:
+
+```bash
+# Installed at /root/.maestro/bin/maestro (v2.8.0)
+maestro mcp              # Start MCP server
+maestro test .maestro/   # Run flows directly
+```
+
+Claude Code can: write Maestro YAML test flows, run them on the Android
+emulator (`Flutter_Emulator`, API 33), take screenshots, inspect view
+hierarchy CSV to debug failing selectors, and validate flow syntax.
+
+### Mobile-agent MCP (`mobile-agent`)
+
+Expo/React Native-aware wrapper around Maestro. Adds Metro bundler awareness,
+log tailing, and combined flow+logs+screenshot+diagnosis execution:
+
+```bash
+npx -y mobile-agent-mcp    # Start MCP server
+```
+
+Use `maestro` for general mobile testing; use `mobile-agent` when you need
+Expo-specific context (Metro status, reload, RN diagnosis).
+
 ## Hard rules (do not violate these)
 
 1. **Core never imports a plugin.** Core code has zero references to
