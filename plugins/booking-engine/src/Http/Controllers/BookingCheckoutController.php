@@ -17,6 +17,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Validator;
@@ -113,7 +114,7 @@ class BookingCheckoutController extends Controller
                 'returnLocationId' => $returnLocationId,
                 // Info-only age disclosure — see minimumAgeForCategory().
                 'minAgeForCategory' => $this->minimumAgeForCategory($vehicle->category),
-                'driverDateOfBirth' => $this->driverDateOfBirth($request->user()),
+                'driverDateOfBirth' => $this->driverDateOfBirth($this->authenticatedUser($request)),
             ]);
         }
 
@@ -135,7 +136,7 @@ class BookingCheckoutController extends Controller
             vehicleId: $vehicle->id,
             pickupAt: $pickupAt,
             returnAt: $returnAt,
-            userId: $request->user()?->id,
+            userId: $this->authenticatedUser($request)?->id,
             promoCode: $request->input('promo_code'),
         );
 
@@ -161,7 +162,7 @@ class BookingCheckoutController extends Controller
             'returnLocationId' => $returnLocationId,
             // Info-only age disclosure — see minimumAgeForCategory().
             'minAgeForCategory' => $this->minimumAgeForCategory($vehicle->category),
-            'driverDateOfBirth' => $this->driverDateOfBirth($request->user()),
+            'driverDateOfBirth' => $this->driverDateOfBirth($this->authenticatedUser($request)),
         ]);
     }
 
@@ -185,7 +186,7 @@ class BookingCheckoutController extends Controller
         $rules['pickup_location_id'] = ['sometimes', 'integer', 'exists:locations,id'];
         $rules['return_location_id'] = ['sometimes', 'integer', 'exists:locations,id'];
 
-        if (! $request->user()) {
+        if ($this->authenticatedUser($request) === null) {
             $rules['guest_name'] = ['required', 'string', 'max:255'];
             $rules['guest_email'] = ['required', 'email', 'max:255'];
             $rules['guest_phone'] = ['required', 'string', 'max:50'];
@@ -196,7 +197,7 @@ class BookingCheckoutController extends Controller
         try {
             $booking = app(BookingCreator::class)->createPending([
                 'vehicle_id' => $vehicle->id,
-                'user_id' => $request->user()?->id,
+                'user_id' => $this->authenticatedUser($request)?->id,
                 'guest_name' => $validated['guest_name'] ?? null,
                 'guest_email' => $validated['guest_email'] ?? null,
                 'guest_phone' => $validated['guest_phone'] ?? null,
@@ -353,6 +354,23 @@ class BookingCheckoutController extends Controller
         }
 
         return route('bookings.show', ['booking' => $booking->id]);
+    }
+
+    /**
+     * Resolve the authenticated user for this request, if any.
+     *
+     * The public book/confirm endpoints are intentionally NOT behind
+     * auth:sanctum (guests must be able to book), so $request->user() — which
+     * resolves the session-based `web` guard — is always null for an API
+     * request that carries only a Bearer token. A valid Sanctum token is
+     * still honored when present: fall back to the `sanctum` guard, which
+     * authenticates via the Bearer token (and, for web requests, already
+     * falls back to the session guard itself — so the union below is correct
+     * for both channels). Returns null for a genuine guest.
+     */
+    private function authenticatedUser(Request $request): ?User
+    {
+        return $request->user() ?? Auth::guard('sanctum')->user();
     }
 
     /**

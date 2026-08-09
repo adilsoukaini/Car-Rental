@@ -1,0 +1,325 @@
+<!DOCTYPE html><html class="light" lang="fr"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Project Atlas - Accueil</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-surface-variant": "#44464e",
+                      "secondary-fixed-dim": "#b9c3ff",
+                      "tertiary": "#06090c",
+                      "inverse-on-surface": "#eaf1ff",
+                      "surface-container-lowest": "#ffffff",
+                      "primary-fixed-dim": "#b4c6f4",
+                      "surface-container-highest": "#d3e4fe",
+                      "inverse-primary": "#b4c6f4",
+                      "on-secondary": "#ffffff",
+                      "on-tertiary": "#ffffff",
+                      "surface": "#f8f9ff",
+                      "surface-container": "#e5eeff",
+                      "on-secondary-container": "#d6daff",
+                      "secondary-container": "#0448ff",
+                      "on-tertiary-fixed-variant": "#43474a",
+                      "error-container": "#ffdad6",
+                      "on-tertiary-fixed": "#181c1e",
+                      "on-tertiary-container": "#85888b",
+                      "on-primary": "#ffffff",
+                      "surface-dim": "#cbdbf5",
+                      "tertiary-container": "#1d2123",
+                      "primary": "#00081e",
+                      "on-error": "#ffffff",
+                      "primary-fixed": "#d9e2ff",
+                      "on-secondary-fixed": "#001257",
+                      "outline-variant": "#c5c6cf",
+                      "on-primary-fixed": "#041a3f",
+                      "background": "#f8f9ff",
+                      "on-primary-fixed-variant": "#34466d",
+                      "surface-bright": "#f8f9ff",
+                      "on-primary-container": "#7687b2",
+                      "secondary": "#0035c6",
+                      "surface-tint": "#4c5e86",
+                      "on-error-container": "#93000a",
+                      "surface-container-low": "#eff4ff",
+                      "secondary-fixed": "#dde1ff",
+                      "on-background": "#0b1c30",
+                      "surface-container-high": "#dce9ff",
+                      "tertiary-fixed-dim": "#c3c7ca",
+                      "on-surface": "#0b1c30",
+                      "inverse-surface": "#213145",
+                      "surface-variant": "#d3e4fe",
+                      "primary-container": "#0a1f44",
+                      "tertiary-fixed": "#e0e3e6",
+                      "outline": "#75777f",
+                      "error": "#ba1a1a",
+                      "on-secondary-fixed-variant": "#0033c0"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "stack-sm": "8px",
+                      "stack-md": "16px",
+                      "section-gap": "80px",
+                      "gutter": "24px",
+                      "margin-mobile": "20px",
+                      "container-max": "1280px",
+                      "margin-desktop": "64px",
+                      "stack-lg": "32px"
+              },
+              "fontFamily": {
+                      "caption": ["Inter"],
+                      "label-bold": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "price-display": ["Inter"],
+                      "headline-xl": ["Inter"],
+                      "body-sm": ["Inter"],
+                      "headline-lg-mobile": ["Inter"],
+                      "headline-lg": ["Inter"],
+                      "body-md": ["Inter"]
+              },
+              "fontSize": {
+                      "caption": ["12px", {"lineHeight": "1.4", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                      "label-bold": ["14px", {"lineHeight": "1", "fontWeight": "600"}],
+                      "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                      "headline-md": ["20px", {"lineHeight": "1.4", "fontWeight": "600"}],
+                      "price-display": ["20px", {"lineHeight": "1", "fontWeight": "700"}],
+                      "headline-xl": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                      "body-sm": ["14px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                      "headline-lg-mobile": ["24px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                      "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                      "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: theme('colors.background');
+            -webkit-font-smoothing: antialiased;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1;
+        }
+        
+        /* Subtle diffuse shadow for cards */
+        .card-shadow {
+            box-shadow: 0px 4px 20px rgba(0, 8, 30, 0.05);
+        }
+        
+        /* Hide scrollbar for horizontal scroll areas */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface pb-[80px]">
+<!-- Top App Bar / Header -->
+<header class="px-margin-mobile pt-6 pb-4 flex justify-between items-center bg-surface sticky top-0 z-40 backdrop-blur-md bg-opacity-90">
+<div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Bonjour,</p>
+<h1 class="font-headline-md text-headline-md text-primary mt-1">Youssef</h1>
+</div>
+<button class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+</header>
+<main class="px-margin-mobile flex flex-col gap-stack-lg">
+<!-- Promo Banner -->
+<section class="mt-2">
+<div class="relative overflow-hidden rounded-xl bg-primary-container text-white p-6 card-shadow">
+<!-- Abstract pattern background -->
+<div class="absolute inset-0 opacity-20 pointer-events-none" style="background-image: radial-gradient(circle at 100% 0%, #0035c6 0%, transparent 60%);"></div>
+<div class="relative z-10 w-2/3">
+<span class="inline-block px-2 py-1 bg-secondary text-white rounded text-[10px] font-bold uppercase tracking-wider mb-2">Offre Spéciale</span>
+<h2 class="font-headline-md text-headline-md mb-2 leading-tight">Jusqu'à -20% sur vos réservations cette semaine</h2>
+<button class="mt-4 text-sm font-label-bold flex items-center gap-1 hover:opacity-80 transition-opacity">
+                        Découvrir
+                        <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+<!-- Decorative Icon -->
+<div class="absolute -right-4 -bottom-4 opacity-50">
+<span class="material-symbols-outlined text-9xl">directions_car</span>
+</div>
+</div>
+</section>
+<!-- Booking Engine (The focal point) -->
+<section>
+<h3 class="font-headline-md text-headline-md text-primary mb-stack-md">Réservez votre voiture</h3>
+<div class="bg-surface-container-lowest rounded-xl p-5 card-shadow border border-outline-variant/30">
+<!-- Toggle (Auto / Utilitaire etc.) -->
+<div class="flex bg-surface-container-low p-1 rounded-lg mb-6">
+<button class="flex-1 py-2 text-sm font-label-bold bg-white text-primary rounded shadow-sm">Voiture</button>
+<button class="flex-1 py-2 text-sm font-label-bold text-on-surface-variant">Utilitaire</button>
+</div>
+<form class="flex flex-col gap-stack-sm">
+<!-- Location Input -->
+<div class="relative">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-on-surface-variant">location_on</span>
+</div>
+<input class="w-full pl-10 pr-4 py-3 bg-[#F4F7FA] border-transparent focus:border-secondary focus:bg-white focus:ring-0 rounded-lg font-body-sm text-body-sm text-primary placeholder-on-surface-variant/70 transition-all" placeholder="Lieu de départ (Aéroport, Gare...)" type="text">
+</div>
+<div class="flex items-center justify-center my-1 relative h-6">
+<div class="absolute inset-0 flex items-center">
+<div class="w-full border-t border-outline-variant/30"></div>
+</div>
+<button class="relative z-10 w-8 h-8 rounded-full bg-white border border-outline-variant/30 flex items-center justify-center text-secondary shadow-sm hover:bg-surface-container-low transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">swap_vert</span>
+</button>
+</div>
+<!-- Return Location (Optional/Same as pickup default) -->
+<div class="relative mb-2">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-on-surface-variant">flag</span>
+</div>
+<input class="w-full pl-10 pr-4 py-3 bg-[#F4F7FA] border-transparent focus:border-secondary focus:bg-white focus:ring-0 rounded-lg font-body-sm text-body-sm text-primary placeholder-on-surface-variant/70 transition-all" placeholder="Même lieu de restitution" type="text">
+</div>
+<!-- Dates Row -->
+<div class="flex gap-3">
+<div class="relative flex-1">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">calendar_today</span>
+</div>
+<input class="w-full pl-9 pr-3 py-3 bg-[#F4F7FA] border-transparent focus:border-secondary focus:bg-white focus:ring-0 rounded-lg font-body-sm text-body-sm text-primary transition-all" placeholder="Départ" type="text" value="12 Oct, 10:00">
+</div>
+<div class="relative flex-1">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">event_busy</span>
+</div>
+<input class="w-full pl-9 pr-3 py-3 bg-[#F4F7FA] border-transparent focus:border-secondary focus:bg-white focus:ring-0 rounded-lg font-body-sm text-body-sm text-primary transition-all" placeholder="Retour" type="text" value="15 Oct, 10:00">
+</div>
+</div>
+<!-- Primary Action -->
+<button class="w-full mt-4 bg-primary-container text-white py-3.5 rounded-lg font-label-bold text-label-bold shadow-md hover:bg-primary transition-colors flex justify-center items-center gap-2" type="button">
+                        Rechercher des véhicules
+                        <span class="material-symbols-outlined">search</span>
+</button>
+</form>
+</div>
+</section>
+<!-- Why Choose Us -->
+<section>
+<h3 class="font-headline-md text-headline-md text-primary mb-stack-md">Pourquoi choisir ATLAS?</h3>
+<div class="grid grid-cols-2 gap-4">
+<!-- Benefit 1 -->
+<div class="bg-surface-container-lowest p-4 rounded-xl card-shadow flex flex-col items-start border border-outline-variant/20">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-secondary mb-3">
+<span class="material-symbols-outlined">verified_user</span>
+</div>
+<h4 class="font-label-bold text-label-bold text-primary mb-1">Assurance Totale</h4>
+<p class="font-caption text-caption text-on-surface-variant">Voyagez l'esprit tranquille sans frais cachés.</p>
+</div>
+<!-- Benefit 2 -->
+<div class="bg-surface-container-lowest p-4 rounded-xl card-shadow flex flex-col items-start border border-outline-variant/20">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-secondary mb-3">
+<span class="material-symbols-outlined">support_agent</span>
+</div>
+<h4 class="font-label-bold text-label-bold text-primary mb-1">Support 24/7</h4>
+<p class="font-caption text-caption text-on-surface-variant">Une assistance dédiée à tout moment.</p>
+</div>
+<!-- Benefit 3 -->
+<div class="bg-surface-container-lowest p-4 rounded-xl card-shadow flex flex-col items-start border border-outline-variant/20">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-secondary mb-3">
+<span class="material-symbols-outlined">electric_car</span>
+</div>
+<h4 class="font-label-bold text-label-bold text-primary mb-1">Flotte Moderne</h4>
+<p class="font-caption text-caption text-on-surface-variant">Véhicules récents et parfaitement entretenus.</p>
+</div>
+<!-- Benefit 4 -->
+<div class="bg-surface-container-lowest p-4 rounded-xl card-shadow flex flex-col items-start border border-outline-variant/20">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-secondary mb-3">
+<span class="material-symbols-outlined">cancel</span>
+</div>
+<h4 class="font-label-bold text-label-bold text-primary mb-1">Annulation Gratuite</h4>
+<p class="font-caption text-caption text-on-surface-variant">Jusqu'à 48h avant le début de location.</p>
+</div>
+</div>
+</section>
+<!-- Services (Horizontal Scroll) -->
+<section class="mb-stack-lg">
+<div class="flex justify-between items-end mb-stack-md">
+<h3 class="font-headline-md text-headline-md text-primary">Nos services</h3>
+<a class="font-caption text-caption text-secondary font-bold" href="#">Voir tout</a>
+</div>
+<div class="flex overflow-x-auto gap-4 pb-4 no-scrollbar -mx-margin-mobile px-margin-mobile">
+<!-- Service 1 -->
+<div class="min-w-[240px] h-[160px] rounded-xl relative overflow-hidden flex-shrink-0 card-shadow group">
+<img class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" data-alt="A luxurious black SUV parked in front of a modern glass corporate building at dusk, conveying premium corporate chauffeur services, high contrast, sleek corporate modern aesthetic, navy and deep blue tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDLn3wyMe6XyY0CBQLv_1GthoFnJct5bK9oVAGxQlXBmY0q0lNhQ0StA3Sarv3UUF-_10u3ogTfb_Ggy2fSPSZH4kTwwifB38ETX1FXm8V65oM7ys2vxM8WVlhzwt0wLoSBLL7J1JX9EDsm3kPiWE5q-ezidDWAyA3jCdHRAyTv8GxYcBO1lJKFSHMIAAKloUaTfKFVDfJfdS9ZELxrYB_eeH4yoWzcpxM56wWebACFCsdpIluL9sjo">
+<div class="absolute inset-0 bg-gradient-to-t from-primary/90 via-primary/40 to-transparent"></div>
+<div class="absolute bottom-4 left-4 right-4 text-white">
+<h4 class="font-label-bold text-label-bold mb-1">Chauffeur Privé</h4>
+<p class="font-caption text-caption opacity-80">Pour vos déplacements professionnels.</p>
+</div>
+</div>
+<!-- Service 2 -->
+<div class="min-w-[240px] h-[160px] rounded-xl relative overflow-hidden flex-shrink-0 card-shadow group">
+<img class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" data-alt="A pristine white airport terminal exterior with a modern rental car shuttle waiting, clear blue sky, bright and efficient atmosphere, conveying seamless airport transfer services, crisp lighting, high contrast white and bright blue aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCx_PSOQHReuKfvmzL3CacdInJ19B6KuT8I-s7hqvvdU8BZmiQgUBInHOL_xZYp4knzoZo_UxOdvxFlFiBaRT8lKpRSpXRasSmdWY1yXMTgzPgESGRQow8fdKnUPWskD1mFWAD8hScCmoUVFBEX8HgZTObPN83JrdvzfqJ1hRdPz8k_A_h-QMHGx0O5uLxzyqEzI22jFydIM9_wcpBR4eqd9BhHc5cbde5RwN0QYw5syf12-psdHmDh">
+<div class="absolute inset-0 bg-gradient-to-t from-primary/90 via-primary/40 to-transparent"></div>
+<div class="absolute bottom-4 left-4 right-4 text-white">
+<h4 class="font-label-bold text-label-bold mb-1">Transfert Aéroport</h4>
+<p class="font-caption text-caption opacity-80">Liaison directe et sans attente.</p>
+</div>
+</div>
+<!-- Service 3 -->
+<div class="min-w-[240px] h-[160px] rounded-xl relative overflow-hidden flex-shrink-0 card-shadow group">
+<img class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" data-alt="A fleet of identical modern corporate sedans lined up perfectly in a well-lit parking facility, showcasing long-term corporate leasing services, highly organized, professional modern aesthetic, navy and white color palette." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCh5PaT1vb7l22Zhg3j0PLN0tZJz5-Ca1k3saeS2X1UFYcVAcv11wrNZDJoRgeF7su-3BAf2hJk88KalJY0AH02vQjxlpN_AZ_N6q-ucBx-Xlnvh1ta1Dtylett6lDPoFUoQlcwvahlWL7bsR71sp5i_oGAKH2GeTAkBENHupeJF7cG6Y-WvkdCY0btc1YY_ZrIjSe3psaepxqUt3UP_H_cUPGs1D9Sm1xJrrmDMfwzC1w92ZDPsXGd">
+<div class="absolute inset-0 bg-gradient-to-t from-primary/90 via-primary/40 to-transparent"></div>
+<div class="absolute bottom-4 left-4 right-4 text-white">
+<h4 class="font-label-bold text-label-bold mb-1">Location Longue Durée</h4>
+<p class="font-caption text-caption opacity-80">Solutions flexibles pour entreprises.</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar Shared Component -->
+<!-- Applying structural logic and exact JSON attributes -->
+<nav class="docked full-width bottom-0 md:hidden bg-surface dark:bg-primary-container shadow-[0_-4px_10px_rgba(0,0,0,0.05)] shadow-lg fixed left-0 w-full z-50 flex justify-around items-center py-3 px-margin-mobile border-t border-outline-variant dark:border-none text-primary dark:text-inverse-primary font-caption text-caption">
+<!-- Item 1: Accueil (Active state based on page intent) -->
+<a aria-current="page" class="flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed-dim font-bold active:bg-surface-container-high transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined filled mb-1" data-icon="home" data-weight="fill" style="font-variation-settings: 'FILL' 1;">home</span>
+<span>Accueil</span>
+</a>
+<!-- Item 2: Réservations (Inactive) -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-primary-container active:bg-surface-container-high transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="calendar_month">calendar_month</span>
+<span>Réservations</span>
+</a>
+<!-- Item 3: Véhicules (Inactive) -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-primary-container active:bg-surface-container-high transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="directions_car">directions_car</span>
+<span>Véhicules</span>
+</a>
+<!-- Item 4: Profil (Inactive) -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-primary-container active:bg-surface-container-high transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="person">person</span>
+<span>Profil</span>
+</a>
+</nav>
+</body></html>
