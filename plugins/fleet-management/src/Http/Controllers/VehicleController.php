@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Plugins\FleetManagement\Http\Controllers;
 
-use App\Core\Support\FilterRegistry;
+use App\Core\Support\VehicleCatalogService;
 use App\Core\Support\VehicleFilterRegistry;
 use App\Core\Support\VehicleSortRegistry;
 use App\Http\Controllers\Controller;
@@ -32,42 +32,18 @@ class VehicleController extends Controller
      */
     public function index(Request $request): Response
     {
-        $query = Vehicle::where('status', 'available');
-
-        // Free-text search by make/model — deliberately kept out of the
-        // filter registry: it's a text search, not a selectable FilterBar
-        // filter, and the task's server-side spec handles it explicitly.
+        // Query building lives in the shared VehicleCatalogService — the same
+        // service the mobile JSON API's Api\VehicleController uses, so the two
+        // can never drift. Only the pagination + filter/sort props are page-
+        // specific (the API serializes the same paginator as JSON).
         $search = $request->string('search')->trim()->toString();
-        if ($search !== '') {
-            // Case-insensitive (LOWER on both sides) so ?search=toyota matches
-            // a stored 'Toyota' — works identically on SQLite and Postgres.
-            $needle = '%'.mb_strtolower($search).'%';
-            $query->where(function ($q) use ($needle) {
-                $q->whereRaw('LOWER(make) LIKE ?', [$needle])
-                    ->orWhereRaw('LOWER(model) LIKE ?', [$needle]);
-            });
-        }
-
-        // Registered select filters — each provider knows its own WHERE clause.
-        $query = VehicleFilterRegistry::applyAll($query, $request->all());
-
-        // Registered sort options. No sort param means the DB's natural order
-        // (the frontend's "Default" option) — a sort is only applied when the
-        // request actually asks for one.
         $requestedSort = $request->string('sort')->trim()->toString();
         $sort = $requestedSort !== '' ? VehicleSortRegistry::resolveActive($requestedSort) : null;
-        if ($sort !== null) {
-            $query = $sort->apply($query);
-        }
 
-        $query = $query->with('location');
-        $query = FilterRegistry::apply('vehicle.listQuery', $query);
-
-        // Approved-review count + average rating in one aggregate query (rule 8).
-        // No-ops (and hides the card snippet) when the reviews plugin is disabled.
-        $query = $query->withReviewSummary();
-
-        $vehicles = $query->paginate(12)->withQueryString();
+        $vehicles = app(VehicleCatalogService::class)
+            ->fleetQuery($request)
+            ->paginate(12)
+            ->withQueryString();
 
         // Only expose what's registered — the frontend renders every entry
         // generically, so a newly-registered filter/sort appears with zero
@@ -119,42 +95,10 @@ class VehicleController extends Controller
     {
         abort_if($vehicle->status !== 'available', 404);
 
-        $vehicle->loadMissing('location');
-
-        $reviewsData = FilterRegistry::applyWithContext(
-            'vehicle.reviews',
-            ['vehicleId' => $vehicle->id, 'averageRating' => 0.0, 'reviewCount' => 0, 'reviews' => []],
-            [Vehicle::class => $vehicle],
-        );
-
-        // Real gallery from the vehicle-media plugin (registered on the
-        // vehicle.gallery filter). An empty array when the plugin is disabled
-        // or the vehicle has no uploaded photos — the page falls back to the
-        // VehiclePlaceholderIcon in that case.
-        $galleryImages = FilterRegistry::applyWithContext(
-            'vehicle.gallery',
-            [],
-            [Vehicle::class => $vehicle],
-        );
-
-        // Custom spec attributes (GPS, insurance type, mileage limit, ...)
-        // resolved via the vehicle.attributes filter (registered by the
-        // vehicle-attributes plugin). Empty array when the plugin is disabled
-        // or the vehicle carries no values — the detail page hides the
-        // attributes section in that case.
-        $attributes = FilterRegistry::applyWithContext(
-            'vehicle.attributes',
-            [],
-            [Vehicle::class => $vehicle],
-        );
-
-        // Resolved via the vehicle.recommendations filter (registered by the
-        // recommendations plugin). Empty array when the plugin is disabled.
-        $recommendations = FilterRegistry::applyWithContext(
-            'vehicle.recommendations',
-            [],
-            [Vehicle::class => $vehicle],
-        );
+        // Detail context (location + reviews/gallery/attributes/recommendations
+        // slots) is resolved by the shared VehicleCatalogService — the same
+        // service the mobile JSON API uses, so the shapes never drift.
+        $detail = app(VehicleCatalogService::class)->detail($vehicle);
 
         // Per-page SEO — overrides the shared `seo` default shared by
         // HandleInertiaRequests so this page's og:title is vehicle-specific
@@ -164,10 +108,10 @@ class VehicleController extends Controller
 
         return Inertia::render('Vehicles/Show', [
             'vehicle' => $vehicle,
-            'galleryImages' => $galleryImages,
-            'reviewsData' => $reviewsData,
-            'attributes' => $attributes,
-            'recommendations' => $recommendations,
+            'galleryImages' => $detail['galleryImages'],
+            'reviewsData' => $detail['reviewsData'],
+            'attributes' => $detail['attributes'],
+            'recommendations' => $detail['recommendations'],
             'seo' => [
                 'title' => "{$vehicle->make} {$vehicle->model} — Rent from {$price} MAD/day",
                 'description' => "Rent a {$vehicle->make} {$vehicle->model} for {$price} MAD/day.",

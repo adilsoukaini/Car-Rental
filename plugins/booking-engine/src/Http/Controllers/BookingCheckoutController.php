@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Models\Vehicle;
 use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -170,7 +171,7 @@ class BookingCheckoutController extends Controller
      * frontend to collect payment via Stripe Elements. Does NOT confirm
      * the booking — see confirm().
      */
-    public function store(Request $request, Vehicle $vehicle): Response
+    public function store(Request $request, Vehicle $vehicle): Response|JsonResponse
     {
         abort_if($vehicle->status !== 'available', 404);
 
@@ -231,7 +232,7 @@ class BookingCheckoutController extends Controller
             ]);
         }
 
-        return Inertia::render('Bookings/Payment', [
+        $payload = [
             'bookingId' => $booking->id,
             'vehicleId' => $vehicle->id,
             'vehicle' => $vehicle->only(['make', 'model', 'year']),
@@ -242,7 +243,16 @@ class BookingCheckoutController extends Controller
             'holdExpiresAt' => $booking->hold_expires_at?->toIso8601String(),
             'clientSecret' => $this->clientSecretFor($authorization),
             'stripePublishableKey' => (string) config('payments-stripe.key'),
-        ]);
+        ];
+
+        // The mobile app is a pure JSON consumer — for /api/* requests return
+        // the exact same payload the web Payment page receives, as JSON (the
+        // shape the mobile lib/api.ts BookingCreateResponse documents).
+        if ($request->is('api/*')) {
+            return response()->json($payload);
+        }
+
+        return Inertia::render('Bookings/Payment', $payload);
     }
 
     /**
@@ -252,7 +262,7 @@ class BookingCheckoutController extends Controller
      * via a direct, synchronous status check against Stripe, not by
      * trusting the client — then confirms the booking for real.
      */
-    public function confirm(Request $request, Booking $booking): RedirectResponse
+    public function confirm(Request $request, Booking $booking): RedirectResponse|JsonResponse
     {
         $authorization = Payment::where('booking_id', $booking->id)
             ->where('type', 'deposit_authorization')
@@ -289,6 +299,15 @@ class BookingCheckoutController extends Controller
             throw ValidationException::withMessages([
                 'pickup_at' => 'This vehicle is no longer available for the selected dates. Your payment hold has been released.',
             ]);
+        }
+
+        // Mobile app: return the confirmed booking (with its eager-loaded
+        // relations) as JSON — the shape the mobile lib/api.ts confirm()
+        // documents. Web: redirect to the booking detail page as before.
+        if ($request->is('api/*')) {
+            return response()->json(
+                $confirmed->load(['vehicle', 'pickupLocation', 'returnLocation']),
+            );
         }
 
         return redirect()->to($this->bookingShowUrl($confirmed));

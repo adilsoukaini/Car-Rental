@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Core\Support\BookingLookupService;
 use App\Models\Booking;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -50,13 +51,13 @@ class BookingController extends Controller
             'email' => ['required', 'email'],
         ]);
 
-        $booking = Booking::query()
-            ->where('booking_number', $validated['booking_number'])
-            ->where(function ($query) use ($validated) {
-                $query->where('guest_email', $validated['email'])
-                    ->orWhereHas('user', fn ($q) => $q->where('email', $validated['email']));
-            })
-            ->first();
+        // Resolution lives in the shared BookingLookupService — the same
+        // service the mobile JSON API's Api\BookingController::lookup uses,
+        // so "what counts as a successful lookup" never drifts.
+        $booking = app(BookingLookupService::class)->resolve(
+            $validated['booking_number'],
+            $validated['email'],
+        );
 
         if ($booking === null) {
             return Redirect::route('bookings.track')

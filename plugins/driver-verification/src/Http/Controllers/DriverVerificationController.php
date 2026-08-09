@@ -6,6 +6,7 @@ namespace Plugins\DriverVerification\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\DriverVerification;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -13,19 +14,25 @@ use Inertia\Response;
 
 class DriverVerificationController extends Controller
 {
-    public function show(Request $request): Response
+    public function show(Request $request): Response|JsonResponse
     {
         $latest = $request->user()
             ->driverVerifications()
             ->latest('id')
             ->first();
 
+        // Mobile app: GET /api/account/driver-verification returns the same
+        // `{ verification }` shape the web page receives, as JSON.
+        if ($request->is('api/*')) {
+            return response()->json(['verification' => $latest]);
+        }
+
         return Inertia::render('DriverVerification/Show', [
             'verification' => $latest,
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse|JsonResponse
     {
         $user = $request->user();
 
@@ -44,7 +51,7 @@ class DriverVerificationController extends Controller
 
         $path = $request->file('license_document')->store('driver-licenses', 'local');
 
-        DriverVerification::create([
+        $verification = DriverVerification::create([
             'user_id' => $user->id,
             'license_number' => $validated['license_number'],
             'license_country' => $validated['license_country'],
@@ -52,6 +59,12 @@ class DriverVerificationController extends Controller
             'license_document_path' => $path,
             'status' => 'pending',
         ]);
+
+        // Mobile app: return the created verification as JSON (the shape the
+        // mobile lib/api.ts submit() documents). Web: redirect as before.
+        if ($request->is('api/*')) {
+            return response()->json($verification->fresh());
+        }
 
         return redirect()->route('driver-verification.show');
     }

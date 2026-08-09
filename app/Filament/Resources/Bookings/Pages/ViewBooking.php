@@ -2,12 +2,10 @@
 
 namespace App\Filament\Resources\Bookings\Pages;
 
-use App\Core\Events\BookingCancelled;
 use App\Core\Events\DamageReported;
 use App\Core\Events\VehicleCheckedOut;
 use App\Core\Events\VehicleReturned;
-use App\Core\Support\CancellationPolicyRequest;
-use App\Core\Support\FilterRegistry;
+use App\Core\Support\BookingCancellationService;
 use App\Core\Support\PaymentGatewayRegistry;
 use App\Filament\Resources\Bookings\BookingResource;
 use App\Models\Booking;
@@ -177,66 +175,24 @@ class ViewBooking extends ViewRecord
             ->modalDescription(fn () => $this->cancellationModalDescription())
             ->visible(fn () => $this->booking()->status === 'confirmed')
             ->action(function () {
-                $booking = $this->booking();
-                $authorization = $this->activeAuthorization();
+                // Cancellation + deposit resolution lives in the shared
+                // BookingCancellationService — the same service the mobile
+                // JSON API's Api\BookingController::cancel uses, so the
+                // money logic can never drift between the panel and the API.
+                $result = app(BookingCancellationService::class)->cancel($this->booking());
 
-                $booking->update(['status' => 'cancelled']);
-
-                BookingCancelled::dispatch($booking->fresh());
-
-                if ($authorization === null) {
-                    Notification::make()->title('Booking cancelled')->success()->send();
-
-                    return;
-                }
-
-                $gateway = PaymentGatewayRegistry::get($authorization->gateway);
-
-                if ($gateway === null) {
-                    Notification::make()->title('Booking cancelled, but the deposit could not be resolved')->warning()->send();
-
-                    return;
-                }
-
-                $refundPercent = $this->cancellationRefundPercent($booking);
-                $forfeitAmount = round((float) $authorization->amount * (100 - $refundPercent) / 100, 2);
-
-                if ($forfeitAmount <= 0.0) {
-                    $gateway->releaseDeposit($authorization);
-                    Notification::make()->title('Booking cancelled — deposit fully released')->success()->send();
-                } else {
-                    $gateway->captureDeposit($authorization, min($forfeitAmount, (float) $authorization->amount));
-                    Notification::make()->title("Booking cancelled — {$forfeitAmount} forfeited as a cancellation fee")->warning()->send();
-                }
+                match ($result['depositOutcome']) {
+                    'released' => Notification::make()->title('Booking cancelled — deposit fully released')->success()->send(),
+                    'captured' => Notification::make()->title("Booking cancelled — {$result['forfeitAmount']} forfeited as a cancellation fee")->warning()->send(),
+                    'gateway_unavailable' => Notification::make()->title('Booking cancelled, but the deposit could not be resolved')->warning()->send(),
+                    default => Notification::make()->title('Booking cancelled')->success()->send(),
+                };
             });
     }
 
     private function cancellationModalDescription(): string
     {
-        $authorization = $this->activeAuthorization();
-
-        if ($authorization === null) {
-            return 'Cancels the booking and frees the vehicle for other bookings covering the same dates. This cannot be undone.';
-        }
-
-        $refundPercent = $this->cancellationRefundPercent($this->booking());
-        $forfeitAmount = round((float) $authorization->amount * (100 - $refundPercent) / 100, 2);
-
-        return "Cancels the booking and frees the vehicle for other bookings covering the same dates. Based on the cancellation policy, {$refundPercent}% of the held deposit will be refunded ({$forfeitAmount} forfeited as a cancellation fee). This cannot be undone.";
-    }
-
-    private function cancellationRefundPercent(Booking $booking): int
-    {
-        $request = new CancellationPolicyRequest(
-            bookingId: $booking->id,
-            pickupAt: $booking->pickup_at,
-            cancelledAt: now(),
-        );
-
-        /** @var CancellationPolicyRequest $result */
-        $result = FilterRegistry::apply('booking.cancellationPolicy', $request);
-
-        return $result->refundPercent;
+        return app(BookingCancellationService::class)->cancellationModalDescription($this->booking());
     }
 
     private function booking(): Booking

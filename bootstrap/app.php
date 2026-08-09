@@ -15,6 +15,7 @@ use Symfony\Component\HttpFoundation\Response as Respond;
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
+        api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
@@ -38,7 +39,13 @@ return Application::configure(basePath: dirname(__DIR__))
         // Gateway webhooks are authenticated by their own signature/HMAC
         // verification (see each gateway's handleWebhook()), not a session —
         // a real browser session/CSRF token is never involved.
-        $middleware->validateCsrfTokens(except: ['webhooks/*']);
+        //
+        // /api/* is Bearer-token authenticated (Sanctum), never a browser
+        // session, so it carries no CSRF token either. The `api` middleware
+        // group doesn't include CSRF, but the exclusion is explicit here as
+        // defense-in-depth: any future /api route accidentally registered
+        // inside a `web` group must not be blocked for the mobile app.
+        $middleware->validateCsrfTokens(except: ['webhooks/*', 'api/*']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
