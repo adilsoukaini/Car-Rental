@@ -37,26 +37,50 @@ class SendPushNotificationOnBookingEvents implements ShouldQueue
         BookingConfirmed|BookingCancelled|VehicleCheckedOut|VehicleReturned $event,
     ): void {
         $booking = $event->booking;
+        $type = $this->notificationType($event);
+
+        $title = match (true) {
+            $event instanceof BookingConfirmed => 'Réservation confirmée',
+            $event instanceof BookingCancelled => 'Réservation annulée',
+            $event instanceof VehicleCheckedOut => 'Véhicule récupéré',
+            $event instanceof VehicleReturned => 'Retour effectué',
+            default => null,
+        };
+
+        $body = match (true) {
+            $event instanceof BookingConfirmed => 'Votre réservation #'.$booking->booking_number.' est confirmée',
+            $event instanceof BookingCancelled => 'Votre réservation #'.$booking->booking_number.' a été annulée',
+            $event instanceof VehicleCheckedOut => 'Vous avez récupéré votre véhicule',
+            $event instanceof VehicleReturned => 'Véhicule retourné avec succès',
+            default => null,
+        };
+
+        if ($title === null || $body === null) {
+            return;
+        }
+
+        // Save to notification history (inbox) — works for both guests and auth users.
+        \App\Models\Notification::create([
+            'user_id' => $booking->user_id,
+            'guest_email' => $booking->guest_email,
+            'booking_id' => $booking->id,
+            'type' => $type,
+            'title' => $title,
+            'body' => $body,
+            'data' => [
+                'bookingId' => $booking->id,
+                'bookingNumber' => $booking->booking_number,
+                'vehicleName' => $booking->vehicle?->name ?? ($booking->vehicle?->make.' '.$booking->vehicle?->model),
+            ],
+        ]);
 
         // Guest bookings have no account to push to.
         if ($booking->user_id === null) {
             return;
         }
 
-        $body = match (true) {
-            $event instanceof BookingConfirmed => 'Votre réservation #'.$booking->id.' est confirmée',
-            $event instanceof BookingCancelled => 'Votre réservation #'.$booking->id.' a été annulée',
-            $event instanceof VehicleCheckedOut => 'Vous avez récupéré votre véhicule',
-            $event instanceof VehicleReturned => 'Véhicule retourné avec succès',
-            default => null,
-        };
-
-        if ($body === null) {
-            return;
-        }
-
         $this->push->sendToUser($booking->user, 'Car Rental', $body, [
-            'type' => $this->notificationType($event),
+            'type' => $type,
             'bookingId' => $booking->id,
         ]);
     }

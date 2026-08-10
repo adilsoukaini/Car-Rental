@@ -65,7 +65,20 @@ Route::middleware('auth:sanctum')->group(function () {
         ->name('api.bookings.condition-report')
         ->middleware('throttle:20,1');
 
+    // Notification inbox — list + mark read. Capped at 50 most recent.
+    // These work for both the mobile app (Bearer token) and the web storefront
+    // (session cookie) since auth:sanctum accepts either.
+    Route::get('/notifications', [App\Http\Controllers\Api\NotificationController::class, 'index'])
+        ->name('api.notifications.index');
+    Route::get('/notifications/unread-count', [App\Http\Controllers\Api\NotificationController::class, 'unreadCount'])
+        ->name('api.notifications.unread-count');
+    Route::post('/notifications/{notification}/read', [App\Http\Controllers\Api\NotificationController::class, 'markRead'])
+        ->name('api.notifications.read');
+    Route::post('/notifications/read-all', [App\Http\Controllers\Api\NotificationController::class, 'markAllRead'])
+        ->name('api.notifications.read-all');
+
 });
+
 
 // Push registration — used by BOTH the mobile app (Bearer token) and the web
 // storefront (browser session cookie). The `api` middleware group alone doesn't

@@ -1,5 +1,6 @@
 import CookieBanner from '@/Components/CookieBanner';
 import CurrencySelector from '@/Components/CurrencySelector';
+import HeaderNotificationBell from '@/Components/HeaderNotificationBell';
 import NotificationBanner from '@/Components/NotificationBanner';
 import SiteLogo from '@/Components/SiteLogo';
 import { PageProps } from '@/types';
@@ -247,6 +248,7 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                             <>
                                 <CurrencySelector />
                                 {localeSwitcher}
+                                <HeaderNotificationBell />
                                 {profileMenu}
                             </>
                         ) : (

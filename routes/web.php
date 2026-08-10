@@ -149,3 +149,15 @@ Route::get('/health', function () {
 
     return response()->json(['status' => $allOk ? 'healthy' : 'degraded', 'checks' => $checks]);
 })->name('health');
+
+// Notification inbox — session-authenticated endpoints for the web storefront header bell.
+Route::middleware(['web', 'auth'])->group(function () {
+    Route::get('/notifications', [App\Http\Controllers\Api\NotificationController::class, 'index'])
+        ->name('notifications.index');
+    Route::get('/notifications/unread-count', [App\Http\Controllers\Api\NotificationController::class, 'unreadCount'])
+        ->name('notifications.unread-count');
+    Route::post('/notifications/{notification}/read', [App\Http\Controllers\Api\NotificationController::class, 'markRead'])
+        ->name('notifications.read');
+    Route::post('/notifications/read-all', [App\Http\Controllers\Api\NotificationController::class, 'markAllRead'])
+        ->name('notifications.read-all');
+});
