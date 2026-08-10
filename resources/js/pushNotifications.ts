@@ -139,8 +139,14 @@ async function getVapidPublicKey(): Promise<string | null> {
 /**
  * Convert a base64url VAPID public key into the Uint8Array the PushManager
  * subscribe() call requires.
+ *
+ * The explicit `Uint8Array<ArrayBuffer>` return type is load-bearing: the
+ * PushManager's applicationServerKey accepts `BufferSource`, which (under
+ * TypeScript 7's stricter generic ArrayBuffer typing) requires a
+ * `Uint8Array<ArrayBuffer>`, not the wider `Uint8Array<ArrayBufferLike>` the
+ * bare `Uint8Array` annotation would infer.
  */
-function urlBase64ToUint8Array(base64: string): Uint8Array {
+function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
     const padding = '='.repeat((4 - (base64.length % 4)) % 4);
     const base64WithPadding = (base64 + padding).replace(/-/g, '+').replace(/_/g, '/');
     const raw = atob(base64WithPadding);

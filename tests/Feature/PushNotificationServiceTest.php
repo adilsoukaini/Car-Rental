@@ -120,4 +120,54 @@ class PushNotificationServiceTest extends TestCase
 
         $this->assertSame(1, $count);
     }
+
+    // -----------------------------------------------------------------------
+    // Web storefront (VAPID) channel.
+    // -----------------------------------------------------------------------
+
+    public function test_send_to_user_targets_web_subscriptions(): void
+    {
+        Http::fake(); // no expo tokens in this test — nothing to send to Expo
+
+        $user = User::factory()->create();
+        $user->pushNotificationTokens()->create([
+            'platform' => 'web',
+            'endpoint' => 'https://example.com/push/endpoint',
+            'p256dh' => 'public-key',
+            'auth' => 'auth-secret',
+        ]);
+
+        // Web tokens count toward the target total even though nothing is
+        // actually delivered (VAPID keys are not configured in the test env —
+        // the channel logs a warning and skips, never crashes).
+        $count = app(PushNotificationService::class)->sendToUser($user, 'Title', 'Body');
+
+        $this->assertSame(1, $count);
+        Http::assertNothingSent();
+    }
+
+    public function test_send_does_not_throw_when_web_push_endpoint_is_unreachable(): void
+    {
+        Http::fake();
+
+        // Valid VAPID key pair so the WebPush library passes validation and
+        // actually attempts the network call to the (unreachable) endpoint.
+        config([
+            'services.push.vapid_public_key' => 'BLJdOrR4ycN6cec3kUdNV3goZ7Fz58MF2M3wZyFuJYfmAo6Yt4g3YQwkCH4u2heoVrsHcY_rV_Aef3H_YPD8gCo',
+            'services.push.vapid_private_key' => 'jDRu9cfQ2u39yqaY0hyk5n5RRqgHFqsNwoLPuGGmMbE',
+        ]);
+
+        $user = User::factory()->create();
+        $user->pushNotificationTokens()->create([
+            'platform' => 'web',
+            'endpoint' => 'http://127.0.0.1:1/fail', // connection refused, fast
+            'p256dh' => 'public-key',
+            'auth' => 'auth-secret',
+        ]);
+
+        // Must not throw — the web push is best-effort (resilience rule).
+        $count = app(PushNotificationService::class)->sendToUser($user, 'Title', 'Body');
+
+        $this->assertSame(1, $count);
+    }
 }

@@ -162,4 +162,101 @@ class PushNotificationApiTest extends TestCase
                 && $payload[0]['data']['type'] === 'test';
         });
     }
+
+    // -----------------------------------------------------------------------
+    // Web storefront (VAPID) registration — the browser's PushSubscription
+    // shape: endpoint + keys.{p256dh,auth} + expirationTime, platform 'web'.
+    // -----------------------------------------------------------------------
+
+    public function test_register_stores_a_web_subscription(): void
+    {
+        $user = User::factory()->create();
+
+        $this->withToken($this->tokenFor($user))
+            ->postJson('/api/push/register', [
+                'platform' => 'web',
+                'endpoint' => 'https://fcm.googleapis.com/fcm/send/abc123',
+                'expirationTime' => null,
+                'keys' => [
+                    'p256dh' => 'BASE64URL_PUBLIC_KEY',
+                    'auth' => 'BASE64URL_AUTH_SECRET',
+                ],
+            ])
+            ->assertOk()
+            ->assertJsonPath('message', 'Subscription registered.');
+
+        $this->assertDatabaseHas('push_notification_tokens', [
+            'user_id' => $user->id,
+            'platform' => 'web',
+            'endpoint' => 'https://fcm.googleapis.com/fcm/send/abc123',
+            'p256dh' => 'BASE64URL_PUBLIC_KEY',
+            'auth' => 'BASE64URL_AUTH_SECRET',
+        ]);
+    }
+
+    public function test_register_web_requires_the_push_keys(): void
+    {
+        $user = User::factory()->create();
+
+        $this->withToken($this->tokenFor($user))
+            ->postJson('/api/push/register', [
+                'platform' => 'web',
+                'endpoint' => 'https://fcm.googleapis.com/fcm/send/abc123',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['keys.p256dh', 'keys.auth']);
+    }
+
+    public function test_register_web_requires_authentication(): void
+    {
+        $this->postJson('/api/push/register', [
+            'platform' => 'web',
+            'endpoint' => 'https://fcm.googleapis.com/fcm/send/abc123',
+            'keys' => ['p256dh' => 'x', 'auth' => 'y'],
+        ])->assertStatus(401);
+    }
+
+    public function test_unregister_removes_a_web_subscription_by_endpoint(): void
+    {
+        $user = User::factory()->create();
+        $user->pushNotificationTokens()->create([
+            'platform' => 'web',
+            'endpoint' => 'https://fcm.googleapis.com/fcm/send/abc123',
+            'p256dh' => 'x',
+            'auth' => 'y',
+        ]);
+
+        $this->withToken($this->tokenFor($user))
+            ->postJson('/api/push/unregister', [
+                'platform' => 'web',
+                'endpoint' => 'https://fcm.googleapis.com/fcm/send/abc123',
+            ])
+            ->assertOk();
+
+        $this->assertDatabaseCount('push_notification_tokens', 0);
+    }
+
+    // -----------------------------------------------------------------------
+    // VAPID public key endpoint — public by design, so the browser can fetch it
+    // before creating a subscription.
+    // -----------------------------------------------------------------------
+
+    public function test_vapid_public_key_endpoint_returns_the_configured_key(): void
+    {
+        config(['services.push.vapid_public_key' => 'TEST_PUBLIC_KEY']);
+
+        // No auth token, no session — the endpoint is public.
+        $this->getJson('/api/push/vapid-public-key')
+            ->assertOk()
+            ->assertJsonPath('public_key', 'TEST_PUBLIC_KEY');
+    }
+
+    public function test_vapid_public_key_endpoint_returns_503_when_not_configured(): void
+    {
+        config(['services.push.vapid_public_key' => null]);
+
+        $this->getJson('/api/push/vapid-public-key')
+            ->assertStatus(503)
+            ->assertJsonPath('public_key', null);
+    }
 }
