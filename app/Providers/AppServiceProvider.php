@@ -13,6 +13,7 @@ use App\Core\Listeners\SendBookingCancelledEmail;
 use App\Core\Listeners\SendBookingCheckedOutEmail;
 use App\Core\Listeners\SendBookingConfirmationEmail;
 use App\Core\Listeners\SendBookingReturnedEmail;
+use App\Core\Listeners\SendPushNotificationOnBookingEvents;
 use App\Core\Sorts\VehicleNameAscending;
 use App\Core\Sorts\VehiclePriceAscending;
 use App\Core\Sorts\VehiclePriceDescending;
@@ -74,6 +75,11 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(VehicleCheckedOut::class, SendBookingCheckedOutEmail::class);
         Event::listen(VehicleReturned::class, SendBookingReturnedEmail::class);
         Event::listen(BookingCancelled::class, SendBookingCancelledEmail::class);
+
+        Event::listen(BookingConfirmed::class, SendPushNotificationOnBookingEvents::class);
+        Event::listen(BookingCancelled::class, SendPushNotificationOnBookingEvents::class);
+        Event::listen(VehicleCheckedOut::class, SendPushNotificationOnBookingEvents::class);
+        Event::listen(VehicleReturned::class, SendPushNotificationOnBookingEvents::class);
 
         SlotRegistry::register('account.dashboardWidgets', 'Widgets/BookingHistory');
 

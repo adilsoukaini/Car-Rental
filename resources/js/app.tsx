@@ -2,6 +2,7 @@ import '../css/app.css';
 import './bootstrap';
 
 import ToastContainer from '@/Components/Toast';
+import { registerServiceWorker } from '@/pushNotifications';
 import { semantic as fallbackSemantic } from '../theme/active';
 import { ThemeProvider } from '../theme/ThemeProvider';
 import type { Semantic } from '../theme/semantic';
@@ -50,6 +51,14 @@ function Root({ App, props }: { App: SetupArgs['App']; props: SetupArgs['props']
                 setFlash(pageProps.flash);
             }
         });
+    }, []);
+
+    // Register the service worker (public/sw.js) on every page load. Silent —
+    // never requests notification permission (that's always user-triggered via
+    // the NotificationBanner / NotificationSettings components). Degrades
+    // silently when Push isn't supported or registration fails (Rule 1).
+    useEffect(() => {
+        registerServiceWorker();
     }, []);
 
     return (

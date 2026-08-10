@@ -32,6 +32,7 @@
         "laravel/tinker": "^3.0",
         "maatwebsite/excel": "*",
         "meilisearch/meilisearch-php": "^1.10",
+        "minishlink/web-push": "^11.0",
         "tightenco/ziggy": "^2.0"
     },
     "require-dev": {

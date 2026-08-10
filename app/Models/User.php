@@ -66,6 +66,11 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
         return $this->hasMany(Booking::class);
     }
 
+    public function pushNotificationTokens(): HasMany
+    {
+        return $this->hasMany(PushNotificationToken::class);
+    }
+
     public function driverVerifications(): HasMany
     {
         return $this->hasMany(DriverVerification::class);

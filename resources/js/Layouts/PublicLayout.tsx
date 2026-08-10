@@ -1,5 +1,6 @@
 import CookieBanner from '@/Components/CookieBanner';
 import CurrencySelector from '@/Components/CurrencySelector';
+import NotificationBanner from '@/Components/NotificationBanner';
 import SiteLogo from '@/Components/SiteLogo';
 import { PageProps } from '@/types';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -345,6 +346,12 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                     </div>
                 </div>
             )}
+
+            {/* One-time "enable notifications" nudge for logged-in users whose
+                browser hasn't been asked yet. Renders nothing for guests, for
+                browsers without Push support, once permission is granted, or
+                after the user dismisses it. */}
+            <NotificationBanner />
 
             <main id="main-content" className="flex-grow">{children}</main>
 

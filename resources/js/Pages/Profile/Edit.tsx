@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import DriverVerificationCard from '@/Components/DriverVerificationCard';
+import NotificationSettings from '@/Components/NotificationSettings';
 import { SlotOutlet } from '@/pluginComponentRegistry';
 import { DriverVerification, PageProps } from '@/types';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -50,6 +51,8 @@ export default function Edit({
                         status={driverVerificationStatus}
                         verification={driverVerification}
                     />
+
+                    <NotificationSettings />
 
                     <div className="rounded-container bg-surface p-4 shadow-resting sm:p-8">
                         <UpdateProfileInformationForm
