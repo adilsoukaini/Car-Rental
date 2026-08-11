@@ -64,7 +64,7 @@ jobs:
         continue-on-error: true
 
       - name: Run tests
-        run: php artisan test --parallel
+        run: php artisan test
         env:
           DB_CONNECTION: pgsql
           DB_HOST: localhost
