@@ -16,8 +16,11 @@ use Illuminate\Queue\SerializesModels;
 class BookingReturned extends Mailable implements ShouldQueue
 {
     public int $tries = 3;
+
     public array $backoff = [10, 60, 300];
+
     public int $maxExceptions = 3;
+
     use BookingMailData, Queueable, SerializesModels;
 
     public function __construct(public readonly Booking $booking) {}

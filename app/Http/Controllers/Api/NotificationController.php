@@ -40,6 +40,7 @@ class NotificationController extends Controller
             abort(403);
         }
         $notification->update(['read_at' => now()]);
+
         return response()->json(['ok' => true]);
     }
 

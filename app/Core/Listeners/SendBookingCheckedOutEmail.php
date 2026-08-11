@@ -19,8 +19,11 @@ use Illuminate\Support\Facades\URL;
 class SendBookingCheckedOutEmail implements ShouldQueue
 {
     public int $tries = 3;
+
     public array $backoff = [10, 60, 300];
+
     public int $maxExceptions = 3;
+
     public function handle(VehicleCheckedOut $event): void
     {
         $booking = $event->booking->loadMissing(['vehicle', 'pickupLocation', 'returnLocation', 'user']);

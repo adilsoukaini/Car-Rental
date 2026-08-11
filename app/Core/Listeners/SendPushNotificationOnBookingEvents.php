@@ -8,6 +8,7 @@ use App\Core\Events\BookingCancelled;
 use App\Core\Events\BookingConfirmed;
 use App\Core\Events\VehicleCheckedOut;
 use App\Core\Events\VehicleReturned;
+use App\Models\Notification;
 use App\Services\PushNotificationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
@@ -30,8 +31,11 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 class SendPushNotificationOnBookingEvents implements ShouldQueue
 {
     public int $tries = 3;
+
     public array $backoff = [10, 60, 300];
+
     public int $maxExceptions = 3;
+
     public function __construct(
         private readonly PushNotificationService $push,
     ) {}
@@ -63,7 +67,7 @@ class SendPushNotificationOnBookingEvents implements ShouldQueue
         }
 
         // Save to notification history (inbox) — works for both guests and auth users.
-        \App\Models\Notification::create([
+        Notification::create([
             'user_id' => $booking->user_id,
             'guest_email' => $booking->guest_email,
             'booking_id' => $booking->id,
@@ -73,7 +77,7 @@ class SendPushNotificationOnBookingEvents implements ShouldQueue
             'data' => [
                 'bookingId' => $booking->id,
                 'bookingNumber' => $booking->booking_number,
-                'vehicleName' => $booking->vehicle?->name ?? ($booking->vehicle?->make.' '.$booking->vehicle?->model),
+                'vehicleName' => $booking->vehicle?->make.' '.$booking->vehicle?->model,
             ],
         ]);
 

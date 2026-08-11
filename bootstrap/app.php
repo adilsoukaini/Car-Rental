@@ -9,6 +9,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Illuminate\Queue\Console\WorkCommand;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response as Respond;
 
@@ -29,7 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('bookings:release-expired-holds')
             ->everyMinute()
             ->withoutOverlapping();
-        $schedule->command(\Illuminate\Queue\Console\WorkCommand::class, ['--stop-when-empty'])
+        $schedule->command(WorkCommand::class, ['--stop-when-empty'])
             ->everyMinute()
             ->withoutOverlapping(5);
     })

@@ -2,7 +2,9 @@
 
 use App\Core\Support\FilterRegistry;
 use App\Filament\Pages\BulkVehicleImport;
+use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\BookingController;
+use App\Http\Controllers\FleetController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\UserPreferenceController;
@@ -150,21 +152,20 @@ Route::get('/health', function () {
     return response()->json(['status' => $allOk ? 'healthy' : 'degraded', 'checks' => $checks]);
 })->name('health');
 
-
 // Fleet routes — core-owned, no plugin dependency.
 Route::middleware('web')->group(function () {
-    Route::get('/vehicles', [App\Http\Controllers\FleetController::class, 'index'])->name('vehicles.index');
-    Route::get('/vehicles/{vehicle}', [App\Http\Controllers\FleetController::class, 'show'])->name('vehicles.show');
+    Route::get('/vehicles', [FleetController::class, 'index'])->name('vehicles.index');
+    Route::get('/vehicles/{vehicle}', [FleetController::class, 'show'])->name('vehicles.show');
 });
 
 // Notification inbox — session-authenticated endpoints for the web storefront header bell.
 Route::middleware(['web', 'auth'])->group(function () {
-    Route::get('/notifications', [App\Http\Controllers\Api\NotificationController::class, 'index'])
+    Route::get('/notifications', [NotificationController::class, 'index'])
         ->name('notifications.index');
-    Route::get('/notifications/unread-count', [App\Http\Controllers\Api\NotificationController::class, 'unreadCount'])
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount'])
         ->name('notifications.unread-count');
-    Route::post('/notifications/{notification}/read', [App\Http\Controllers\Api\NotificationController::class, 'markRead'])
+    Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead'])
         ->name('notifications.read');
-    Route::post('/notifications/read-all', [App\Http\Controllers\Api\NotificationController::class, 'markAllRead'])
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])
         ->name('notifications.read-all');
 });

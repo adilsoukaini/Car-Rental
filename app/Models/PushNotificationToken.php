@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * A push registration for the mobile app or the web storefront.
@@ -22,7 +23,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $endpoint the web push subscription URL (web)
  * @property string|null $p256dh the subscription's base64url public key (web)
  * @property string|null $auth the subscription's base64url auth secret (web)
- * @property \Illuminate\Support\Carbon|null $expires_at
+ * @property Carbon|null $expires_at
  */
 #[Fillable(['user_id', 'token', 'platform', 'endpoint', 'p256dh', 'auth', 'expires_at'])]
 class PushNotificationToken extends Model

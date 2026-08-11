@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\ConditionReportController;
 use App\Http\Controllers\Api\LocationController;
+use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PushNotificationController;
 use App\Http\Controllers\Api\VehicleController;
 use App\Http\Controllers\SearchController;
@@ -70,17 +71,16 @@ Route::middleware('auth:sanctum')->group(function () {
     // Notification inbox — list + mark read. Capped at 50 most recent.
     // These work for both the mobile app (Bearer token) and the web storefront
     // (session cookie) since auth:sanctum accepts either.
-    Route::get('/notifications', [App\Http\Controllers\Api\NotificationController::class, 'index'])
+    Route::get('/notifications', [NotificationController::class, 'index'])
         ->name('api.notifications.index');
-    Route::get('/notifications/unread-count', [App\Http\Controllers\Api\NotificationController::class, 'unreadCount'])
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount'])
         ->name('api.notifications.unread-count');
-    Route::post('/notifications/{notification}/read', [App\Http\Controllers\Api\NotificationController::class, 'markRead'])
+    Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead'])
         ->name('api.notifications.read');
-    Route::post('/notifications/read-all', [App\Http\Controllers\Api\NotificationController::class, 'markAllRead'])
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])
         ->name('api.notifications.read-all');
 
 });
-
 
 // Push registration — used by BOTH the mobile app (Bearer token) and the web
 // storefront (browser session cookie). The `api` middleware group alone doesn't

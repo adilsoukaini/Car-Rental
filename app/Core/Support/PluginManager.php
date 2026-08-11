@@ -6,6 +6,7 @@ namespace App\Core\Support;
 
 use App\Models\Plugin;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Log;
 
 class PluginManager
 {
@@ -58,14 +59,16 @@ class PluginManager
             $providerClass = config("plugins.registry.{$slug}");
 
             if (! $providerClass) {
-                \Illuminate\Support\Facades\Log::warning("PluginManager: no provider for slug [{$slug}]");
+                Log::warning("PluginManager: no provider for slug [{$slug}]");
+
                 continue;
             }
             if (! class_exists($providerClass)) {
-                \Illuminate\Support\Facades\Log::warning("PluginManager: class [{$providerClass}] not found for slug [{$slug}]");
+                Log::warning("PluginManager: class [{$providerClass}] not found for slug [{$slug}]");
+
                 continue;
             }
-            \Illuminate\Support\Facades\Log::info("PluginManager: registering [{$providerClass}] for slug [{$slug}]");
+            Log::info("PluginManager: registering [{$providerClass}] for slug [{$slug}]");
             app()->register($providerClass);
         }
     }

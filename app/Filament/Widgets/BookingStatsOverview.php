@@ -8,6 +8,7 @@ use App\Models\Booking;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 /**
  * Deliberately labeled "Total Booking Value", not "Revenue" — this
@@ -63,9 +64,9 @@ class BookingStatsOverview extends StatsOverviewWidget
      * (null user_id with a non-empty guest_email). Mirrors the original
      * SQL's COUNT(DISTINCT ...) semantics via collection uniqueness.
      *
-     * @param  \Illuminate\Support\Collection<int, Booking>  $bookings
+     * @param  Collection<int, Booking>  $bookings
      */
-    private function distinctCustomerCount(\Illuminate\Support\Collection $bookings): int
+    private function distinctCustomerCount(Collection $bookings): int
     {
         $registered = $bookings
             ->whereNotNull('user_id')

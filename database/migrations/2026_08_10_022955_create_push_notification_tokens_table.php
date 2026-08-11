@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -60,7 +61,7 @@ return new class extends Migration
             $table->index('endpoint');
         });
 
-        \Illuminate\Support\Facades\DB::statement(
+        DB::statement(
             'create unique index push_notification_tokens_endpoint_unique '
             .'on push_notification_tokens (endpoint) where endpoint is not null'
         );

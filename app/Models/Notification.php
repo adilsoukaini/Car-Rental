@@ -53,7 +53,7 @@ class Notification extends Model
     /** Count unread for badge. */
     public static function unreadCount(?int $userId, ?string $guestEmail): int
     {
-        if (!$userId && !$guestEmail) {
+        if (! $userId && ! $guestEmail) {
             return 0;
         }
         $query = static::unread();
@@ -62,6 +62,7 @@ class Notification extends Model
         } else {
             $query->where('guest_email', $guestEmail);
         }
+
         return $query->count();
     }
 }

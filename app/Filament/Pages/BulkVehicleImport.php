@@ -13,6 +13,7 @@ use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 use Maatwebsite\Excel\Excel as ExcelReader;
 use Maatwebsite\Excel\Validators\Failure;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Admin-only page that bulk-imports vehicles from a CSV uploaded through the
@@ -168,7 +169,7 @@ class BulkVehicleImport extends Page
         $this->failureRows = null;
     }
 
-    public function downloadTemplate(): \Symfony\Component\HttpFoundation\StreamedResponse
+    public function downloadTemplate(): StreamedResponse
     {
         if (! auth()->user()?->hasAtLeast(Role::Admin)) {
             abort(403);

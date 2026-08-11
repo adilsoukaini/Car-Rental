@@ -29,6 +29,7 @@ class Vehicle extends Model
 {
     /** @use HasFactory<VehicleFactory> */
     use HasFactory;
+
     use Searchable;
 
     /**

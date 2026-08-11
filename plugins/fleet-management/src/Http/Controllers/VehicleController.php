@@ -34,46 +34,46 @@ class VehicleController extends Controller
     public function index(Request $request): Response
     {
         try {
-        $search = $request->string('search')->trim()->toString();
-        $requestedSort = $request->string('sort')->trim()->toString();
-        $sort = $requestedSort !== '' ? VehicleSortRegistry::resolveActive($requestedSort) : null;
+            $search = $request->string('search')->trim()->toString();
+            $requestedSort = $request->string('sort')->trim()->toString();
+            $sort = $requestedSort !== '' ? VehicleSortRegistry::resolveActive($requestedSort) : null;
 
-        $vehicles = app(VehicleCatalogService::class)
-            ->fleetQuery($request)
-            ->paginate(12)
-            ->withQueryString();
+            $vehicles = app(VehicleCatalogService::class)
+                ->fleetQuery($request)
+                ->paginate(12)
+                ->withQueryString();
 
-        $availableFilters = collect(VehicleFilterRegistry::enabled())
-            ->map(fn ($filter) => [
-                'id' => $filter->id(),
-                'label' => $filter->label(),
-                'uiType' => $filter->uiType(),
-                'options' => $filter->options(),
-            ])
-            ->values()
-            ->all();
+            $availableFilters = collect(VehicleFilterRegistry::enabled())
+                ->map(fn ($filter) => [
+                    'id' => $filter->id(),
+                    'label' => $filter->label(),
+                    'uiType' => $filter->uiType(),
+                    'options' => $filter->options(),
+                ])
+                ->values()
+                ->all();
 
-        $availableSorts = collect(VehicleSortRegistry::all())
-            ->map(fn ($sortOption) => [
-                'id' => $sortOption->id(),
-                'label' => $sortOption->label(),
-            ])
-            ->values()
-            ->all();
+            $availableSorts = collect(VehicleSortRegistry::all())
+                ->map(fn ($sortOption) => [
+                    'id' => $sortOption->id(),
+                    'label' => $sortOption->label(),
+                ])
+                ->values()
+                ->all();
 
-        $activeFilters = collect(VehicleFilterRegistry::enabled())
-            ->mapWithKeys(fn ($filter) => [$filter->id() => $request->string($filter->id())->toString()])
-            ->filter(fn (string $value) => $value !== '')
-            ->all();
+            $activeFilters = collect(VehicleFilterRegistry::enabled())
+                ->mapWithKeys(fn ($filter) => [$filter->id() => $request->string($filter->id())->toString()])
+                ->filter(fn (string $value) => $value !== '')
+                ->all();
 
-        return Inertia::render('Vehicles/Index', [
-            'vehicles' => $vehicles,
-            'search' => $search,
-            'availableFilters' => $availableFilters,
-            'availableSorts' => $availableSorts,
-            'currentSort' => $sort?->id() ?? '',
-            'activeFilters' => $activeFilters,
-        ]);
+            return Inertia::render('Vehicles/Index', [
+                'vehicles' => $vehicles,
+                'search' => $search,
+                'availableFilters' => $availableFilters,
+                'availableSorts' => $availableSorts,
+                'currentSort' => $sort?->id() ?? '',
+                'activeFilters' => $activeFilters,
+            ]);
         } catch (\Throwable $e) {
             Log::error('VehicleController::index failed', [
                 'error' => $e->getMessage(),

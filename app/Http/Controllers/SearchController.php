@@ -46,7 +46,7 @@ class SearchController extends Controller
             $vehicles = Vehicle::where('status', 'available')
                 ->where(function ($q) use ($needle) {
                     $q->whereRaw('LOWER(make) LIKE ?', [$needle])
-                      ->orWhereRaw('LOWER(model) LIKE ?', [$needle]);
+                        ->orWhereRaw('LOWER(model) LIKE ?', [$needle]);
                 })
                 ->take(5)
                 ->get();

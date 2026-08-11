@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Core\Support\VehicleCatalogService;
 use App\Core\Support\VehicleFilterRegistry;
 use App\Core\Support\VehicleSortRegistry;
+use App\Models\Vehicle;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -62,7 +63,7 @@ class FleetController extends Controller
         ]);
     }
 
-    public function show(Request $request, \App\Models\Vehicle $vehicle): Response
+    public function show(Request $request, Vehicle $vehicle): Response
     {
         // The plugin's VehicleController::show() loads much more data (gallery,
         // reviews, attributes, recommendations) via pipeline filters. For a
