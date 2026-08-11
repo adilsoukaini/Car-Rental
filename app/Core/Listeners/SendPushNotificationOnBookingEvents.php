@@ -46,25 +46,22 @@ class SendPushNotificationOnBookingEvents implements ShouldQueue
         $booking = $event->booking;
         $type = $this->notificationType($event);
 
+        // The union type above is exhaustive — the `default` arm is the
+        // VehicleReturned case (last remaining member), never a null fallback,
+        // so `$title`/`$body` are always set here.
         $title = match (true) {
             $event instanceof BookingConfirmed => 'Réservation confirmée',
             $event instanceof BookingCancelled => 'Réservation annulée',
             $event instanceof VehicleCheckedOut => 'Véhicule récupéré',
-            $event instanceof VehicleReturned => 'Retour effectué',
-            default => null,
+            default => 'Retour effectué',
         };
 
         $body = match (true) {
             $event instanceof BookingConfirmed => 'Votre réservation #'.$booking->booking_number.' est confirmée',
             $event instanceof BookingCancelled => 'Votre réservation #'.$booking->booking_number.' a été annulée',
             $event instanceof VehicleCheckedOut => 'Vous avez récupéré votre véhicule',
-            $event instanceof VehicleReturned => 'Véhicule retourné avec succès',
-            default => null,
+            default => 'Véhicule retourné avec succès',
         };
-
-        if ($title === null || $body === null) {
-            return;
-        }
 
         // Save to notification history (inbox) — works for both guests and auth users.
         Notification::create([
@@ -77,7 +74,7 @@ class SendPushNotificationOnBookingEvents implements ShouldQueue
             'data' => [
                 'bookingId' => $booking->id,
                 'bookingNumber' => $booking->booking_number,
-                'vehicleName' => $booking->vehicle?->make.' '.$booking->vehicle?->model,
+                'vehicleName' => $booking->vehicle->make.' '.$booking->vehicle->model,
             ],
         ]);
 

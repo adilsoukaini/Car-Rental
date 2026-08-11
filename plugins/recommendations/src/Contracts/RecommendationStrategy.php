@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Plugins\Recommendations\Contracts;
 
 use App\Models\Vehicle;
-use Illuminate\Support\Collection;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
 /**
  * A strategy that finds "similar" vehicles for the recommendations section.
@@ -27,7 +27,7 @@ interface RecommendationStrategy
      * Return available vehicles similar to $vehicle, never including
      * $vehicle itself.
      *
-     * @return Collection<int, Vehicle>
+     * @return EloquentCollection<int, Vehicle>
      */
-    public function getRecommendations(Vehicle $vehicle, int $limit = 4): Collection;
+    public function getRecommendations(Vehicle $vehicle, int $limit = 4): EloquentCollection;
 }

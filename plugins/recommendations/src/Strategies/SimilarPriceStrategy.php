@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Plugins\Recommendations\Strategies;
 
 use App\Models\Vehicle;
-use Illuminate\Support\Collection;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Plugins\Recommendations\Contracts\RecommendationStrategy;
 
 /**
@@ -25,9 +25,9 @@ class SimilarPriceStrategy implements RecommendationStrategy
     }
 
     /**
-     * @return Collection<int, Vehicle>
+     * @return EloquentCollection<int, Vehicle>
      */
-    public function getRecommendations(Vehicle $vehicle, int $limit = 4): Collection
+    public function getRecommendations(Vehicle $vehicle, int $limit = 4): EloquentCollection
     {
         $rate = (float) $vehicle->daily_rate;
         $min = $rate * 0.7;

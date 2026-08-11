@@ -56,7 +56,7 @@ class GetVehicleRecommendationsPipe
             // stores it under the camelCase key, and $v->primary_image resolves
             // to null in PHP (it only appears as snake_case in Inertia's JSON
             // serialization). Verified against real Postgres data.
-            'imageUrl' => $v->primaryImage?->url ?? null,
+            'imageUrl' => $v->primaryImage->url ?? null,
         ])->values()->toArray();
 
         return $next($mapped);

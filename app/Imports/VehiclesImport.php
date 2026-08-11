@@ -52,7 +52,7 @@ class VehiclesImport implements SkipsEmptyRows, SkipsOnError, SkipsOnFailure, To
     /** @var array<string, true> License plates already imported by this run (lowercased). */
     private array $seenPlates = [];
 
-    /** @var array<string, true>|null Existing plates preloaded once (lowercased). */
+    /** @var array<string, bool>|null Existing plates preloaded once (lowercased). */
     private ?array $existingPlates = null;
 
     private int $createdCount = 0;
@@ -162,7 +162,7 @@ class VehiclesImport implements SkipsEmptyRows, SkipsOnError, SkipsOnFailure, To
      * Existing license plates in the DB, loaded once per import run
      * (rule 8 — never one query per row).
      *
-     * @return array<string, true>
+     * @return array<string, bool>
      */
     private function existingPlates(): array
     {

@@ -28,6 +28,8 @@ use Illuminate\Support\Facades\Cache;
  * Only slots with at least one registered variant appear here; a region
  * with no DB row falls back to its first registered variant
  * (LayoutVariantRegistry::activeComponentFor()).
+ *
+ * @property-read Schema $form
  */
 class LayoutSettings extends Page
 {

@@ -68,7 +68,7 @@ class SendPushNotificationOnBookingEventsTest extends TestCase
             return $request->url() === config('services.expo.push_url')
                 && $payload[0]['to'] === 'ExponentPushToken[abc123]'
                 && $payload[0]['title'] === 'Car Rental'
-                && $payload[0]['body'] === 'Votre réservation #'.$booking->id.' est confirmée'
+                && $payload[0]['body'] === 'Votre réservation #'.$booking->booking_number.' est confirmée'
                 && $payload[0]['data']['bookingId'] === $booking->id
                 && $payload[0]['data']['type'] === 'booking_confirmed';
         });
@@ -87,7 +87,7 @@ class SendPushNotificationOnBookingEventsTest extends TestCase
         Http::assertSent(function ($request) use ($booking) {
             $payload = json_decode($request->body(), true);
 
-            return $payload[0]['body'] === 'Votre réservation #'.$booking->id.' a été annulée'
+            return $payload[0]['body'] === 'Votre réservation #'.$booking->booking_number.' a été annulée'
                 && $payload[0]['data']['type'] === 'booking_cancelled';
         });
     }
@@ -142,7 +142,7 @@ class SendPushNotificationOnBookingEventsTest extends TestCase
         BookingConfirmed::dispatch($booking);
 
         Http::assertSent(fn ($request) => json_decode($request->body(), true)[0]['body']
-            === 'Votre réservation #'.$booking->id.' est confirmée');
+            === 'Votre réservation #'.$booking->booking_number.' est confirmée');
     }
 
     public function test_guest_booking_sends_no_push(): void

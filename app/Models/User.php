@@ -18,8 +18,11 @@ use Laravel\Sanctum\HasApiTokens;
 
 /**
  * @property Role $role
+ * @property array<string, mixed>|null $metadata JSON column holding small
+ *                                               per-user preferences (e.g. display currency) — null until the
+ *                                               user saves a preference.
  */
-#[Fillable(['name', 'email', 'password', 'role'])]
+#[Fillable(['name', 'email', 'password', 'role', 'metadata'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser, MustVerifyEmail
 {
@@ -66,11 +69,17 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
         return $this->hasMany(Booking::class);
     }
 
+    /**
+     * @return HasMany<PushNotificationToken, $this>
+     */
     public function pushNotificationTokens(): HasMany
     {
         return $this->hasMany(PushNotificationToken::class);
     }
 
+    /**
+     * @return HasMany<DriverVerification, $this>
+     */
     public function driverVerifications(): HasMany
     {
         return $this->hasMany(DriverVerification::class);

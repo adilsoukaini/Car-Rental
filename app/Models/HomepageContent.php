@@ -58,9 +58,26 @@ class HomepageContent extends Model
     /**
      * Return the singleton homepage-content row, creating it with the
      * storefront defaults if it doesn't exist yet.
+     *
+     * Pinned to id=1 explicitly: `firstOrCreate(['id' => 1], ...)` would not
+     * work here because `id` is not fillable, so the attribute is dropped and
+     * the row is created with an auto-increment id — the "singleton" would
+     * then spawn a fresh row on every call (and every rollback advances the
+     * Postgres sequence, so the id drifts away from 1). Set the key directly
+     * on the model instead, bypassing mass-assignment protection.
      */
     public static function current(): self
     {
-        return static::firstOrCreate(['id' => 1], static::DEFAULTS);
+        $record = static::find(1);
+
+        if ($record instanceof self) {
+            return $record;
+        }
+
+        $record = new self(static::DEFAULTS);
+        $record->id = 1;
+        $record->save();
+
+        return $record;
     }
 }

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Plugins\Recommendations\Strategies;
 
 use App\Models\Vehicle;
-use Illuminate\Support\Collection;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Plugins\Recommendations\Contracts\RecommendationStrategy;
 
 /**
@@ -28,12 +28,12 @@ class SameCategoryStrategy implements RecommendationStrategy
     }
 
     /**
-     * @return Collection<int, Vehicle>
+     * @return EloquentCollection<int, Vehicle>
      */
-    public function getRecommendations(Vehicle $vehicle, int $limit = 4): Collection
+    public function getRecommendations(Vehicle $vehicle, int $limit = 4): EloquentCollection
     {
         if (! $vehicle->category) {
-            return collect();
+            return new EloquentCollection;
         }
 
         return Vehicle::where('category', $vehicle->category)

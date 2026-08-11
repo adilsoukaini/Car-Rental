@@ -61,7 +61,7 @@ class HandleInertiaRequests extends Middleware
             // back to localStorage, then MAD, when this is null. Mirrors the
             // locale prop: guests get a per-device (localStorage) preference,
             // logged-in users get their persisted cross-session preference.
-            'currency' => $user instanceof User ? ($user->metadata['currency'] ?? null) : null,
+            'currency' => $user instanceof User && is_array($user->metadata) ? ($user->metadata['currency'] ?? null) : null,
             'auth' => [
                 'user' => $user,
             ],

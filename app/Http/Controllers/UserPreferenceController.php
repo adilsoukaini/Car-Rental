@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -27,11 +28,32 @@ class UserPreferenceController extends Controller
             'currency' => ['required', 'string', Rule::in(['MAD', 'EUR', 'USD'])],
         ]);
 
-        // Use a single atomic update to avoid a read-modify-write lost-update
-        // race when two preference saves arrive concurrently.
-        $request->user()->update([
-            'metadata->currency' => $validated['currency'],
-        ]);
+        $user = $request->user();
+
+        // The atomic JSON path update (`metadata->currency`) compiles to
+        // jsonb_set(metadata, '{currency}', ...) on Postgres, which returns
+        // NULL when the column itself is NULL — so a first-time save on a
+        // fresh user (metadata = NULL) would silently write nothing. Seed the
+        // object once with a full write so the atomic path update has a
+        // target; subsequent saves keep using the race-safe atomic path
+        // update (never a read-modify-write, so concurrent preference saves
+        // can't lose each other's keys).
+        //
+        // Both updates go through the query builder, not $user->update():
+        // the model's mass-assignment guard (fillableFromArray) matches keys
+        // literally, so the `metadata->currency` JSON-path key would be
+        // silently discarded there.
+        $query = User::query()->whereKey($user->getKey());
+
+        if ($user->metadata === null) {
+            $query->update([
+                'metadata' => ['currency' => $validated['currency']],
+            ]);
+        } else {
+            $query->update([
+                'metadata->currency' => $validated['currency'],
+            ]);
+        }
 
         return response()->noContent();
     }

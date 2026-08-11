@@ -421,7 +421,9 @@ class BookingCheckoutController extends Controller
      */
     private function authenticatedUser(Request $request): ?User
     {
-        return $request->user() ?? Auth::guard('sanctum')->user();
+        $user = $request->user() ?? Auth::guard('sanctum')->user();
+
+        return $user instanceof User ? $user : null;
     }
 
     /**

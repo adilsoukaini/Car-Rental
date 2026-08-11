@@ -63,7 +63,7 @@ class SearchController extends Controller
                 'make' => $vehicle->make,
                 'model' => $vehicle->model,
                 'category' => $vehicle->category,
-                'imageUrl' => $vehicle->primaryImage?->url ?? null,
+                'imageUrl' => $vehicle->primaryImage->url ?? null,
             ])->all(),
         );
     }
