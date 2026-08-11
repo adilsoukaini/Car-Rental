@@ -30,3 +30,4 @@ Thumbs.db
 .playwright-mcp/
 .phpunit.result.cache
 .mcp.json
+outreach-leads.csv
