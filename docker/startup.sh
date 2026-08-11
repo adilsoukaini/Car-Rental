@@ -6,6 +6,7 @@
 cd /var/www
 
 composer dump-autoload --optimize --no-interaction 2>&1
+php artisan package:discover --ansi 2>&1
 php artisan config:clear 2>&1
 php artisan route:clear 2>&1
 php artisan view:clear 2>&1
