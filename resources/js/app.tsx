@@ -17,6 +17,17 @@ const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 interface SharedProps extends PageProps {
     themeData?: Semantic;
     flash?: { message: string; type: 'success' | 'error' | 'info' } | null;
+    siteIdentity?: { siteName: string; logoUrl: string | null };
+}
+
+// The browser-tab title suffix. Prefer the admin-editable site name
+// (siteIdentity.siteName, shared to every page by HandleInertiaRequests) over
+// the build-time VITE_APP_NAME — otherwise the tab reads the baked default
+// ("Car Rental") instead of the configured brand ("Driveway Morocco") every
+// time the site name is changed without a rebuild.
+function resolveAppName(): string {
+    const siteName = (router.page?.props as Partial<SharedProps> | undefined)?.siteIdentity?.siteName;
+    return siteName?.trim() ? siteName : appName;
 }
 
 // The public API only exports createInertiaApp itself, not the internal
@@ -70,7 +81,7 @@ function Root({ App, props }: { App: SetupArgs['App']; props: SetupArgs['props']
 }
 
 createInertiaApp({
-    title: (title) => `${title} - ${appName}`,
+    title: (title) => `${title} - ${resolveAppName()}`,
     resolve: (name) =>
         resolvePageComponent(
             `./Pages/${name}.tsx`,
