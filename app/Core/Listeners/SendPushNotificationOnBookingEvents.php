@@ -29,6 +29,9 @@ use Illuminate\Contracts\Queue\ShouldQueue;
  */
 class SendPushNotificationOnBookingEvents implements ShouldQueue
 {
+    public int $tries = 3;
+    public array $backoff = [10, 60, 300];
+    public int $maxExceptions = 3;
     public function __construct(
         private readonly PushNotificationService $push,
     ) {}

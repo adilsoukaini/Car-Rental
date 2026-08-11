@@ -20,6 +20,9 @@ use Illuminate\Support\Facades\Mail;
  */
 class SendBookingCancelledEmail implements ShouldQueue
 {
+    public int $tries = 3;
+    public array $backoff = [10, 60, 300];
+    public int $maxExceptions = 3;
     public function handle(BookingCancelled $event): void
     {
         $booking = $event->booking->loadMissing(['vehicle', 'pickupLocation', 'returnLocation', 'user']);

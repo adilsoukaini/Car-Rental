@@ -34,6 +34,11 @@ class NotificationController extends Controller
     /** Mark a single notification as read. */
     public function markRead(Request $request, Notification $notification): JsonResponse
     {
+        $user = $request->user();
+        // Only the notification's owner may mark it as read.
+        if ($notification->user_id !== null && $notification->user_id !== (int) $user?->id) {
+            abort(403);
+        }
         $notification->update(['read_at' => now()]);
         return response()->json(['ok' => true]);
     }

@@ -24,6 +24,54 @@ services:
     networks:
       - carrental
 
+  # Queue worker — processes queued emails, push notifications, and other
+  # ShouldQueue jobs. Without this, every async feature silently fails.
+  worker:
+    image: php:8.4-cli
+    working_dir: /var/www
+    volumes:
+      - .:/var/www
+    command: php artisan queue:work --tries=3 --backoff=10,60,300 --sleep=3
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=car_rental_dev
+      - DB_USERNAME=car_rental
+      - DB_PASSWORD=password
+    restart: unless-stopped
+    networks:
+      - carrental
+
+  # Scheduler — runs the bookings:release-expired-holds command every minute
+  # plus any other scheduled tasks. Required for hold expiry cleanup.
+  scheduler:
+    image: php:8.4-cli
+    working_dir: /var/www
+    volumes:
+      - .:/var/www
+    command: php artisan schedule:work
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=car_rental_dev
+      - DB_USERNAME=car_rental
+      - DB_PASSWORD=password
+    restart: unless-stopped
+    networks:
+      - carrental
+
   postgres:
     image: postgres:16
     environment:
@@ -49,13 +97,6 @@ services:
     networks:
       - carrental
 
-volumes:
-  pgdata:
-
-networks:
-  carrental:
-    driver: bridge
-
   meilisearch:
     image: getmeili/meilisearch:v1.10
     ports:
@@ -66,5 +107,11 @@ networks:
       - meilidata:/meili_data
     networks:
       - carrental
+
 volumes:
+  pgdata:
   meilidata:
+
+networks:
+  carrental:
+    driver: bridge

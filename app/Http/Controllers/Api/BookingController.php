@@ -76,7 +76,7 @@ class BookingController extends Controller
         $bookings = Booking::where('user_id', $request->user()->id)
             ->with(['vehicle:id,make,model,year', 'pickupLocation:id,name,city', 'returnLocation:id,name,city'])
             ->latest()
-            ->get();
+            ->paginate(20);
 
         return response()->json($bookings);
     }

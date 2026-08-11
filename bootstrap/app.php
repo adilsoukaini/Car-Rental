@@ -26,7 +26,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // command class, so core never imports the plugin (Hard Rule 1).
         // A no-op if booking-engine is disabled or the command doesn't
         // exist — Artisan silently skips an unresolvable scheduled command.
-        $schedule->command('bookings:release-expired-holds')->everyMinute();
+        $schedule->command('bookings:release-expired-holds')
+            ->everyMinute()
+            ->withoutOverlapping();
+        $schedule->command(\Illuminate\Queue\Console\WorkCommand::class, ['--stop-when-empty'])
+            ->everyMinute()
+            ->withoutOverlapping(5);
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [

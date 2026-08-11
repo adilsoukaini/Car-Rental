@@ -111,7 +111,7 @@ class BookingApiTest extends TestCase
         $this->withToken($token)
             ->getJson('/api/my-bookings')
             ->assertOk()
-            ->assertJsonCount(2);
+            ->assertJsonPath('total', 2);
     }
 
     public function test_my_bookings_requires_a_token(): void
@@ -240,8 +240,8 @@ class BookingApiTest extends TestCase
         $this->withToken($user->createToken('mobile')->plainTextToken)
             ->getJson('/api/my-bookings')
             ->assertOk()
-            ->assertJsonCount(1)
-            ->assertJsonPath('0.id', $booking->id);
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.id', $booking->id);
     }
 
     public function test_book_without_a_token_creates_a_guest_booking(): void

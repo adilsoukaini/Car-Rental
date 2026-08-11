@@ -27,11 +27,11 @@ class UserPreferenceController extends Controller
             'currency' => ['required', 'string', Rule::in(['MAD', 'EUR', 'USD'])],
         ]);
 
-        $user = $request->user();
-        $metadata = $user->metadata ?? [];
-        $metadata['currency'] = $validated['currency'];
-        $user->metadata = $metadata;
-        $user->save();
+        // Use a single atomic update to avoid a read-modify-write lost-update
+        // race when two preference saves arrive concurrently.
+        $request->user()->update([
+            'metadata->currency' => $validated['currency'],
+        ]);
 
         return response()->noContent();
     }

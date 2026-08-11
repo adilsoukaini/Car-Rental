@@ -8,6 +8,8 @@ use App\Core\Support\PaymentGatewayRegistry;
 use App\Models\Booking;
 use App\Models\Payment;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Releases pending bookings whose availability hold has expired — the
@@ -16,10 +18,10 @@ use Illuminate\Console\Command;
  * mid-payment) would lock the vehicle for those dates forever, since a
  * pending hold now genuinely blocks other bookings.
  *
- * This project's first scheduled task — see bootstrap/app.php's
- * withSchedule() and CLAUDE.md's "deposit-gate" section for the
- * verification this got as a genuinely new mechanism, not just "the code
- * compiles."
+ * Race-safe (2026-08-11): each booking is locked and its status re-checked
+ * atomically before transitioning to expired, preventing the cron from
+ * corrupting a booking that was confirmed concurrently. Per-booking
+ * try/catch prevents one Stripe failure from aborting the whole run.
  */
 class ReleaseExpiredBookingHolds extends Command
 {
@@ -35,32 +37,62 @@ class ReleaseExpiredBookingHolds extends Command
             ->where('hold_expires_at', '<', now())
             ->get();
 
+        $released = 0;
+
         foreach ($expired as $booking) {
-            $this->releaseHold($booking);
+            try {
+                if ($this->releaseHold($booking)) {
+                    $released++;
+                }
+            } catch (\Throwable $e) {
+                // One Stripe failure must not block the rest of the run.
+                Log::warning('Failed to release expired booking hold', [
+                    'booking_id' => $booking->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
-        $this->info("Released {$expired->count()} expired booking hold(s).");
+        $this->info("Released {$released} of {$expired->count()} expired booking hold(s).");
 
         return self::SUCCESS;
     }
 
-    private function releaseHold(Booking $booking): void
+    /**
+     * Returns true if the hold was actually released, false if it was skipped
+     * because the booking was already confirmed (concurrent confirm race).
+     */
+    private function releaseHold(Booking $booking): bool
     {
-        $authorization = Payment::where('booking_id', $booking->id)
-            ->where('type', 'deposit_authorization')
-            ->whereIn('status', ['pending', 'authorized'])
-            ->latest('id')
-            ->first();
+        return DB::transaction(function () use ($booking): bool {
+            // Lock the booking row and re-check status. A booking may have
+            // been confirmed between our initial SELECT and this lock acquire.
+            $fresh = Booking::where('id', $booking->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        if ($authorization !== null) {
-            $gateway = PaymentGatewayRegistry::get($authorization->gateway);
+            if ($fresh->status !== 'pending') {
+                // Already confirmed or cancelled — do not touch.
+                return false;
+            }
 
-            $gateway?->releaseDeposit($authorization);
-        }
+            $authorization = Payment::where('booking_id', $fresh->id)
+                ->where('type', 'deposit_authorization')
+                ->whereIn('status', ['pending', 'authorized'])
+                ->latest('id')
+                ->first();
 
-        $booking->update([
-            'status' => 'expired',
-            'hold_expires_at' => null,
-        ]);
+            if ($authorization !== null) {
+                $gateway = PaymentGatewayRegistry::get($authorization->gateway);
+                $gateway?->releaseDeposit($authorization);
+            }
+
+            $fresh->update([
+                'status' => 'expired',
+                'hold_expires_at' => null,
+            ]);
+
+            return true;
+        });
     }
 }

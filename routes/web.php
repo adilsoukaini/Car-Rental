@@ -136,7 +136,7 @@ Route::get('/health', function () {
     }
 
     // Stripe — just check the key is configured
-    $checks['stripe'] = (config('payments-stripe.secret_key') ?: env('STRIPE_SECRET')) ? 'configured' : 'missing';
+    $checks['stripe'] = (config('payments-stripe.secret') ?: env('STRIPE_SECRET')) ? 'configured' : 'missing';
 
     // Storage
     try {

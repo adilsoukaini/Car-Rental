@@ -14,6 +14,9 @@ use Illuminate\Queue\SerializesModels;
 
 class WelcomeEmail extends Mailable implements ShouldQueue
 {
+    public int $tries = 3;
+    public array $backoff = [10, 60, 300];
+    public int $maxExceptions = 3;
     use Queueable, SerializesModels;
 
     public function __construct(public readonly User $user) {}

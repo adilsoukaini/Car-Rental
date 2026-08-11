@@ -18,6 +18,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 /**
@@ -138,10 +139,20 @@ class ViewBooking extends ViewRecord
             ->visible(fn () => $this->booking()->status === 'confirmed')
             ->action(function () {
                 $booking = $this->booking();
-                $booking->update(['status' => 'checked_out']);
-                $booking->vehicle->update(['status' => 'rented']);
+                DB::transaction(function () use ($booking) {
+                    // Lock both rows and re-check status atomically to prevent
+                    // concurrent admin actions from diverging booking + vehicle.
+                    $fresh = Booking::where('id', $booking->id)->lockForUpdate()->firstOrFail();
+                    if ($fresh->status !== 'confirmed') {
+                        throw new RuntimeException('Booking status changed — please reload the page.');
+                    }
+                    $vehicle = $fresh->vehicle()->lockForUpdate()->firstOrFail();
 
-                VehicleCheckedOut::dispatch($booking->fresh());
+                    $fresh->update(['status' => 'checked_out']);
+                    $vehicle->update(['status' => 'rented']);
+
+                    VehicleCheckedOut::dispatch($fresh);
+                });
 
                 Notification::make()->title('Vehicle checked out')->success()->send();
             });
@@ -157,10 +168,18 @@ class ViewBooking extends ViewRecord
             ->visible(fn () => $this->booking()->status === 'checked_out')
             ->action(function () {
                 $booking = $this->booking();
-                $booking->update(['status' => 'returned']);
-                $booking->vehicle->update(['status' => 'available']);
+                DB::transaction(function () use ($booking) {
+                    $fresh = Booking::where('id', $booking->id)->lockForUpdate()->firstOrFail();
+                    if ($fresh->status !== 'checked_out') {
+                        throw new RuntimeException('Booking status changed — please reload the page.');
+                    }
+                    $vehicle = $fresh->vehicle()->lockForUpdate()->firstOrFail();
 
-                VehicleReturned::dispatch($booking->fresh());
+                    $fresh->update(['status' => 'returned']);
+                    $vehicle->update(['status' => 'available']);
+
+                    VehicleReturned::dispatch($fresh);
+                });
 
                 Notification::make()->title('Vehicle marked returned')->success()->send();
             });

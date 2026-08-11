@@ -13,6 +13,7 @@ use App\Core\Events\PaymentReleased;
 use App\Models\Booking;
 use App\Models\Payment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Stripe\PaymentIntent;
 use Stripe\StripeClient;
@@ -45,7 +46,21 @@ class StripeGateway implements PaymentGateway
 
     private function stripe(): StripeClient
     {
-        return $this->stripe ??= new StripeClient((string) config('payments-stripe.secret'));
+        if ($this->stripe !== null) {
+            return $this->stripe;
+        }
+        // Lazy construction — does not fail at boot time when the key is missing.
+        $secret = (string) config('payments-stripe.secret');
+        $this->stripe = new StripeClient([
+            'api_key' => $secret,
+            'stripe_version' => '2025-06-30.acacia',
+        ]);
+        // Retry transient network failures once (idempotent operations like
+        // authorize/capture/release are safe to retry). Combined with the
+        // ~30s default curl timeout this prevents a Stripe outage from
+        // blocking every request for 80s (the old SDK default).
+        \Stripe\Stripe::$maxNetworkRetries = 1;
+        return $this->stripe;
     }
 
     public function id(): string
@@ -85,42 +100,70 @@ class StripeGateway implements PaymentGateway
 
     public function captureDeposit(Payment $authorization, ?float $amount = null): Payment
     {
-        $captureAmount = $amount ?? (float) $authorization->amount;
+        return DB::transaction(function () use ($authorization, $amount) {
+            // Atomically transition the authorization from authorized → captured.
+            // This prevents concurrent capture+release from both succeeding,
+            // and hides the admin UI buttons once the action completes.
+            $rows = Payment::where('id', $authorization->id)
+                ->where('type', 'deposit_authorization')
+                ->where('status', 'authorized')
+                ->lockForUpdate()
+                ->update(['status' => 'captured']);
 
-        $this->stripe()->paymentIntents->capture($authorization->provider_reference, [
-            'amount_to_capture' => $this->toCents($captureAmount),
-        ]);
+            if ($rows === 0) {
+                throw new \RuntimeException('Deposit is no longer authorized — may have been captured or released already.');
+            }
 
-        $capture = Payment::create([
-            'booking_id' => $authorization->booking_id,
-            'type' => 'deposit_capture',
-            'gateway' => $this->id(),
-            'status' => 'succeeded',
-            'amount' => $captureAmount,
-            'provider_reference' => $authorization->provider_reference,
-        ]);
+            $captureAmount = $amount ?? (float) $authorization->amount;
 
-        event(new PaymentCaptured($capture));
+            $this->stripe()->paymentIntents->capture($authorization->provider_reference, [
+                'amount_to_capture' => $this->toCents($captureAmount),
+            ]);
 
-        return $capture;
+            $capture = Payment::create([
+                'booking_id' => $authorization->booking_id,
+                'type' => 'deposit_capture',
+                'gateway' => $this->id(),
+                'status' => 'succeeded',
+                'amount' => $captureAmount,
+                'provider_reference' => $authorization->provider_reference,
+            ]);
+
+            event(new PaymentCaptured($capture));
+
+            return $capture;
+        });
     }
 
     public function releaseDeposit(Payment $authorization): Payment
     {
-        $this->stripe()->paymentIntents->cancel($authorization->provider_reference);
+        return DB::transaction(function () use ($authorization) {
+            // Atomically transition the authorization from authorized → released.
+            $rows = Payment::where('id', $authorization->id)
+                ->where('type', 'deposit_authorization')
+                ->where('status', 'authorized')
+                ->lockForUpdate()
+                ->update(['status' => 'released']);
 
-        $release = Payment::create([
-            'booking_id' => $authorization->booking_id,
-            'type' => 'deposit_release',
-            'gateway' => $this->id(),
-            'status' => 'succeeded',
-            'amount' => $authorization->amount,
-            'provider_reference' => $authorization->provider_reference,
-        ]);
+            if ($rows === 0) {
+                throw new \RuntimeException('Deposit is no longer authorized — may have been released or captured already.');
+            }
 
-        event(new PaymentReleased($release));
+            $this->stripe()->paymentIntents->cancel($authorization->provider_reference);
 
-        return $release;
+            $release = Payment::create([
+                'booking_id' => $authorization->booking_id,
+                'type' => 'deposit_release',
+                'gateway' => $this->id(),
+                'status' => 'succeeded',
+                'amount' => $authorization->amount,
+                'provider_reference' => $authorization->provider_reference,
+            ]);
+
+            event(new PaymentReleased($release));
+
+            return $release;
+        });
     }
 
     public function chargeFinal(Booking $booking, float $amount): Payment

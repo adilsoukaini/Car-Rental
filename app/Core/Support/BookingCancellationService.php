@@ -7,6 +7,7 @@ namespace App\Core\Support;
 use App\Core\Events\BookingCancelled;
 use App\Models\Booking;
 use App\Models\Payment;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -45,64 +46,71 @@ class BookingCancellationService
      */
     public function cancel(Booking $booking): array
     {
-        if ($booking->status !== 'confirmed') {
-            throw ValidationException::withMessages([
-                'booking' => 'Only confirmed bookings can be cancelled.',
-            ]);
-        }
+        return DB::transaction(function () use ($booking) {
+            // Lock the booking row to prevent concurrent cancellations from
+            // double-releasing the deposit. Re-read status under the lock.
+            $fresh = Booking::where('id', $booking->id)->lockForUpdate()->firstOrFail();
 
-        $authorization = $this->activeAuthorization($booking);
+            if ($fresh->status !== 'confirmed') {
+                throw ValidationException::withMessages([
+                    'booking' => 'Only confirmed bookings can be cancelled.',
+                ]);
+            }
 
-        $booking->update(['status' => 'cancelled']);
+            $authorization = $this->activeAuthorization($fresh);
 
-        BookingCancelled::dispatch($booking->fresh());
+            $fresh->update(['status' => 'cancelled']);
+            $fresh->refresh();
 
-        if ($authorization === null) {
+            BookingCancelled::dispatch($fresh);
+
+            if ($authorization === null) {
+                return [
+                    'status' => $fresh->status,
+                    'refundPercent' => 100,
+                    'forfeitAmount' => 0.0,
+                    'depositResolved' => false,
+                    'depositOutcome' => null,
+                ];
+            }
+
+            $gateway = PaymentGatewayRegistry::get($authorization->gateway);
+
+            if ($gateway === null) {
+                return [
+                    'status' => $fresh->status,
+                    'refundPercent' => 100,
+                    'forfeitAmount' => 0.0,
+                    'depositResolved' => false,
+                    'depositOutcome' => 'gateway_unavailable',
+                ];
+            }
+
+            $refundPercent = $this->cancellationRefundPercent($fresh);
+            $forfeitAmount = round((float) $authorization->amount * (100 - $refundPercent) / 100, 2);
+
+            if ($forfeitAmount <= 0.0) {
+                $gateway->releaseDeposit($authorization);
+
+                return [
+                    'status' => $fresh->status,
+                    'refundPercent' => $refundPercent,
+                    'forfeitAmount' => 0.0,
+                    'depositResolved' => true,
+                    'depositOutcome' => 'released',
+                ];
+            }
+
+            $gateway->captureDeposit($authorization, min($forfeitAmount, (float) $authorization->amount));
+
             return [
-                'status' => $booking->status,
-                'refundPercent' => 100,
-                'forfeitAmount' => 0.0,
-                'depositResolved' => false,
-                'depositOutcome' => null,
-            ];
-        }
-
-        $gateway = PaymentGatewayRegistry::get($authorization->gateway);
-
-        if ($gateway === null) {
-            return [
-                'status' => $booking->status,
-                'refundPercent' => 100,
-                'forfeitAmount' => 0.0,
-                'depositResolved' => false,
-                'depositOutcome' => 'gateway_unavailable',
-            ];
-        }
-
-        $refundPercent = $this->cancellationRefundPercent($booking);
-        $forfeitAmount = round((float) $authorization->amount * (100 - $refundPercent) / 100, 2);
-
-        if ($forfeitAmount <= 0.0) {
-            $gateway->releaseDeposit($authorization);
-
-            return [
-                'status' => $booking->status,
+                'status' => $fresh->status,
                 'refundPercent' => $refundPercent,
-                'forfeitAmount' => 0.0,
+                'forfeitAmount' => $forfeitAmount,
                 'depositResolved' => true,
-                'depositOutcome' => 'released',
+                'depositOutcome' => 'captured',
             ];
-        }
-
-        $gateway->captureDeposit($authorization, min($forfeitAmount, (float) $authorization->amount));
-
-        return [
-            'status' => $booking->status,
-            'refundPercent' => $refundPercent,
-            'forfeitAmount' => $forfeitAmount,
-            'depositResolved' => true,
-            'depositOutcome' => 'captured',
-        ];
+        });
     }
 
     /**

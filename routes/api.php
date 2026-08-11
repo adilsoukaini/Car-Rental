@@ -33,9 +33,11 @@ use Plugins\Reviews\Http\Controllers\ReviewController;
  * hold endpoint is the cheapest DoS vector, so it gets the tightest limit.
  */
 
-// Public auth — no token required.
-Route::post('/login', [AuthController::class, 'login'])->name('api.login');
-Route::post('/register', [AuthController::class, 'register'])->name('api.register');
+// Public auth — no token required. Throttled to prevent brute-force.
+Route::post('/login', [AuthController::class, 'login'])->name('api.login')
+    ->middleware('throttle:5,1');
+Route::post('/register', [AuthController::class, 'register'])->name('api.register')
+    ->middleware('throttle:5,1');
 
 // Token-authenticated endpoints.
 Route::middleware('auth:sanctum')->group(function () {
@@ -122,7 +124,8 @@ Route::post('/vehicles/{vehicle}/book', [BookingCheckoutController::class, 'stor
     ->name('api.bookings.store')
     ->middleware('throttle:10,1');
 Route::post('/bookings/{booking}/confirm', [BookingCheckoutController::class, 'confirm'])
-    ->name('api.bookings.confirm');
+    ->name('api.bookings.confirm')
+    ->middleware('throttle:10,1');
 Route::post('/bookings/track', [BookingController::class, 'lookup'])
     ->name('api.bookings.track')
     ->middleware('throttle:20,1');
