@@ -1,11 +1,10 @@
 #!/bin/sh
-# Cloud Run startup — run migrations + clear caches on cold start.
-# Plugin routes are registered dynamically at boot; we must not use a
-# pre-cached route list. Ziggy reads the current route list on first
-# request, so clearing the cache here ensures plugin routes are included.
+# Cloud Run startup — rebuild autoload + clear caches on cold start.
+# Plugin routes are registered dynamically at boot via PluginManager.
 
 cd /var/www
 
+composer dump-autoload --optimize --no-interaction
 php artisan config:clear
 php artisan route:clear
 php artisan view:clear

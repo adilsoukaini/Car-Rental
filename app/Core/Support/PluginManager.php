@@ -57,9 +57,16 @@ class PluginManager
         foreach (static::enabled() as $slug) {
             $providerClass = config("plugins.registry.{$slug}");
 
-            if ($providerClass && class_exists($providerClass)) {
-                app()->register($providerClass);
+            if (! $providerClass) {
+                \Illuminate\Support\Facades\Log::warning("PluginManager: no provider for slug [{$slug}]");
+                continue;
             }
+            if (! class_exists($providerClass)) {
+                \Illuminate\Support\Facades\Log::warning("PluginManager: class [{$providerClass}] not found for slug [{$slug}]");
+                continue;
+            }
+            \Illuminate\Support\Facades\Log::info("PluginManager: registering [{$providerClass}] for slug [{$slug}]");
+            app()->register($providerClass);
         }
     }
 

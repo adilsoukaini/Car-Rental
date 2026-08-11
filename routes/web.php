@@ -150,6 +150,22 @@ Route::get('/health', function () {
     return response()->json(['status' => $allOk ? 'healthy' : 'degraded', 'checks' => $checks]);
 })->name('health');
 
+// Plugin routes — loaded directly here so they work regardless of
+// whether PluginManager successfully booted the plugin providers.
+// Each plugin's ServiceProvider::boot() also calls loadRoutesFrom()
+// on the same files; calling twice is safe (Laravel deduplicates routes).
+$pluginRouteFiles = [
+    __DIR__.'/../plugins/fleet-management/routes/fleet-management.php',
+    __DIR__.'/../plugins/booking-engine/routes/booking-engine.php',
+    __DIR__.'/../plugins/reviews/routes/reviews.php',
+    __DIR__.'/../plugins/driver-verification/routes/driver-verification.php',
+];
+foreach ($pluginRouteFiles as $file) {
+    if (file_exists($file)) {
+        require $file;
+    }
+}
+
 // Notification inbox — session-authenticated endpoints for the web storefront header bell.
 Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/notifications', [App\Http\Controllers\Api\NotificationController::class, 'index'])
