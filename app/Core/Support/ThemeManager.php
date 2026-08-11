@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core\Support;
 
 use App\Models\Theme;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class ThemeManager
@@ -68,6 +69,10 @@ class ThemeManager
             Theme::query()->update(['is_active' => false]);
             Theme::findOrFail($themeId)->update(['is_active' => true]);
         });
+
+        // Invalidate the cached active-theme data shared to every storefront
+        // request (HandleInertiaRequests::share() caches it for an hour).
+        Cache::forget('active_theme');
     }
 
     /**

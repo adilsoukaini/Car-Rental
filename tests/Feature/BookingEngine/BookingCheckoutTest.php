@@ -422,6 +422,50 @@ class BookingCheckoutTest extends TestCase
         $this->assertSame($this->location->id, $booking->return_location_id);
     }
 
+    public function test_store_returns_the_existing_booking_when_the_same_idempotency_key_is_sent_again(): void
+    {
+        $gateway = $this->registerMockGateway();
+        $gateway->shouldReceive('authorizeDeposit')
+            ->once() // must NOT be called again for the retry
+            ->andReturnUsing(fn ($booking, $amount) => Payment::create([
+                'booking_id' => $booking->id,
+                'type' => 'deposit_authorization',
+                'gateway' => 'stripe',
+                'status' => 'pending',
+                'amount' => $amount,
+                'provider_reference' => 'pi_test_idem',
+                'metadata' => ['client_secret' => 'secret_idem'],
+            ]));
+
+        $payload = [
+            'pickup_at' => now()->addDay()->toDateTimeString(),
+            'return_at' => now()->addDays(3)->toDateTimeString(),
+            'guest_name' => 'Idem Guest',
+            'guest_email' => 'idem@example.com',
+            'guest_phone' => '0600000000',
+        ];
+
+        $this->post("/vehicles/{$this->vehicle->id}/book", $payload, ['Idempotency-Key' => 'idem-key-1'])
+            ->assertOk();
+
+        $booking = Booking::where('guest_email', 'idem@example.com')->first();
+
+        $this->assertNotNull($booking);
+        $this->assertSame('idem-key-1', $booking->idempotency_key);
+
+        // Same Idempotency-Key retried — resolved from the existing booking
+        // before the gateway is ever consulted (200, not 201; no duplicate).
+        $this->post("/vehicles/{$this->vehicle->id}/book", $payload, ['Idempotency-Key' => 'idem-key-1'])
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Bookings/Payment')
+                ->where('bookingId', $booking->id)
+                ->where('clientSecret', 'secret_idem')
+            );
+
+        $this->assertSame(1, Booking::count());
+    }
+
     protected function tearDown(): void
     {
         PaymentGatewayRegistry::flush();

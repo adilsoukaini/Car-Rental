@@ -17,6 +17,7 @@ use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\EmbeddedSchema;
 use Filament\Schemas\Components\Form;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Lets an Admin pick which registered layout variant is active for each
@@ -82,6 +83,11 @@ class LayoutSettings extends Page
                 );
             }
         }
+
+        // Invalidate the cached slot → active-variant map shared to every
+        // storefront request (HandleInertiaRequests::share() caches it for
+        // an hour).
+        Cache::forget('layout_variants');
 
         Notification::make()
             ->title('Layout updated')

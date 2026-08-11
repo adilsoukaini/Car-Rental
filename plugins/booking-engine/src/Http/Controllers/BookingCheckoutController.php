@@ -176,6 +176,45 @@ class BookingCheckoutController extends Controller
     {
         abort_if($vehicle->status !== 'available', 404);
 
+        // H6: idempotency. A client that never received the first response
+        // retries the exact same request with an Idempotency-Key header. If a
+        // booking was already created under that key, return it (status 200,
+        // not 201) instead of creating a duplicate and charging the deposit
+        // twice.
+        $idempotencyKey = $request->header('Idempotency-Key');
+
+        if ($idempotencyKey !== null && $idempotencyKey !== '') {
+            $existing = Booking::where('idempotency_key', $idempotencyKey)
+                ->where('vehicle_id', $vehicle->id)
+                ->latest('id')
+                ->first();
+
+            if ($existing !== null) {
+                $authorization = Payment::where('booking_id', $existing->id)
+                    ->where('type', 'deposit_authorization')
+                    ->latest('id')
+                    ->first();
+
+                if ($authorization !== null) {
+                    $payload = $this->bookingPayload($existing, $vehicle, $authorization);
+
+                    if ($request->is('api/*')) {
+                        return response()->json($payload);
+                    }
+
+                    return Inertia::render('Bookings/Payment', $payload);
+                }
+
+                // The previous attempt created the booking but crashed before
+                // a deposit hold was authorized — an orphaned pending booking
+                // with no payment in flight. Delete it and let this request
+                // create a fresh one under the same idempotency key.
+                if ($existing->status === 'pending') {
+                    $existing->delete();
+                }
+            }
+        }
+
         $rules = $this->dateRules();
 
         // Location ids are optional on the wire only so that callers who
@@ -206,6 +245,7 @@ class BookingCheckoutController extends Controller
                 'pickup_at' => $validated['pickup_at'],
                 'return_at' => $validated['return_at'],
                 'promo_code' => $validated['promo_code'] ?? null,
+                'idempotency_key' => $idempotencyKey !== null && $idempotencyKey !== '' ? $idempotencyKey : null,
             ]);
         } catch (VehicleNotAvailableException) {
             throw ValidationException::withMessages([
@@ -233,18 +273,7 @@ class BookingCheckoutController extends Controller
             ]);
         }
 
-        $payload = [
-            'bookingId' => $booking->id,
-            'vehicleId' => $vehicle->id,
-            'vehicle' => $vehicle->only(['make', 'model', 'year']),
-            'pickupAt' => $booking->pickup_at->toDateTimeString(),
-            'returnAt' => $booking->return_at->toDateTimeString(),
-            'totalPrice' => (float) $booking->total_price,
-            'depositAmount' => (float) $booking->security_deposit_amount,
-            'holdExpiresAt' => $booking->hold_expires_at?->toIso8601String(),
-            'clientSecret' => $this->clientSecretFor($authorization),
-            'stripePublishableKey' => (string) config('payments-stripe.key'),
-        ];
+        $payload = $this->bookingPayload($booking, $vehicle, $authorization);
 
         // The mobile app is a pure JSON consumer — for /api/* requests return
         // the exact same payload the web Payment page receives, as JSON (the
@@ -333,6 +362,28 @@ class BookingCheckoutController extends Controller
         $metadata = $authorization->metadata ?? [];
 
         return (string) ($metadata['client_secret'] ?? '');
+    }
+
+    /**
+     * The JSON payload both the web Payment page and the mobile /api/*
+     * consumer receive after store() creates a booking + deposit hold. Shared
+     * by the normal creation path and the H6 idempotent-retry path (which
+     * returns the already-created booking's payload verbatim).
+     */
+    private function bookingPayload(Booking $booking, Vehicle $vehicle, Payment $authorization): array
+    {
+        return [
+            'bookingId' => $booking->id,
+            'vehicleId' => $vehicle->id,
+            'vehicle' => $vehicle->only(['make', 'model', 'year']),
+            'pickupAt' => $booking->pickup_at->toDateTimeString(),
+            'returnAt' => $booking->return_at->toDateTimeString(),
+            'totalPrice' => (float) $booking->total_price,
+            'depositAmount' => (float) $booking->security_deposit_amount,
+            'holdExpiresAt' => $booking->hold_expires_at?->toIso8601String(),
+            'clientSecret' => $this->clientSecretFor($authorization),
+            'stripePublishableKey' => (string) config('payments-stripe.key'),
+        ];
     }
 
     /**

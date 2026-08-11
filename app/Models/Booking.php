@@ -16,6 +16,7 @@ use Illuminate\Support\Str;
  * @property Carbon $return_at
  * @property string $status
  * @property string $booking_number random public booking reference — auto-generated on create, never user-supplied (mass-assignment guarded)
+ * @property string|null $idempotency_key client-supplied idempotency key (H6) — lets BookingCheckoutController::store() return an already-created booking on retry
  * @property Carbon|null $hold_expires_at
  * @property array<string, mixed>|null $metadata
  * @property-read User|null $user null for a guest booking — see guest_name/guest_email/guest_phone
@@ -27,6 +28,7 @@ use Illuminate\Support\Str;
     'vehicle_id', 'user_id', 'guest_name', 'guest_email', 'guest_phone',
     'pickup_location_id', 'return_location_id', 'pickup_at', 'return_at',
     'status', 'hold_expires_at', 'total_price', 'security_deposit_amount', 'metadata',
+    'idempotency_key',
 ])]
 class Booking extends Model
 {
@@ -37,7 +39,9 @@ class Booking extends Model
     {
         static::creating(function (Booking $booking) {
             if (empty($booking->booking_number)) {
-                $booking->booking_number = strtoupper(Str::random(10));
+                do {
+                    $booking->booking_number = strtoupper(Str::random(10));
+                } while (static::where('booking_number', $booking->booking_number)->exists());
             }
         });
     }

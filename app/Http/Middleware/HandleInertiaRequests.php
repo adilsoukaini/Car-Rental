@@ -8,6 +8,7 @@ use App\Models\DriverVerification;
 use App\Models\SiteIdentity;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Middleware;
@@ -68,8 +69,9 @@ class HandleInertiaRequests extends Middleware
             // row's data, or the hardcoded default if no DB row is active
             // yet. app.tsx applies this via ThemeProvider as CSS variable
             // overrides at runtime, enabling DB-driven theme changes with
-            // zero rebuild.
-            'themeData' => ThemeManager::resolveActive(),
+            // zero rebuild. Cached for an hour; invalidated by
+            // ThemeManager::activate() and theme create/upload.
+            'themeData' => Cache::remember('active_theme', 3600, fn () => ThemeManager::resolveActive()),
             // Drives the storefront header's conditional "Driver
             // verification" link (null for guests — verification is
             // per-User, exempt for guests, same precedent as everywhere
@@ -88,7 +90,7 @@ class HandleInertiaRequests extends Middleware
             // the full test suite breaking across every authenticated
             // route the moment this table was queried unconditionally.
             'driverVerificationStatus' => ($user instanceof User && Schema::hasTable('driver_verifications'))
-                ? $this->latestDriverVerificationStatus($user)
+                ? Cache::remember("driver_verification_{$user->id}", 300, fn () => $this->latestDriverVerificationStatus($user))
                 : null,
             // Resolves every registered layout slot to its active variant
             // component name — consumed by LayoutSlot in
@@ -98,7 +100,7 @@ class HandleInertiaRequests extends Middleware
             // driverVerificationStatus above): on a fresh install before that
             // migration has run, every page would otherwise 500.
             'activeLayoutVariants' => Schema::hasTable('layout_settings')
-                ? $this->activeLayoutVariants()
+                ? Cache::remember('layout_variants', 3600, fn () => $this->activeLayoutVariants())
                 : [],
             // Site identity — drives the storefront SiteLogo component's
             // name/logo. Read from the `site_identity` singleton row
@@ -107,8 +109,9 @@ class HandleInertiaRequests extends Middleware
             // (in which case SiteLogo renders its default icon mark).
             // Guarded on the table existing — same "core middleware must not
             // hard-crash the entire site over one optional feature" lesson as
-            // driverVerificationStatus above.
-            'siteIdentity' => $this->siteIdentity(),
+            // driverVerificationStatus above. Cached for an hour; invalidated
+            // by SiteIdentitySettings::save().
+            'siteIdentity' => Cache::remember('site_identity', 3600, fn () => $this->siteIdentity()),
             // Default SEO metadata shared to every page — the root template
             // (app.blade.php) reads `$page['props']['seo']` for its Open
             // Graph / Twitter meta tags. A page overrides it by passing its

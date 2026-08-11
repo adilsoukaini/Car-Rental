@@ -15,7 +15,9 @@ use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Stripe\Event;
 use Stripe\PaymentIntent;
+use Stripe\Stripe;
 use Stripe\StripeClient;
 use Stripe\Webhook;
 
@@ -59,7 +61,8 @@ class StripeGateway implements PaymentGateway
         // authorize/capture/release are safe to retry). Combined with the
         // ~30s default curl timeout this prevents a Stripe outage from
         // blocking every request for 80s (the old SDK default).
-        \Stripe\Stripe::$maxNetworkRetries = 1;
+        Stripe::$maxNetworkRetries = 1;
+
         return $this->stripe;
     }
 
@@ -241,11 +244,30 @@ class StripeGateway implements PaymentGateway
         $eventData = $stripeEvent->data->toArray();
         $intent = PaymentIntent::constructFrom($eventData['object']);
 
-        $this->handlePaymentIntentEvent($stripeEvent->type, $intent);
+        $this->handlePaymentIntentEvent($stripeEvent, $intent);
     }
 
-    private function handlePaymentIntentEvent(string $eventType, PaymentIntent $intent): void
+    /**
+     * Applies a single Stripe webhook event to the matching pending Payment.
+     *
+     * H7: Stripe may deliver the same event more than once (network retry,
+     * endpoint restart). The stripe_webhook_events table records every
+     * processed event ID so a repeat delivery is ignored here before any
+     * state is touched — a duplicate that slipped through the exists() check
+     * (both copies arrived before either recorded) is absorbed by the
+     * transaction: the compare-and-set status update only wins for one, and
+     * the loser's insertOrIgnore hits the unique index and records nothing.
+     */
+    private function handlePaymentIntentEvent(Event $webhookEvent, PaymentIntent $intent): void
     {
+        $eventId = $webhookEvent->id;
+
+        if ($eventId === '' || DB::table('stripe_webhook_events')
+            ->where('stripe_event_id', $eventId)
+            ->exists()) {
+            return; // already processed — duplicate delivery of the same Stripe event
+        }
+
         $payment = Payment::where('provider_reference', $intent->id)
             ->where('status', 'pending')
             ->latest('id')
@@ -257,11 +279,25 @@ class StripeGateway implements PaymentGateway
             return;
         }
 
-        $this->applyIntentState($payment, $intent, match ($eventType) {
-            'payment_intent.amount_capturable_updated' => 'authorized',
-            'payment_intent.succeeded' => 'succeeded',
-            'payment_intent.payment_failed' => 'failed',
-            default => null, // unhandled event types are silently ignored
+        DB::transaction(function () use ($webhookEvent, $eventId, $intent, $payment): void {
+            $this->applyIntentState($payment, $intent, match ($webhookEvent->type) {
+                'payment_intent.amount_capturable_updated' => 'authorized',
+                'payment_intent.succeeded' => 'succeeded',
+                'payment_intent.payment_failed' => 'failed',
+                default => null, // unhandled event types are silently ignored
+            });
+
+            // Record the event ID so the exists() check above ignores a repeat
+            // delivery on a later request. insertOrIgnore absorbs the race where
+            // two concurrent duplicate webhooks both pass that check and both
+            // reach this insert — the loser hits the unique constraint and
+            // silently inserts nothing instead of throwing.
+            DB::table('stripe_webhook_events')->insertOrIgnore([
+                'stripe_event_id' => $eventId,
+                'type' => $webhookEvent->type,
+                'processed_at' => now(),
+                'created_at' => now(),
+            ]);
         });
     }
 
@@ -284,8 +320,7 @@ class StripeGateway implements PaymentGateway
                 'expected_cents' => $this->toCents((float) $payment->amount),
                 'stripe_cents' => $intent->amount,
             ]);
-            $payment->update(['status' => 'failed']);
-            event(new PaymentFailed($payment->fresh()));
+            $this->compareAndSet($payment, 'failed');
 
             return;
         }
@@ -304,20 +339,48 @@ class StripeGateway implements PaymentGateway
             return;
         }
 
-        $payment->update(['status' => 'authorized']);
-        event(new PaymentAuthorized($payment->fresh()));
+        $this->compareAndSet($payment, 'authorized');
     }
 
     private function markSucceeded(Payment $payment): void
     {
-        $payment->update(['status' => 'succeeded']);
-        event(new PaymentCaptured($payment->fresh()));
+        $this->compareAndSet($payment, 'succeeded');
     }
 
     private function markFailed(Payment $payment): void
     {
-        $payment->update(['status' => 'failed']);
-        event(new PaymentFailed($payment->fresh()));
+        $this->compareAndSet($payment, 'failed');
+    }
+
+    /**
+     * Atomically transition a `pending` Payment to the target status.
+     *
+     * UPDATE ... WHERE status='pending' is a compare-and-set: only a pending
+     * row may transition, and only one concurrent processor can win the
+     * update. A 0-row result means a concurrent webhook/sync already resolved
+     * this payment — skip the event dispatch entirely, so a duplicate
+     * delivery can never double-fire PaymentAuthorized/Captured/Failed.
+     */
+    private function compareAndSet(Payment $payment, string $targetStatus): void
+    {
+        $updated = Payment::where('id', $payment->id)
+            ->where('status', 'pending')
+            ->update(['status' => $targetStatus]);
+
+        if ($updated === 0) {
+            return; // already transitioned — nothing left to do
+        }
+
+        $event = match ($targetStatus) {
+            'authorized' => new PaymentAuthorized($payment->fresh()),
+            'succeeded' => new PaymentCaptured($payment->fresh()),
+            'failed' => new PaymentFailed($payment->fresh()),
+            default => null,
+        };
+
+        if ($event !== null) {
+            event($event);
+        }
     }
 
     private function toCents(float $amount): int

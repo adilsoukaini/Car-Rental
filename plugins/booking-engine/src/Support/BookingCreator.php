@@ -88,6 +88,13 @@ class BookingCreator
      * expected to authorize a deposit hold against the returned booking,
      * then call confirmPending() once that hold is genuinely in place.
      *
+     * An optional `idempotency_key` in $attributes (H6) is persisted on the
+     * booking row via persistableAttributes() — BookingCheckoutController
+     * passes a client's Idempotency-Key header through here so a retried
+     * request can be recognized and returned instead of duplicated. The
+     * column's unique constraint is the backstop that makes the dedup race
+     * safe.
+     *
      * @param  array<string, mixed>  $attributes  Same shape as create().
      *
      * @throws VehicleNotAvailableException

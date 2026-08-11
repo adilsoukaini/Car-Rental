@@ -161,6 +161,45 @@ class StripeWebhookTest extends TestCase
         Event::assertDispatchedTimes(PaymentCaptured::class, 1);
     }
 
+    public function test_a_duplicate_webhook_with_the_same_event_id_is_ignored_even_if_the_payment_is_still_pending(): void
+    {
+        Event::fake([PaymentAuthorized::class]);
+
+        $payment = Payment::factory()->create([
+            'type' => 'deposit_authorization',
+            'status' => 'pending',
+            'amount' => 900.00,
+            'provider_reference' => 'pi_test123',
+        ]);
+
+        $eventPayload = $this->paymentIntentEvent('payment_intent.amount_capturable_updated');
+
+        $this->postSignedWebhook($eventPayload)->assertOk();
+        $this->assertSame('authorized', $payment->fresh()->status);
+
+        // The processed event ID is recorded (H7).
+        $this->assertDatabaseHas('stripe_webhook_events', [
+            'stripe_event_id' => $eventPayload['id'],
+            'type' => 'payment_intent.amount_capturable_updated',
+        ]);
+
+        // Reset the payment row to pending via the query builder. The webhook's
+        // compare-and-set updates the DB directly, so the in-memory $payment
+        // instance's status was never synced — a plain $payment->update()
+        // would see no dirty attributes and issue no UPDATE.
+        Payment::where('id', $payment->id)->update(['status' => 'pending']);
+        $this->assertSame('pending', $payment->fresh()->status);
+
+        // Now the ONLY thing stopping a duplicate delivery from re-applying
+        // the event is the event-ID dedup check in handlePaymentIntentEvent().
+        $this->postSignedWebhook($eventPayload)->assertOk();
+
+        // Payment untouched — the duplicate delivery was ignored by event ID,
+        // not because the payment was no longer pending.
+        $this->assertSame('pending', $payment->fresh()->status);
+        Event::assertDispatchedTimes(PaymentAuthorized::class, 1);
+    }
+
     public function test_amount_mismatch_marks_payment_failed_not_succeeded(): void
     {
         Event::fake([PaymentFailed::class, PaymentCaptured::class]);

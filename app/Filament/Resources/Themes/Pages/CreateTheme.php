@@ -10,6 +10,7 @@ use App\Filament\Resources\Themes\ThemeResource;
 use App\Models\Theme;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
 class CreateTheme extends CreateRecord
@@ -67,6 +68,17 @@ class CreateTheme extends CreateRecord
     protected function getRedirectUrl(): string
     {
         return $this->getResource()::getUrl('index');
+    }
+
+    /**
+     * A newly uploaded theme is never active (CreateTheme forces
+     * is_active=false), so it cannot change the resolved active theme — but
+     * forget the cached value anyway to keep any future path that flips the
+     * row active from serving stale data for up to an hour.
+     */
+    protected function afterCreate(): void
+    {
+        Cache::forget('active_theme');
     }
 
     protected function getCreatedNotificationTitle(): ?string

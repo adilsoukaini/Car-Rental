@@ -12,6 +12,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Admin-only singleton settings page for the storefront site identity:
@@ -124,6 +125,10 @@ class SiteIdentitySettings extends Page
             'logo_path' => $this->firstUpload($data['logo_path'] ?? []),
             'favicon_path' => $this->firstUpload($data['favicon_path'] ?? []),
         ]);
+
+        // Invalidate the cached site identity shared to every storefront
+        // request (HandleInertiaRequests::share() caches it for an hour).
+        Cache::forget('site_identity');
 
         Notification::make()
             ->title('Site identity updated')
