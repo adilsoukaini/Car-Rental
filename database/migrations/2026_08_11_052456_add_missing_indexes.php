@@ -19,7 +19,7 @@ return new class extends Migration
             $table->index('provider_reference');
         });
 
-        if (DB::getDriverName() === 'pgsql') {
+        if (DB::getDriverName() === 'pgsql' && Schema::hasTable('promo_codes')) {
             DB::statement('CREATE INDEX IF NOT EXISTS promo_codes_code_lower_idx ON promo_codes (LOWER(code))');
         }
     }
