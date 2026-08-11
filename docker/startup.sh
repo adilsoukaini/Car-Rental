@@ -7,7 +7,7 @@ cd /var/www
 # if the Cloud Run env vars aren't available to the config cache.
 cat > /var/www/.env << ENDENV
 APP_ENV=production
-APP_DEBUG=false
+APP_DEBUG=true
 APP_URL=$APP_URL
 DB_CONNECTION=pgsql
 DB_HOST=$DB_HOST

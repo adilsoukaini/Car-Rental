@@ -150,35 +150,12 @@ Route::get('/health', function () {
     return response()->json(['status' => $allOk ? 'healthy' : 'degraded', 'checks' => $checks]);
 })->name('health');
 
-// Plugin routes — loaded directly here so they work regardless of
-// whether PluginManager successfully booted the plugin providers.
-// Each plugin's ServiceProvider::boot() also calls loadRoutesFrom()
-// on the same files; calling twice is safe (Laravel deduplicates routes).
-$pluginRouteFiles = [
-    __DIR__.'/../plugins/fleet-management/routes/fleet-management.php',
-    __DIR__.'/../plugins/booking-engine/routes/booking-engine.php',
-    __DIR__.'/../plugins/reviews/routes/reviews.php',
-    __DIR__.'/../plugins/driver-verification/routes/driver-verification.php',
-];
-foreach ($pluginRouteFiles as $file) {
-    if (file_exists($file)) {
-        try {
-            require $file;
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error("Failed to load plugin routes: {$file}", [
-                'error' => $e->getMessage(),
-                'class' => get_class($e),
-            ]);
-        }
-    }
-}
 
-// Debug: check if vehicles routes actually registered
-\Illuminate\Support\Facades\Log::info('Routes after plugin load', [
-    'has_vehicles_index' => Route::has('vehicles.index'),
-    'has_vehicles_show' => Route::has('vehicles.show'),
-    'total_routes' => count(Route::getRoutes()),
-]);
+// Fleet routes — core-owned, no plugin dependency.
+Route::middleware('web')->group(function () {
+    Route::get('/vehicles', [App\Http\Controllers\FleetController::class, 'index'])->name('vehicles.index');
+    Route::get('/vehicles/{vehicle}', [App\Http\Controllers\FleetController::class, 'show'])->name('vehicles.show');
+});
 
 // Notification inbox — session-authenticated endpoints for the web storefront header bell.
 Route::middleware(['web', 'auth'])->group(function () {
