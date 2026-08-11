@@ -28,7 +28,9 @@ RUN mkdir -p /var/www/storage/logs /var/www/storage/framework/cache /var/www/sto
 RUN mkdir -p /etc/nginx/http.d
 COPY docker/nginx.conf /etc/nginx/http.d/default.conf
 COPY docker/supervisord.conf /etc/supervisord.conf
+COPY docker/startup.sh /usr/local/bin/startup.sh
+RUN chmod +x /usr/local/bin/startup.sh
 
 EXPOSE 8080
 
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
+CMD ["/usr/local/bin/startup.sh"]

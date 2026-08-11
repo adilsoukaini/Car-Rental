@@ -31,3 +31,4 @@ Thumbs.db
 .phpunit.result.cache
 .mcp.json
 outreach-leads.csv
+gcp-sa-key.json
