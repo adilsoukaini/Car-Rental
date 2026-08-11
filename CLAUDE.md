@@ -853,10 +853,15 @@ zero console errors, and admin→frontend round-trips per rule 11.
 
 ### Laravel Scout search (storefront autocomplete)
 - `App\Http\Controllers\SearchController::suggestions()` powers the SearchBox
-  dropdown. `Vehicle` uses Scout's **`database` driver** (`Searchable` trait,
-  `toSearchableArray()` limited to public catalog fields — id/make/model/category/
-  year — plus a `->where('status', 'available')` guard so a suggestion always
-  lands on a 200 page, never a 404 detail page). `/search/suggestions` is throttled
+  dropdown. `Vehicle` uses Scout (the **`database` driver** in dev/fallback,
+  `meilisearch` in production) with `toSearchableArray()` limited to public
+  catalog fields — id/make/model/category/year — plus `status`, which is a
+  **filter-only field** (in `config/scout.php`'s `vehicles.index-settings` as
+  `filterableAttributes`, NOT in `searchableAttributes`): the `->where('status',
+  'available')` guard means Meilisearch must have `status` on the document or the
+  filter silently matches zero hits (no exception, so no DB fallback — a real
+  bug found when wiring the production VM). A suggestion always lands on a 200
+  page, never a 404 detail page. `/search/suggestions` is throttled
   (`30,1`), returns ≤5 vehicles as a plain JSON array, and batch-loads the primary
   image in one query only when `vehicle-media` has registered the dynamic
   `primaryImage` relation (rule 8; core checks the relation-resolver registry,

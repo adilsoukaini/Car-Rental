@@ -141,9 +141,17 @@ return [
         'key' => env('MEILISEARCH_KEY'),
         'timeout' => 5, // seconds — fail fast, fall back to database
         'index-settings' => [
-            // 'users' => [
-            //     'filterableAttributes'=> ['id', 'name', 'email'],
-            // ],
+            // The storefront autocomplete (SearchController::suggestions)
+            // runs Scout's ->where('status', 'available') filter against
+            // Meilisearch. `status` MUST be filterable or Meilisearch rejects
+            // the query with "attribute is not filterable" (which silently
+            // degrades every search to the database fallback). Searchable
+            // attributes match Vehicle::toSearchableArray() so the public
+            // catalog fields are what gets matched.
+            'vehicles' => [
+                'filterableAttributes' => ['status'],
+                'searchableAttributes' => ['id', 'make', 'model', 'category', 'year'],
+            ],
         ],
     ],
 

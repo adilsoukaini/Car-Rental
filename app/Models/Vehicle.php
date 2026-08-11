@@ -50,6 +50,14 @@ class Vehicle extends Model
             'model' => $this->model,
             'category' => $this->category,
             'year' => $this->year,
+            // `status` is a filter-only field: it is deliberately NOT in the
+            // index's searchableAttributes (config/scout.php), so it never
+            // matches a typed query. But the storefront autocomplete runs
+            // ->where('status', 'available') against Meilisearch, and
+            // Meilisearch can only filter attributes that exist in the
+            // document — without this field every suggestion silently
+            // returned zero hits (no exception, so no database fallback).
+            'status' => $this->status,
         ];
     }
 

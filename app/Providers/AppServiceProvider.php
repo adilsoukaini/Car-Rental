@@ -25,6 +25,7 @@ use App\Core\Support\VehicleFilterRegistry;
 use App\Core\Support\VehicleSortRegistry;
 use GuzzleHttp\Client as GuzzleClient;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Scout\Scout;
@@ -45,6 +46,17 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // In production, force every generated URL (routes, signed URLs,
+        // sitemap <loc> entries, email links) to https regardless of the
+        // request scheme Cloud Run presents (TLS terminates at the load
+        // balancer, so PHP-FPM sees http). APP_URL is already https and the
+        // container's HTTPS=true handles the common case; this guard makes it
+        // unconditional. Skipped outside production so local dev over http
+        // keeps working.
+        if ($this->app->environment('production')) {
+            URL::forceScheme('https');
+        }
+
         // The Meilisearch\Client is normally bound by Scout's own service
         // provider, which only passes host/key/clientAgents — it never reads
         // the `timeout` config key. Override that binding here so

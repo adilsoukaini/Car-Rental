@@ -126,10 +126,14 @@ Route::get('/health', function () {
         $checks['database'] = 'error: '.$e->getMessage();
     }
 
-    // Meilisearch
+    // Meilisearch — probe the configured host, not a hardcoded localhost.
+    // In production MEILISEARCH_HOST points at the external search instance
+    // (e.g. the e2-micro VM); on a dev box it's localhost. Fall back to the
+    // Scout default so the endpoint never references a wrong address.
     try {
         $meili = new Client(['timeout' => 2]);
-        $resp = $meili->get('http://localhost:7700/health');
+        $meiliHost = rtrim((string) config('scout.meilisearch.host', 'http://localhost:7700'), '/');
+        $resp = $meili->get($meiliHost.'/health');
         if ($resp->getStatusCode() !== 200) {
             $checks['meilisearch'] = 'unhealthy';
         }
