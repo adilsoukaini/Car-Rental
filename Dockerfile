@@ -3,8 +3,6 @@ FROM php:8.4-fpm-alpine
 RUN apk add --no-cache \
     nginx \
     postgresql-dev \
-    nodejs \
-    npm \
     supervisor \
     curl \
     && docker-php-ext-install pdo pdo_pgsql
@@ -18,7 +16,10 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 RUN composer install --no-dev --optimize-autoloader --no-interaction --no-progress || true
 RUN composer dump-autoload --optimize --no-interaction || true
 
-RUN npm ci 2>/dev/null && npm run build 2>/dev/null && rm -rf node_modules 2>/dev/null || echo "Frontend build skipped — using prebuilt assets"
+# Frontend is prebuilt locally (npm run build produces public/build/).
+# The GitHub Actions CI pipeline builds assets before Docker build, so
+# COPY . already includes compiled assets. No npm inside the container.
+RUN rm -rf node_modules
 
 RUN mkdir -p /var/www/storage/logs /var/www/storage/framework/cache /var/www/storage/framework/sessions /var/www/storage/framework/views /var/www/bootstrap/cache \
     && chmod -R 775 /var/www/storage /var/www/bootstrap/cache \
