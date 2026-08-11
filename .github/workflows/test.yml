@@ -95,5 +95,4 @@ jobs:
             --region europe-west1 \
             --allow-unauthenticated \
             --memory 1Gi \
-            --cpu 1 \
-            --set-env-vars "APP_ENV=production,APP_DEBUG=false,APP_URL=https://car-rental-810531672180.europe-west1.run.app,ASSET_URL=https://car-rental-810531672180.europe-west1.run.app,DB_CONNECTION=pgsql,DB_HOST=aws-0-eu-west-2.pooler.supabase.com,DB_PORT=5432,DB_DATABASE=postgres,DB_USERNAME=postgres.plsxijgtrpejpmvrjmtu,DB_PASSWORD=CarRentak123,APP_KEY=base64:rbs9yxijpNSWDs+WhKZ4s9WOs44H8JKf9ENFBIYI6z4=,SESSION_DRIVER=database,CACHE_STORE=database,QUEUE_CONNECTION=database,SCOUT_DRIVER=database,STRIPE_KEY=${STRIPE_KEY},STRIPE_SECRET=${STRIPE_SECRET}"
+            --cpu 1
