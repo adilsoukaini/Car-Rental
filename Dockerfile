@@ -5,7 +5,10 @@ RUN apk add --no-cache \
     postgresql-dev \
     supervisor \
     curl \
-    && docker-php-ext-install pdo pdo_pgsql
+    icu-dev \
+    libzip-dev \
+    libpng-dev \
+    && docker-php-ext-install pdo pdo_pgsql intl zip gd
 
 WORKDIR /var/www
 
@@ -13,8 +16,13 @@ COPY . /var/www
 
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-progress || true
-RUN composer dump-autoload --optimize --no-interaction || true
+RUN composer install --no-dev --no-scripts --optimize-autoloader --no-interaction --no-progress 2>&1 || true
+# Docker COPY resolves symlinks, so vendor/carrental/* → plugins/* symlinks
+# become real directories. This script fixes the autoload to include plugin
+# PSR-4 namespaces that Composer path-repos would normally handle.
+COPY docker/inject-autoload.php /tmp/inject-autoload.php
+RUN php /tmp/inject-autoload.php 2>&1
+RUN php -r "require 'vendor/autoload.php'; echo class_exists('Plugins\\FleetManagement\\FleetManagementServiceProvider') ? 'OK: FleetManagement found' : 'FAIL: FleetManagement not found';" 2>&1
 
 # Frontend is prebuilt locally (npm run build produces public/build/).
 # The GitHub Actions CI pipeline builds assets before Docker build, so

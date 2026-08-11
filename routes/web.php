@@ -162,9 +162,23 @@ $pluginRouteFiles = [
 ];
 foreach ($pluginRouteFiles as $file) {
     if (file_exists($file)) {
-        require $file;
+        try {
+            require $file;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Failed to load plugin routes: {$file}", [
+                'error' => $e->getMessage(),
+                'class' => get_class($e),
+            ]);
+        }
     }
 }
+
+// Debug: check if vehicles routes actually registered
+\Illuminate\Support\Facades\Log::info('Routes after plugin load', [
+    'has_vehicles_index' => Route::has('vehicles.index'),
+    'has_vehicles_show' => Route::has('vehicles.show'),
+    'total_routes' => count(Route::getRoutes()),
+]);
 
 // Notification inbox — session-authenticated endpoints for the web storefront header bell.
 Route::middleware(['web', 'auth'])->group(function () {

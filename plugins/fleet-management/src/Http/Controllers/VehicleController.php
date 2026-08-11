@@ -10,6 +10,7 @@ use App\Core\Support\VehicleSortRegistry;
 use App\Http\Controllers\Controller;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -32,10 +33,7 @@ class VehicleController extends Controller
      */
     public function index(Request $request): Response
     {
-        // Query building lives in the shared VehicleCatalogService — the same
-        // service the mobile JSON API's Api\VehicleController uses, so the two
-        // can never drift. Only the pagination + filter/sort props are page-
-        // specific (the API serializes the same paginator as JSON).
+        try {
         $search = $request->string('search')->trim()->toString();
         $requestedSort = $request->string('sort')->trim()->toString();
         $sort = $requestedSort !== '' ? VehicleSortRegistry::resolveActive($requestedSort) : null;
@@ -45,9 +43,6 @@ class VehicleController extends Controller
             ->paginate(12)
             ->withQueryString();
 
-        // Only expose what's registered — the frontend renders every entry
-        // generically, so a newly-registered filter/sort appears with zero
-        // frontend changes.
         $availableFilters = collect(VehicleFilterRegistry::enabled())
             ->map(fn ($filter) => [
                 'id' => $filter->id(),
@@ -66,8 +61,6 @@ class VehicleController extends Controller
             ->values()
             ->all();
 
-        // The currently-active values, so the FilterBar and SearchBox can
-        // pre-select/reflect what the URL says.
         $activeFilters = collect(VehicleFilterRegistry::enabled())
             ->mapWithKeys(fn ($filter) => [$filter->id() => $request->string($filter->id())->toString()])
             ->filter(fn (string $value) => $value !== '')
@@ -81,6 +74,14 @@ class VehicleController extends Controller
             'currentSort' => $sort?->id() ?? '',
             'activeFilters' => $activeFilters,
         ]);
+        } catch (\Throwable $e) {
+            Log::error('VehicleController::index failed', [
+                'error' => $e->getMessage(),
+                'class' => get_class($e),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e;
+        }
     }
 
     /**
