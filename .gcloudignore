@@ -2,6 +2,7 @@
 .gitignore
 .gitattributes
 node_modules/
+vendor/
 storage/
 .env
 .env.*
