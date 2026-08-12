@@ -162,6 +162,25 @@ Route::middleware('web')->group(function () {
     Route::get('/vehicles/{vehicle}', [FleetController::class, 'show'])->name('vehicles.show');
 });
 
+// Booking checkout — core-owned fallback. The booking-engine plugin registers
+// identical routes via PluginManager::boot(), but the autoload doesn't resolve
+// plugin classes in Docker/Cloud Run builds (symlink issue). These core routes
+// ensure the checkout flow works regardless.
+Route::middleware('web')->group(function () {
+    Route::get('/vehicles/{vehicle}/book', [Plugins\BookingEngine\Http\Controllers\BookingCheckoutController::class, 'show'])
+        ->name('bookings.checkout');
+    Route::post('/vehicles/{vehicle}/book', [Plugins\BookingEngine\Http\Controllers\BookingCheckoutController::class, 'store'])
+        ->name('bookings.store')
+        ->middleware('throttle:10,1');
+    Route::post('/bookings/{booking}/confirm', [Plugins\BookingEngine\Http\Controllers\BookingCheckoutController::class, 'confirm'])
+        ->name('bookings.confirm');
+    Route::get('/bookings/{booking}/confirm', [Plugins\BookingEngine\Http\Controllers\BookingCheckoutController::class, 'confirmReturn'])
+        ->name('bookings.confirm.return');
+    Route::get('/bookings/{booking}', [App\Http\Controllers\BookingController::class, 'show'])->name('bookings.show');
+    Route::get('/bookings/track', [App\Http\Controllers\BookingController::class, 'track'])->name('bookings.track');
+    Route::post('/bookings/track', [App\Http\Controllers\BookingController::class, 'lookup'])->name('bookings.track.lookup')->middleware('throttle:20,1');
+});
+
 // Notification inbox — session-authenticated endpoints for the web storefront header bell.
 Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index'])
