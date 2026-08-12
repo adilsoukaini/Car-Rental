@@ -61,7 +61,7 @@ test.describe('Notification Bell', () => {
     await page.waitForTimeout(500);
 
     // The dropdown panel should be visible
-    const panel = page.locator('text=Notifications');
+    const panel = page.locator('p:has-text("Notifications")');
     await expect(panel).toBeVisible({ timeout: 3000 });
 
     // Should have notification items or an empty state message
@@ -114,13 +114,13 @@ test.describe('Notification Bell', () => {
     await page.waitForTimeout(300);
 
     // Panel should be open
-    await expect(page.locator('text=Notifications')).toBeVisible();
+    await expect(page.locator('p:has-text("Notifications")')).toBeVisible();
 
     // Click outside the panel (the backdrop overlay)
     await page.click('body', { position: { x: 10, y: 10 } });
     await page.waitForTimeout(300);
 
     // Panel should be hidden
-    await expect(page.locator('text=Notifications')).not.toBeVisible();
+    await expect(page.locator('p:has-text("Notifications")')).not.toBeVisible();
   });
 });
