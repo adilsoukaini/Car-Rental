@@ -28,7 +28,7 @@
 
 import { test, expect } from '@playwright/test';
 
-const BASE = 'http://localhost:8000';
+const BASE = 'http://localhost:8099';
 
 test.describe('Notification Bell', () => {
   test.beforeEach(async ({ page }) => {
