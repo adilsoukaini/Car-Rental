@@ -32,7 +32,9 @@ export async function run(page: any) {
   // ─── 2. Fleet listing loads ─────────────────────────────
   await page.goto(BASE + '/vehicles');
   await page.getByRole('searchbox', { name: /rechercher des véhicules/i }).first().waitFor({ state: 'visible', timeout: 10000 });
-  // Cards use LayoutSlot rendering — look for any vehicle link or card content
+  // Cards render async (LayoutSlot) — wait for at least one vehicle link
+  // to appear rather than counting immediately, which races the API response.
+  await page.locator('a[href*="/vehicles/"]').first().waitFor({ state: 'visible', timeout: 10000 });
   const hasCard = await page.locator('a[href*="/vehicles/"]').count();
   if (hasCard === 0) fail('No search or card content on fleet page');
   results.push('✅ Fleet listing loads with search + cards');
