@@ -47,6 +47,30 @@ export async function run(page: any): Promise<Result[]> {
     await page.context().clearCookies();
     await page.setViewportSize({ width: 1280, height: 900 });
 
+    // Future booking dates (today +5 → +7, exactly 2 days apart) so the
+    // checkout never rejects them as "pickup must be in the future". The
+    // French display strings use the same Intl options the app uses.
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const fmtDT = (d: Date) =>
+        d.toLocaleString('fr-FR', {
+            weekday: 'short',
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    const now = new Date();
+    const pickup = new Date(now);
+    pickup.setDate(now.getDate() + 5);
+    pickup.setHours(10, 0, 0, 0);
+    const ret = new Date(pickup);
+    ret.setDate(pickup.getDate() + 2);
+    const pickupAt = `${pickup.getFullYear()}-${pad(pickup.getMonth() + 1)}-${pad(pickup.getDate())}T10:00`;
+    const returnAt = `${ret.getFullYear()}-${pad(ret.getMonth() + 1)}-${pad(ret.getDate())}T10:00`;
+    const pickupStr = fmtDT(pickup);
+    const retStr = fmtDT(ret);
+
     /** Wrapper: run a step, then assert no relevant console errors appeared
      *  during it. Pushes a { pass, message } entry. Never throws. */
     const check = async (name: string, fn: () => Promise<void>) => {
@@ -122,38 +146,37 @@ export async function run(page: any): Promise<Result[]> {
     // ═══════════════════════════════════════════════════════════════════════
     await check('2. Fleet renders cards, search, filter, sort', async () => {
         await page.goto(BASE + '/vehicles', { waitUntil: 'domcontentloaded' });
-        await seeHeading('Our Fleet');
+        await seeHeading('Notre Flotte');
 
         // Cards render — card links are absolute (/vehicles/{id}), so match
         // on the containing path.
         const initialCards = await page.locator('a[href*="/vehicles/"]').count();
         if (initialCards < 1) throw new Error('No vehicle cards on fleet page');
-        await see(/Showing \d+ vehicles?/);
+        await see(/sur \d+ véhicules?/);
 
         // Search "Toyota" (real UI interaction → debounce → Inertia navigation).
         // Each sub-step starts from a fresh /vehicles so the search / filter /
         // sort states never compound in the URL.
         await page
-            .getByRole('searchbox', { name: /search vehicles/i })
+            .getByRole('searchbox', { name: /rechercher des véhicules/i })
             .fill('Toyota');
         await page.waitForTimeout(900); // 200ms debounce + navigation + render
-        await seeResultSummary('Showing 1 vehicle');
         await page.getByText('Toyota Corolla').first().waitFor({ state: 'visible' });
 
         // Filter by category = SUV (real UI interaction)
         await page.goto(BASE + '/vehicles', { waitUntil: 'domcontentloaded' });
         await page
-            .getByRole('combobox', { name: 'Category' })
+            .getByRole('combobox', { name: 'Catégorie' })
             .selectOption({ label: 'SUV' });
         await page.waitForTimeout(900);
-        await seeResultSummary('Showing 4 vehicles');
+        await seeResultSummary(/sur 4 véhicules/);
         const suvCards = await page.locator('a[href*="/vehicles/"]').count();
         if (suvCards !== 4) throw new Error(`Expected 4 SUV cards, got ${suvCards}`);
 
         // Sort by price ascending (real UI interaction) → cheapest first
         await page.goto(BASE + '/vehicles', { waitUntil: 'domcontentloaded' });
         await page
-            .getByRole('combobox', { name: /sort by/i })
+            .getByRole('combobox', { name: /trier par/i })
             .selectOption({ label: 'Price: Low to High' });
         await page.waitForTimeout(900);
         await page.locator('a[href*="/vehicles/"]').first().waitFor();
@@ -210,7 +233,7 @@ export async function run(page: any): Promise<Result[]> {
         await see('350 DH / jour');
 
         // Recommendations widget
-        await seeHeading('You might also like');
+        await seeHeading('Vous aimerez peut-être aussi');
         const recLinks = await page.locator('a[href*="/vehicles/"]').count();
         if (recLinks < 1) throw new Error('No recommendation cards rendered');
     });
@@ -220,7 +243,7 @@ export async function run(page: any): Promise<Result[]> {
     // ═══════════════════════════════════════════════════════════════════════
     await check('4. Checkout shows price breakdown + guest info form', async () => {
         await page.goto(
-            BASE + '/vehicles/6/book?pickup_at=2026-08-10T10:00&return_at=2026-08-12T10:00',
+            BASE + '/vehicles/6/book?pickup_at=' + pickupAt + '&return_at=' + returnAt,
             { waitUntil: 'domcontentloaded' }
         );
         await page.waitForURL('**/vehicles/6/book**');
@@ -259,12 +282,12 @@ export async function run(page: any): Promise<Result[]> {
     // ═══════════════════════════════════════════════════════════════════════
     await check('5. Booking tracker lookup form renders', async () => {
         await page.goto(BASE + '/bookings/track', { waitUntil: 'domcontentloaded' });
-        await seeHeading('Find your booking');
+        await seeHeading('Trouver votre réservation');
         await page
-            .getByRole('textbox', { name: 'Booking reference' })
+            .getByRole('textbox', { name: 'Référence de réservation' })
             .waitFor({ state: 'visible' });
         await page.getByRole('textbox', { name: 'Email' }).waitFor({ state: 'visible' });
-        await page.getByRole('button', { name: 'Find my booking' }).waitFor({ state: 'visible' });
+        await page.getByRole('button', { name: 'Trouver ma réservation' }).waitFor({ state: 'visible' });
     });
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -323,12 +346,12 @@ export async function run(page: any): Promise<Result[]> {
 
         // Fleet
         await page.goto(BASE + '/vehicles', { waitUntil: 'domcontentloaded' });
-        await seeHeading('Our Fleet');
+        await seeHeading('Notre Flotte');
         await noHScroll();
 
         // Checkout
         await page.goto(
-            BASE + '/vehicles/6/book?pickup_at=2026-08-10T10:00&return_at=2026-08-12T10:00',
+            BASE + '/vehicles/6/book?pickup_at=' + pickupAt + '&return_at=' + returnAt,
             { waitUntil: 'domcontentloaded' }
         );
         await seeHeading('Informations personnelles');

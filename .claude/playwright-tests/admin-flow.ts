@@ -96,6 +96,17 @@ export async function run(page: any) {
   await check('Dashboard widgets render', 2, async () => {
     await page.goto(BASE + '/admin', { waitUntil: 'domcontentloaded' });
     await seeHeading('Dashboard');
+    // Filament widgets are lazy by default: their data only loads once the
+    // widget scrolls into view (IntersectionObserver). Scroll through the
+    // page to trigger them, then back to the top for the stats grid.
+    await page.evaluate(async () => {
+      const step = Math.max(200, window.innerHeight * 0.7);
+      for (let y = 0; y <= document.body.scrollHeight; y += step) {
+        window.scrollTo(0, y);
+        await new Promise((r) => setTimeout(r, 120));
+      }
+      window.scrollTo(0, 0);
+    });
     await see('Total Booking Value');
     await see('Bookings This Month');
     await see('Avg Booking Value');

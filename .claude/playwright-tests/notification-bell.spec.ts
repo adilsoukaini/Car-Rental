@@ -21,7 +21,7 @@
  *     "
  *
  * Usage:
- *   npx playwright test .claude/playwright-tests/notification-bell.ts
+ *   npx playwright test .claude/playwright-tests/notification-bell.spec.ts
  *   # or via Maestro MCP on web:
  *   maestro test .maestro/notification-bell.yaml
  */
@@ -37,7 +37,9 @@ test.describe('Notification Bell', () => {
     await page.fill('input[name="email"]', 'staff@example.com');
     await page.fill('input[name="password"]', 'password');
     await page.click('button[type="submit"]');
-    await page.waitForURL(`${BASE}/`);
+    // After login the storefront lands on the fleet page, not the homepage —
+    // wait for any redirect away from the login form.
+    await page.waitForURL((url) => url.pathname !== '/login', { timeout: 15000 });
     // Wait for the bell to finish its unread-count fetch
     await page.waitForTimeout(2000);
   });
