@@ -26,7 +26,10 @@ interface SharedProps extends PageProps {
 // ("Car Rental") instead of the configured brand ("Driveway Morocco") every
 // time the site name is changed without a rebuild.
 function resolveAppName(): string {
-    const siteName = (router.page?.props as Partial<SharedProps> | undefined)?.siteIdentity?.siteName;
+    // router.page exists at runtime but the Inertia Router type doesn't expose
+    // it — cast to a structural type to read the initial page props.
+    const page = (router as unknown as { page?: { props?: Partial<SharedProps> } }).page;
+    const siteName = page?.props?.siteIdentity?.siteName;
     return siteName?.trim() ? siteName : appName;
 }
 
