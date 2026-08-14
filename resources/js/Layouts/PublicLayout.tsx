@@ -371,6 +371,9 @@ export default function PublicLayout({ children }: PropsWithChildren) {
                     <Link href={route('info.driving-in-morocco')} className="text-sm text-onPrimary/80 transition-colors hover:text-onPrimary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-onPrimary">
                         {t('Driving in Morocco')}
                     </Link>
+                    <Link href={route('privacy')} className="text-sm text-onPrimary/80 transition-colors hover:text-onPrimary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-onPrimary">
+                        {t('Privacy Policy')}
+                    </Link>
                 </div>
 
                 <div className="flex flex-col gap-3">
