@@ -12,7 +12,7 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 import { useEffect, useState } from 'react';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const appName = import.meta.env.VITE_APP_NAME || 'Driveway Morocco';
 
 interface SharedProps extends PageProps {
     themeData?: Semantic;
