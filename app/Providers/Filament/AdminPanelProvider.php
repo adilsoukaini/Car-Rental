@@ -30,7 +30,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
-            ->brandName('Car Rental')
+            ->brandName(config('app.name', 'Driveway Morocco'))
             ->colors([
                 'primary' => Color::Amber,
             ])
