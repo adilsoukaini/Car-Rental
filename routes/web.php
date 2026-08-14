@@ -81,6 +81,13 @@ Route::get('/conduire-au-maroc', function () {
     return Inertia::render('Info/DrivingInMorocco');
 })->name('info.driving-in-morocco');
 
+// Privacy Policy — required by Google Play's store-listing "Privacy policy
+// URL" field. Static content page; no server data needed. English to match the
+// Play Store default language (en-GB).
+Route::get('/privacy', function () {
+    return Inertia::render('Info/PrivacyPolicy');
+})->name('privacy');
+
 // Search autocomplete — rate-limited so the debounced suggestions fetch can't
 // be hammered. Returns a JSON array of at most 5 matching available vehicles.
 Route::get('/search/suggestions', [SearchController::class, 'suggestions'])
