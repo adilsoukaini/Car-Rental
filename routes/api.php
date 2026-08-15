@@ -43,6 +43,7 @@ Route::post('/register', [AuthController::class, 'register'])->name('api.registe
 // Token-authenticated endpoints.
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('api.logout');
+    Route::delete('/account', [AuthController::class, 'deleteAccount'])->name('api.account.delete');
     Route::get('/user', [AuthController::class, 'user'])->name('api.user');
 
     Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('api.bookings.show');

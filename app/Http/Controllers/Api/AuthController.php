@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rules;
@@ -88,6 +89,42 @@ class AuthController extends Controller
         $request->user()->currentAccessToken()->delete();
 
         return response()->json(['message' => 'Logged out.']);
+    }
+
+    /**
+     * Delete the authenticated user's account and all associated personal data.
+     *
+     * Mirrors the web ProfileController::destroy semantics (password re-entry
+     * required) adapted for token auth: revoke every Sanctum token, then delete
+     * the user. Related data is cleaned up by the schema's FK cascade — reviews,
+     * driver verifications, notifications, push tokens and damage reports are
+     * `cascadeOnDelete`; bookings are `nullOnDelete` so the financial record is
+     * retained (anonymised to a null `user_id`) while the personal data it
+     * referenced is removed. Wrapped in a transaction so a partial failure can
+     * never leave a half-deleted account.
+     */
+    public function deleteAccount(Request $request): JsonResponse
+    {
+        $request->validate([
+            'password' => ['required', 'string'],
+        ]);
+
+        $user = $request->user();
+
+        if (! Hash::check((string) $request->input('password'), $user->password)) {
+            throw ValidationException::withMessages([
+                'password' => ['The provided password is incorrect.'],
+            ]);
+        }
+
+        DB::transaction(function () use ($user): void {
+            // Revoke all of the user's tokens — not just the current one — the
+            // account itself is going away.
+            $user->tokens()->delete();
+            $user->delete();
+        });
+
+        return response()->json(['message' => 'Account deleted.'], 200);
     }
 
     public function user(Request $request): JsonResponse

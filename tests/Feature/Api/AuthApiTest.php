@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\Booking;
 use App\Models\User;
+use App\Models\Vehicle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Tests\TestCase;
@@ -110,5 +112,57 @@ class AuthApiTest extends TestCase
         Auth::forgetGuards();
 
         $this->getJson('/api/user')->assertStatus(401);
+    }
+
+    public function test_delete_account_requires_a_token(): void
+    {
+        $this->deleteJson('/api/account')->assertStatus(401);
+    }
+
+    public function test_delete_account_requires_the_correct_password(): void
+    {
+        $user = User::factory()->create(['password' => bcrypt('password123')]);
+        $token = $user->createToken('mobile')->plainTextToken;
+
+        $this->withToken($token)
+            ->deleteJson('/api/account', ['password' => 'wrong-password'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('password');
+
+        // The account survives a failed deletion attempt.
+        $this->assertDatabaseHas('users', ['id' => $user->id]);
+    }
+
+    public function test_delete_account_deletes_the_user_and_revokes_tokens(): void
+    {
+        $user = User::factory()->create(['password' => bcrypt('password123')]);
+        $token = $user->createToken('mobile')->plainTextToken;
+
+        $this->withToken($token)
+            ->deleteJson('/api/account', ['password' => 'password123'])
+            ->assertOk();
+
+        $this->assertDatabaseMissing('users', ['id' => $user->id]);
+        $this->assertDatabaseCount('personal_access_tokens', 0);
+    }
+
+    public function test_delete_account_preserves_bookings_but_anonymises_them(): void
+    {
+        $user = User::factory()->create(['password' => bcrypt('password123')]);
+        // Booking::factory() nests a Vehicle::factory(), whose Searchable trait
+        // would otherwise try to index into Meilisearch (unavailable in tests).
+        $booking = Vehicle::withoutSyncingToSearch(
+            fn () => Booking::factory()->create(['user_id' => $user->id]),
+        );
+        $token = $user->createToken('mobile')->plainTextToken;
+
+        $this->withToken($token)
+            ->deleteJson('/api/account', ['password' => 'password123'])
+            ->assertOk();
+
+        // The financial record is retained but no longer points at the deleted
+        // user (the schema's `nullOnDelete` FK keeps the booking, nulls user_id).
+        $this->assertDatabaseHas('bookings', ['id' => $booking->id, 'user_id' => null]);
+        $this->assertDatabaseMissing('users', ['id' => $user->id]);
     }
 }
