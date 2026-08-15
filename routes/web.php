@@ -88,6 +88,12 @@ Route::get('/privacy', function () {
     return Inertia::render('Info/PrivacyPolicy');
 })->name('privacy');
 
+// Account deletion instructions — required by Google Play's "Delete account
+// URL" data-safety field. Static content page; no server data needed.
+Route::get('/delete-account', function () {
+    return Inertia::render('Info/DeleteAccount');
+})->name('delete-account');
+
 // Search autocomplete — rate-limited so the debounced suggestions fetch can't
 // be hammered. Returns a JSON array of at most 5 matching available vehicles.
 Route::get('/search/suggestions', [SearchController::class, 'suggestions'])
