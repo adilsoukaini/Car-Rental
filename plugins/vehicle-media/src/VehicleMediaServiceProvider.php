@@ -47,19 +47,30 @@ class VehicleMediaServiceProvider extends ServiceProvider
 
         // Adds the relation manager to VehicleResource via the core
         // extension registry — core never imports this plugin's class.
-        VehicleResourceExtension::addRelationManager(VehicleImagesRelationManager::class);
+        //
+        // Guarded: Filament/Livewire admin registration can throw in some
+        // boot contexts (notably Cloud Run, where the admin panel providers
+        // may not be fully wired when this plugin boots). The storefront
+        // gallery (FilterRegistry pipes + Eloquent relations registered
+        // above) works regardless — the admin relation manager is the only
+        // thing at risk, so don't let it crash the whole site.
+        try {
+            VehicleResourceExtension::addRelationManager(VehicleImagesRelationManager::class);
 
-        // FilamentServiceProvider::boot() runs before plugin providers and
-        // calls registerLivewireComponents(), which iterates
-        // VehicleResource::getRelationManagers() while the extension
-        // registry is still empty. Manually register the component so
-        // Livewire can resolve it during the request — same late-
-        // registration pattern already proven in this project for
-        // plugin-owned Filament resources (see driver-verification's
-        // ServiceProvider), applied here to a relation manager instead.
-        Livewire::component(
-            app(ComponentRegistry::class)->getName(VehicleImagesRelationManager::class),
-            VehicleImagesRelationManager::class,
-        );
+            // FilamentServiceProvider::boot() runs before plugin providers and
+            // calls registerLivewireComponents(), which iterates
+            // VehicleResource::getRelationManagers() while the extension
+            // registry is still empty. Manually register the component so
+            // Livewire can resolve it during the request — same late-
+            // registration pattern already proven in this project for
+            // plugin-owned Filament resources (see driver-verification's
+            // ServiceProvider), applied here to a relation manager instead.
+            Livewire::component(
+                app(ComponentRegistry::class)->getName(VehicleImagesRelationManager::class),
+                VehicleImagesRelationManager::class,
+            );
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 }
