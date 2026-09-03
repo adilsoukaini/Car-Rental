@@ -1,0 +1,51 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches: [master, main]
+
+env:
+  PROJECT_ID: shipdevfast
+  PROJECT_NUMBER: 810531672180
+  REGION: europe-west1
+  SERVICE: car-rental
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Node dependencies
+        run: npm ci --legacy-peer-deps
+
+      # The Dockerfile COPYs the prebuilt public/build/ into the image, so the
+      # frontend must be built before the source deploy runs.
+      - name: Build frontend
+        run: npm run build
+
+      # Keyless auth via Workload Identity Federation (github-actions-deploy SA).
+      - id: auth
+        name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/${{ env.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github/providers/github
+          service_account: github-actions-deploy@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
+
+      - name: Deploy to Cloud Run (from source)
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE }}
+          region: ${{ env.REGION }}
+          source: ./
