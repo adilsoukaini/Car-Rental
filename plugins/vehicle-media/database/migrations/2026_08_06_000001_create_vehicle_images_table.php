@@ -13,7 +13,7 @@ return new class extends Migration
         Schema::create('vehicle_images', function (Blueprint $table) {
             $table->id();
             $table->foreignId('vehicle_id')->constrained()->cascadeOnDelete();
-            $table->string('path');
+            $table->string('path', 1024);
             $table->string('alt_text')->nullable();
             $table->unsignedInteger('sort_order')->default(0);
             $table->boolean('is_primary')->default(false);

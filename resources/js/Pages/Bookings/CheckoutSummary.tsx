@@ -53,7 +53,7 @@ export default function CheckoutSummary({
         <div className="overflow-hidden rounded-container border border-border bg-surface shadow-raised">
             {/* Vehicle image + name */}
             <div className="border-b border-border p-6">
-                <div className="h-40 w-full overflow-hidden rounded-interactive bg-background">
+                <div className="relative aspect-[4/3] w-full overflow-hidden rounded-interactive bg-surface">
                     {vehicle.primary_image ? (
                         <img
                             src={vehicle.primary_image.url}

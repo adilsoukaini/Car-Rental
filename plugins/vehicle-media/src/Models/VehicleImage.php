@@ -40,8 +40,9 @@ class VehicleImage extends Model
     /**
      * Delete the physical file when the DB row goes away, so an admin
      * deleting a vehicle image doesn't orphan the file on the public disk.
-     * Seeded demo images store a full remote URL (picsum.photos) in `path`
-     * — those are skipped, only local files on the public disk are deleted.
+     * Seeded demo images store a full remote URL (e.g. Wikimedia Commons) in
+     * `path` — those are skipped, only local files on the public disk are
+     * deleted.
      */
     protected static function booted(): void
     {
@@ -55,9 +56,9 @@ class VehicleImage extends Model
     /**
      * Resolve a stored path to a usable URL.
      *
-     * Seeded demo images store a full remote URL (picsum.photos) in `path`;
-     * admin-uploaded images store a local path on the public disk. Full
-     * http(s) URLs are returned as-is, everything else goes through
+     * Seeded demo images store a full remote URL (e.g. Wikimedia Commons) in
+     * `path`; admin-uploaded images store a local path on the public disk.
+     * Full http(s) URLs are returned as-is, everything else goes through
      * Storage::url() — single rule shared by the `url()` accessor and
      * GetVehicleGalleryPipe so both resolve the same way.
      */

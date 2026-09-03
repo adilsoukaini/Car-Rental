@@ -56,7 +56,7 @@ export default function HorizontalSplit({
             href={vehicleHref}
             className="group flex flex-col overflow-hidden rounded-container border border-border bg-surface shadow-resting transition hover:shadow-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing sm:flex-row"
         >
-            <div className="relative h-48 w-full shrink-0 overflow-hidden bg-background sm:h-full sm:w-2/5">
+            <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-surface sm:aspect-auto sm:h-full sm:w-2/5">
                 {vehicle.primary_image ? (
                     <img
                         src={vehicle.primary_image.url}

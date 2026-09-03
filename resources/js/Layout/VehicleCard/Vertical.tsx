@@ -56,7 +56,7 @@ export default function Vertical({
             href={vehicleHref}
             className="group flex flex-col overflow-hidden rounded-container border border-border bg-surface shadow-resting transition hover:shadow-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focusRing"
         >
-            <div className="relative h-48 w-full overflow-hidden bg-background">
+            <div className="relative aspect-[4/3] w-full overflow-hidden bg-surface">
                 {vehicle.primary_image ? (
                     <img
                         src={vehicle.primary_image.url}

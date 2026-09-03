@@ -34,16 +34,16 @@ export default function VehicleGalleryCarousel({ images }: { images: VehicleGall
 
     return (
         <div className="rounded-container border border-border bg-surface p-4 shadow-resting">
-            <div className="relative overflow-hidden rounded-container bg-background">
+            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-container bg-surface">
                 {currentImage ? (
                     <img
                         src={currentImage.url}
                         alt={currentImage.altText ?? 'Photo du véhicule'}
                         loading="lazy"
-                        className="aspect-video w-full object-cover"
+                        className="absolute inset-0 h-full w-full object-cover"
                     />
                 ) : (
-                    <div className="flex aspect-video w-full items-center justify-center">
+                    <div className="flex h-full w-full items-center justify-center">
                         <VehiclePlaceholderIcon />
                     </div>
                 )}

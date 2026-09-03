@@ -58,7 +58,7 @@ export default function VehicleRecommendations({ vehicles }: { vehicles: Vehicle
                         href={toHref(v.id)}
                         className="group flex flex-col overflow-hidden rounded-container border border-border bg-surface shadow-resting transition hover:shadow-raised"
                     >
-                        <div className="relative h-36 w-full overflow-hidden bg-background">
+                        <div className="relative aspect-[4/3] w-full overflow-hidden bg-surface">
                             {v.imageUrl ? (
                                 <img
                                     src={v.imageUrl}
