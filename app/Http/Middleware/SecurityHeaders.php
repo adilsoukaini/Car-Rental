@@ -33,7 +33,7 @@ class SecurityHeaders
             "default-src 'self'; ".
             "script-src 'self' 'unsafe-inline' https://js.stripe.com; ".
             "style-src 'self' 'unsafe-inline' https://fonts.bunny.net; ".
-            "img-src 'self' data: https://*.wikimedia.org https://lh3.googleusercontent.com; ".
+            "img-src 'self' data: https://picsum.photos https://*.picsum.photos https://*.wikimedia.org https://lh3.googleusercontent.com; ".
             "font-src 'self' https://fonts.bunny.net; ".
             'frame-src https://js.stripe.com; '.
             "connect-src 'self' https://api.stripe.com;"

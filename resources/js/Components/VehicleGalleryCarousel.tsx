@@ -16,20 +16,24 @@ import { useState } from 'react';
  * onPhoto foreground), the same pair the photo overlay system was built
  * for. The selected thumbnail is outlined in the primary token.
  */
-export default function VehicleGalleryCarousel({ images }: { images: VehicleGalleryImage[] }) {
+export default function VehicleGalleryCarousel({ images }: { images?: VehicleGalleryImage[] | null }) {
     const [activeImage, setActiveImage] = useState(0);
 
-    const safeActive = Math.min(activeImage, Math.max(images.length - 1, 0));
-    const currentImage = images.length > 0 ? images[safeActive] : null;
+    // Normalise a missing/empty gallery to an empty array so the placeholder
+    // renders instead of the component throwing on images.length.
+    const galleryImages = Array.isArray(images) ? images : [];
+
+    const safeActive = Math.min(activeImage, Math.max(galleryImages.length - 1, 0));
+    const currentImage = galleryImages.length > 0 ? galleryImages[safeActive] : null;
 
     const prev = () => {
-        if (images.length === 0) return;
-        setActiveImage((i) => (i - 1 + images.length) % images.length);
+        if (galleryImages.length === 0) return;
+        setActiveImage((i) => (i - 1 + galleryImages.length) % galleryImages.length);
     };
 
     const next = () => {
-        if (images.length === 0) return;
-        setActiveImage((i) => (i + 1) % images.length);
+        if (galleryImages.length === 0) return;
+        setActiveImage((i) => (i + 1) % galleryImages.length);
     };
 
     return (
@@ -48,7 +52,7 @@ export default function VehicleGalleryCarousel({ images }: { images: VehicleGall
                     </div>
                 )}
 
-                {images.length > 1 && (
+                {galleryImages.length > 1 && (
                     <>
                         <button
                             type="button"
@@ -70,9 +74,9 @@ export default function VehicleGalleryCarousel({ images }: { images: VehicleGall
                 )}
             </div>
 
-            {images.length > 1 && (
+            {galleryImages.length > 1 && (
                 <div className="mt-3 flex gap-2 overflow-x-auto">
-                    {images.map((image, index) => (
+                    {galleryImages.map((image, index) => (
                         <button
                             key={index}
                             type="button"

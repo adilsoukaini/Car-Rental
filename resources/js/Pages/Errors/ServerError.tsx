@@ -1,5 +1,6 @@
 import PublicLayout from '@/Layouts/PublicLayout';
 import { useTranslation } from '@/hooks/useTranslation';
+import { routeUrl } from '@/lib/routes';
 import { Head, Link } from '@inertiajs/react';
 
 /**
@@ -26,7 +27,7 @@ export default function ServerError() {
                     {t('Something went wrong on our end. Please try again later.')}
                 </p>
                 <Link
-                    href={route('home')}
+                    href={routeUrl('home')}
                     className="mt-4 inline-flex items-center rounded-interactive bg-primary px-5 py-2.5 font-body text-sm font-semibold text-onPrimary shadow-resting transition-colors hover:bg-primaryHover"
                 >
                     {t('Back to homepage')}

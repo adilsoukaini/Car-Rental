@@ -13,13 +13,17 @@ import { useState } from 'react';
  * gallery image is shown), and the alt-text fallback is a generic string
  * since the component doesn't receive the vehicle's make/model.
  */
-export default function VehicleGallery({ images }: { images: VehicleGalleryImage[] }) {
+export default function VehicleGallery({ images }: { images?: VehicleGalleryImage[] | null }) {
     const [activeImage, setActiveImage] = useState(0);
+
+    // Normalise a missing/empty gallery to an empty array so the placeholder
+    // renders instead of the component throwing on images.length.
+    const galleryImages = Array.isArray(images) ? images : [];
 
     // Clamp the active index to the actual gallery size (defensive, since
     // activeImage is state) and expose the current image for the hero.
-    const safeActive = Math.min(activeImage, Math.max(images.length - 1, 0));
-    const currentImage = images.length > 0 ? images[safeActive] : null;
+    const safeActive = Math.min(activeImage, Math.max(galleryImages.length - 1, 0));
+    const currentImage = galleryImages.length > 0 ? galleryImages[safeActive] : null;
 
     return (
         <div className="rounded-container border border-border bg-surface p-4 shadow-resting">
@@ -38,9 +42,9 @@ export default function VehicleGallery({ images }: { images: VehicleGalleryImage
                 )}
             </div>
 
-            {images.length > 1 && (
+            {galleryImages.length > 1 && (
                 <div className="mt-3 flex items-center justify-center gap-2">
-                    {images.map((image, index) => (
+                    {galleryImages.map((image, index) => (
                         <button
                             key={index}
                             type="button"

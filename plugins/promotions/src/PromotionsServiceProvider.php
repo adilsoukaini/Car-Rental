@@ -35,7 +35,17 @@ class PromotionsServiceProvider extends ServiceProvider
 
         Event::listen(BookingConfirmed::class, IncrementPromoCodeUsage::class);
 
-        $this->registerFilamentResource();
+        // Guarded (best-effort): admin-only Filament/Livewire registration can
+        // throw in some boot contexts (notably Cloud Run), and because it
+        // surfaces during app boot it takes down every page, not just /admin.
+        // The storefront registrations above (filters/events/migrations) still
+        // work regardless — the admin resource is the only thing at risk, so
+        // don't let it crash the whole site. Same pattern as vehicle-media.
+        try {
+            $this->registerFilamentResource();
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     /**

@@ -27,7 +27,18 @@ class DriverVerificationServiceProvider extends ServiceProvider
         // minimum_age_by_category config below still powers the storefront's
         // info-only age disclosure (vehicle detail requirements + checkout
         // warning), but nothing blocks a booking on it.
-        $this->registerFilamentResource();
+
+        // Guarded (best-effort): admin-only Filament/Livewire registration can
+        // throw in some boot contexts (notably Cloud Run), and because it
+        // surfaces during app boot it takes down every page, not just /admin.
+        // The storefront registrations above (migrations/routes) still work
+        // regardless — the admin resource is the only thing at risk, so
+        // don't let it crash the whole site. Same pattern as vehicle-media.
+        try {
+            $this->registerFilamentResource();
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     /**

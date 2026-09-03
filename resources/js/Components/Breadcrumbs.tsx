@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react';
+import { routeUrl } from '@/lib/routes';
 import { Home } from 'lucide-react';
 
 interface BreadcrumbItem {
@@ -23,7 +24,7 @@ export default function Breadcrumbs({ items, className = '' }: BreadcrumbsProps)
             <ol className="flex flex-wrap items-center gap-2 text-sm">
                 <li>
                     <Link
-                        href={route('home')}
+                        href={routeUrl('home')}
                         className="inline-flex items-center gap-1.5 text-textMuted transition hover:text-text"
                     >
                         <Home className="h-4 w-4" aria-hidden="true" />
